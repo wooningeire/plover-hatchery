@@ -33,24 +33,55 @@ def get_outline_phonemes(outline: Iterable[Stroke]):
 
     return OutlineSounds(tuple(consonant_vowel_groups), tuple(current_group_consonants))
 
-def get_sopheme_phonemes(sophemes: Iterable[Sopheme]):
-    consonant_vowel_groups: list[ConsonantVowelGroup] = []
 
-    current_group_consonants: list[Sound] = []
+class OutlineSoundsBuilder:
+    def __init__(self):
+        self.__consonant_vowel_groups: list[ConsonantVowelGroup] = []
+        self.__current_group_consonants: list[Sound] = []
+
+
+    @property
+    def __last_sound_was_vowel(self):
+        return len(self.__consonant_vowel_groups) > 0 and len(self.__current_group_consonants) == 0
+
+
+    def append_diphthong_transition(self):
+        if not self.__last_sound_was_vowel: return
+        
+        prev_vowel = self.__consonant_vowel_groups[-1].vowel
+        if prev_vowel.phoneme not in amphitheory.spec.DIPHTHONG_TRANSITIONS_BY_FIRST_VOWEL: return
+
+        self.__current_group_consonants.append(Sound(amphitheory.spec.DIPHTHONG_TRANSITIONS_BY_FIRST_VOWEL[prev_vowel.phoneme], None))
+
+
+    def add_consonant(self, consonant: Sound):
+        self.__current_group_consonants.append(consonant)
     
+
+    def add_vowel(self, vowel: Sound):
+        self.append_diphthong_transition()
+
+        self.__consonant_vowel_groups.append(ConsonantVowelGroup(tuple(self.__current_group_consonants), vowel))
+        self.__current_group_consonants = []
+
+
+    def build_sounds(self):
+        return OutlineSounds(tuple(self.__consonant_vowel_groups), tuple(self.__current_group_consonants))
+
+
+def get_sopheme_phonemes(sophemes: Iterable[Sopheme]):
+    builder = OutlineSoundsBuilder()
+
     for sopheme in sophemes:
         if sopheme.phoneme is None and len(sopheme.steno) == 0:
             continue
 
-        elif sopheme.phoneme in vowel_phonemes:
-            _check_for_diphthongs(consonant_vowel_groups, current_group_consonants)
 
-            consonant_vowel_groups.append(ConsonantVowelGroup(tuple(current_group_consonants), Sound.from_sopheme(sopheme)))
-            
-            current_group_consonants = []
-            
+        elif sopheme.phoneme in vowel_phonemes:
+            builder.add_vowel(Sound.from_sopheme(sopheme))
+
+
         elif any(any(key in stroke.rtfcre for key in "AOEU") for stroke in sopheme.steno):
-            _check_for_diphthongs(consonant_vowel_groups, current_group_consonants)
 
             for stroke in sopheme.steno:
                 vowel_substroke = stroke & Stroke.from_steno("AOEU")
@@ -58,26 +89,15 @@ def get_sopheme_phonemes(sophemes: Iterable[Sopheme]):
                     break
                 
             vowel_phoneme = amphitheory.chords_to_phonemes_vowels[vowel_substroke]
-
-            consonant_vowel_groups.append(ConsonantVowelGroup(tuple(current_group_consonants), Sound(vowel_phoneme, sopheme)))
-
-            current_group_consonants = []
+            builder.add_vowel(Sound(vowel_phoneme, sopheme))
         
         else:
             if sopheme.phoneme is not None:
-                current_group_consonants.append(Sound.from_sopheme(sopheme))
+                builder.add_consonant(Sound.from_sopheme(sopheme))
             else:
                 for stroke in sopheme.steno:
                     for phoneme in amphitheory.split_consonant_phonemes(stroke):
-                        current_group_consonants.append(Sound(phoneme, sopheme))
+                        builder.add_consonant(Sound(phoneme, sopheme))
 
 
-    return OutlineSounds(tuple(consonant_vowel_groups), tuple(current_group_consonants))
-
-def _check_for_diphthongs(consonant_vowel_groups: list[ConsonantVowelGroup], current_group_consonants: list[Sound]):
-    if len(consonant_vowel_groups) == 0 or len(current_group_consonants) > 0: return
-    
-    prev_vowel = consonant_vowel_groups[-1].vowel
-    if prev_vowel.phoneme not in amphitheory.spec.DIPHTHONG_TRANSITIONS_BY_FIRST_VOWEL: return
-
-    current_group_consonants.append(Sound(amphitheory.spec.DIPHTHONG_TRANSITIONS_BY_FIRST_VOWEL[prev_vowel.phoneme], None))
+    return builder.build_sounds()

@@ -47,7 +47,7 @@ class Orthokeysymbol:
 class Sopheme:
     orthokeysymbols: tuple[Orthokeysymbol, ...]
     steno: tuple[Stroke, ...]
-    phoneme: "Stenophoneme | str | None"
+    phoneme: "Stenophoneme | None"
 
     def __str__(self):
         out = " ".join(str(orthokeysymbol) for orthokeysymbol in self.orthokeysymbols)
