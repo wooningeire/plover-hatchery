@@ -11,14 +11,14 @@ from .find_clusters import Cluster, handle_clusters
 from .rules.left_consonants import add_left_consonant
 from .rules.right_consonants import add_right_consonant
 
-def add_entry(trie: NondeterministicTrie[str, str], phonemes: OutlineSounds, translation: str):
-    state = EntryBuilderState(trie, phonemes, translation)
+def add_entry(trie: NondeterministicTrie[str, str], sounds: OutlineSounds, translation: str):
+    state = EntryBuilderState(trie, sounds, translation)
     state.left_consonant_src_node = trie.ROOT
 
 
     upcoming_clusters: dict[tuple[int, int], list[Cluster]] = {}
 
-    for group_index, (consonants, vowel) in enumerate(phonemes.nonfinals):
+    for group_index, (consonants, vowel) in enumerate(sounds.nonfinals):
         state.group_index = group_index
 
         vowels_src_node: Optional[int] = None
@@ -67,8 +67,8 @@ def add_entry(trie: NondeterministicTrie[str, str], phonemes: OutlineSounds, tra
         state.prev_left_consonant_node = None
 
 
-    state.group_index = len(phonemes.nonfinals)
-    for phoneme_index, consonant in enumerate(phonemes.final_consonants):
+    state.group_index = len(sounds.nonfinals)
+    for phoneme_index, consonant in enumerate(sounds.final_consonants):
         state.phoneme_index = phoneme_index
 
         right_consonant_node, right_alt_consonant_node, _ = add_right_consonant(state, None)
