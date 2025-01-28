@@ -21,7 +21,7 @@ class _Affix:
 
 
 def _main(args: argparse.Namespace):
-    from plover_writeouts.lib.alignment.match_sophemes import match_sophemes
+    from plover_hatchery.lib.alignment.match_sophemes import match_sophemes
 
     root = Path(os.getcwd())
 
