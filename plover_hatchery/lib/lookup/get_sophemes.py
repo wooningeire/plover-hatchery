@@ -4,7 +4,7 @@ from plover.steno import Stroke
 
 from ..sopheme.Sound import Sound
 from ..stenophoneme.Stenophoneme import vowel_phonemes
-from ..sopheme.Sopheme import Sopheme
+from ..sopheme.Steneme import Steneme
 from ..theory.theory import amphitheory
 from .build_trie.state import ConsonantVowelGroup, OutlineSounds
 
@@ -69,7 +69,7 @@ class OutlineSoundsBuilder:
         return OutlineSounds(tuple(self.__consonant_vowel_groups), tuple(self.__current_group_consonants))
 
 
-def get_sopheme_phonemes(sophemes: Iterable[Sopheme]):
+def get_sopheme_phonemes(sophemes: Iterable[Steneme]):
     builder = OutlineSoundsBuilder()
 
     for sopheme in sophemes:

@@ -4,7 +4,7 @@ from plover.steno import Stroke
 import plover.log
 
 from ..util.Trie import NondeterministicTrie
-from ..sopheme.Sopheme import Sopheme
+from ..sopheme.Steneme import Steneme
 from .build_trie.add_entry import add_entry
 from .build_lookup import create_lookup_for
 from .build_reverse_lookup import create_reverse_lookup_for
@@ -30,9 +30,9 @@ def build_lookup_hatchery(file: TextIO):
 
     entries_json = json.load(file)
     for entry in entries_json:
-        sophemes = tuple(Sopheme.parse_sopheme_dict(sopheme_json) for sopheme_json in entry)
+        sophemes = tuple(Steneme.parse_sopheme_dict(sopheme_json) for sopheme_json in entry)
 
-        add_entry(trie, get_sopheme_phonemes(sophemes), Sopheme.get_translation(sophemes))
+        add_entry(trie, get_sopheme_phonemes(sophemes), Steneme.get_translation(sophemes))
 
     # while len(line := file.readline()) > 0:
     #     _add_entry(trie, Sopheme.parse_seq())

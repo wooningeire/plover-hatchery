@@ -7,7 +7,9 @@ import re
 from plover.steno import Stroke
 
 from ..stenophoneme.Stenophoneme import Stenophoneme
-from ..sopheme.Sopheme import Sopheme, Orthokeysymbol, Keysymbol
+from ..sopheme.Keysymbol import Keysymbol
+from ..sopheme.Sopheme import Sopheme
+from ..sopheme.Steneme import Steneme
 from .steno_annotations import AsteriskableKey, AnnotatedChord
 from .alignment import AlignmentService, Cell, aligner
 
@@ -331,18 +333,18 @@ class match_keysymbols_to_chars(AlignmentService, ABC):
 
     @staticmethod
     def construct_match(keysymbols: tuple[Keysymbol, ...], translation: str, start_cell: Cell[_Cost, None], end_cell: Cell[_Cost, None], _: None):
-        return Orthokeysymbol(
+        return Sopheme(
             keysymbols[start_cell.x:end_cell.x],
             translation[start_cell.y:end_cell.y],
         )
 
 @aligner
-class match_orthokeysymbols_to_chords(AlignmentService, ABC):
+class match_sophemes_to_chords(AlignmentService, ABC):
     MAPPINGS = _KEYSYMBOL_TO_STENO_MAPPINGS
 
     @staticmethod
-    def process_input(orthokeysymbols: tuple[Orthokeysymbol, ...], outline_steno: str) -> tuple[tuple[Orthokeysymbol, ...], tuple[AsteriskableKey, ...]]:
-        return (orthokeysymbols, AsteriskableKey.annotations_from_outline(outline_steno))
+    def process_input(sophemes: tuple[Sopheme, ...], outline_steno: str) -> tuple[tuple[Sopheme, ...], tuple[AsteriskableKey, ...]]:
+        return (sophemes, AsteriskableKey.annotations_from_outline(outline_steno))
     
     @staticmethod
     def initial_cost():
@@ -357,14 +359,14 @@ class match_orthokeysymbols_to_chords(AlignmentService, ABC):
         )
     
     @staticmethod
-    def generate_candidate_x_key(candidate_subseq_x: tuple[Orthokeysymbol, ...]) -> tuple[str, ...]:
+    def generate_candidate_x_key(candidate_subseq_x: tuple[Sopheme, ...]) -> tuple[str, ...]:
         keysymbols = []
 
         if len(candidate_subseq_x) > 0 and len(candidate_subseq_x[0].keysymbols) == 0:
             keysymbols.append("")
 
-        for orthokeysymbol in candidate_subseq_x:
-            for keysymbol in orthokeysymbol.keysymbols:
+        for sopheme in candidate_subseq_x:
+            for keysymbol in sopheme.keysymbols:
                 keysymbols.append(keysymbol.match_symbol)
 
         if len(candidate_subseq_x) > 0 and len(candidate_subseq_x[-1].keysymbols) == 0:
@@ -399,20 +401,20 @@ class match_orthokeysymbols_to_chords(AlignmentService, ABC):
         )
     
     @staticmethod
-    def match_data(subseq_keysymbols: tuple[str, ...], subseq_keys: tuple[AsteriskableKey, ...], pre_subseq_keysymbols: tuple[Orthokeysymbol, ...], pre_subseq_keys: _Mapping):
+    def match_data(subseq_keysymbols: tuple[str, ...], subseq_keys: tuple[AsteriskableKey, ...], pre_subseq_keysymbols: tuple[Sopheme, ...], pre_subseq_keys: _Mapping):
         return (
             tuple(key.asterisk for key in subseq_keys),
             pre_subseq_keys.phoneme,
         )
 
     @staticmethod
-    def construct_match(orthokeysymbols: tuple[Orthokeysymbol, ...], keys: tuple[AsteriskableKey, ...], start_cell: Cell[_Cost, None], end_cell: Cell[_Cost, None], match_data: "tuple[tuple[bool, ...], Stenophoneme | str] | None"):
-        return Sopheme(
-            orthokeysymbols[start_cell.x:end_cell.x],
+    def construct_match(sophemes: tuple[Sopheme, ...], keys: tuple[AsteriskableKey, ...], start_cell: Cell[_Cost, None], end_cell: Cell[_Cost, None], match_data: "tuple[tuple[bool, ...], Stenophoneme | str] | None"):
+        return Steneme(
+            sophemes[start_cell.x:end_cell.x],
             AnnotatedChord.keys_to_strokes((key.key for key in keys[start_cell.y:end_cell.y]), match_data[0] if match_data is not None else (False,) * (end_cell.y - start_cell.y)),
             match_data[1] if match_data is not None else None,
         )
     
-def match_sophemes(translation: str, transcription: str, outline_steno: str) -> tuple[Sopheme, ...]:
-    orthokeysymbols = match_keysymbols_to_chars(transcription, translation)
-    return match_orthokeysymbols_to_chords(orthokeysymbols, outline_steno)
+def match_sophemes(translation: str, transcription: str, outline_steno: str) -> tuple[Steneme, ...]:
+    sophemes = match_keysymbols_to_chars(transcription, translation)
+    return match_sophemes_to_chords(sophemes, outline_steno)

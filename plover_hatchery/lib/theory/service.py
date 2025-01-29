@@ -108,7 +108,7 @@ class TheoryService:
         }
     
     def left_consonant_chord(self, sound: Sound) -> Stroke:
-        if sound.sopheme is not None and len(sound.sopheme.orthokeysymbols) > 0 and sound.sopheme.orthokeysymbols[0].chars == "c" and sound.phoneme == Stenophoneme.S:
+        if sound.steneme is not None and len(sound.steneme.sophemes) > 0 and sound.steneme.sophemes[0].chars == "c" and sound.phoneme == Stenophoneme.S:
             return Stroke.from_steno("KPW")
         return self.spec.PHONEMES_TO_CHORDS_LEFT[sound.phoneme]
     

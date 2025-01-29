@@ -60,8 +60,8 @@ def _main(args: argparse.Namespace):
             with open(out_path, "w+", encoding="utf-8") as out_file:
                 while len(line := file.readline()) > 0:
                     translation, _, _, transcription, _, _ = line.split(":")
-                    out_file.write(" ".join(str(orthokeysymbol) for orthokeysymbol in match_keysymbols_to_chars(transcription, translation)) + "\n")
-                    # sophemes_json.append(tuple(sopheme.to_dict() for sopheme in match_orthokeysymbols_to_chords(translation, transcription)))
+                    out_file.write(" ".join(str(sopheme) for sopheme in match_keysymbols_to_chars(transcription, translation)) + "\n")
+                    # sophemes_json.append(tuple(sopheme.to_dict() for sopheme in match_sophemes_to_chords(translation, transcription)))
                     # if translation not in reverse_lapwing_dict: continue
 
                     # for outline_steno in reverse_lapwing_dict[translation]:

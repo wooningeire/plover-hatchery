@@ -1,14 +1,14 @@
 from dataclasses import dataclass
 
-from .Sopheme import Sopheme
+from .Steneme import Steneme
 from ..stenophoneme.Stenophoneme import Stenophoneme
 
 @dataclass
 class Sound:
     phoneme: Stenophoneme
-    sopheme: "Sopheme | None"
+    steneme: "Steneme | None"
 
     @staticmethod
-    def from_sopheme(sopheme: Sopheme):
-        assert sopheme.phoneme is not None
-        return Sound(sopheme.phoneme, sopheme)
+    def from_sopheme(steneme: Steneme):
+        assert steneme.phoneme is not None
+        return Sound(steneme.phoneme, steneme)

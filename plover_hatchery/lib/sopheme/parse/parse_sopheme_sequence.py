@@ -1,6 +1,6 @@
 from enum import Enum, auto
 
-from ..Sopheme import Orthokeysymbol, Keysymbol
+from ..Sopheme import Sopheme, Keysymbol
 from .lex_sopheme_sequence import Token, TokenType, lex_sopheme_sequence
 
 
@@ -37,7 +37,7 @@ class _Parser:
     def __complete_sopheme(self):
         assert self.__has_active_sopheme
 
-        sopheme = Orthokeysymbol(tuple(self.__current_sopheme_keysymbols), self.__current_sopheme_chars)
+        sopheme = Sopheme(tuple(self.__current_sopheme_keysymbols), self.__current_sopheme_chars)
         
         self.__has_active_sopheme = False
         self.__current_sopheme_chars = ""
