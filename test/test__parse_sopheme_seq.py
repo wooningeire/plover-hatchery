@@ -1,9 +1,18 @@
-import json
+def test__parse_seq__single_sopheme():
+    from plover_hatchery.lib.sopheme.parse_orthokeysymbol import parse_seq
+    from plover_hatchery.lib.sopheme.Sopheme import Orthokeysymbol, Keysymbol
 
-def test__Sopheme__parse_sopheme_seq():
-    from plover_writeouts.lib.sopheme.parse import parse_sopheme_seq
-    from plover_writeouts.lib.sopheme.Sopheme import Sopheme, Orthokeysymbol, Keysymbol
-    from plover_writeouts.lib.stenophoneme.Stenophoneme import Stenophoneme
+    assert (
+        Orthokeysymbol.format_seq(parse_seq("a.@"))
+        == Orthokeysymbol.format_seq((
+            Orthokeysymbol(
+                (
+                    Keysymbol("@", "", 0, False),
+                ),
+                "a"
+            ),
+        ))
+    )
             
 
     # sophemes = (

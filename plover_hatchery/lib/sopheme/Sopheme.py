@@ -43,6 +43,11 @@ class Orthokeysymbol:
     
     __repr__ = __str__
 
+    @staticmethod
+    def format_seq(orthokeysymbols: "Iterable[Orthokeysymbol]"):
+        return " ".join(str(orthokeysymbol) for orthokeysymbol in orthokeysymbols)
+
+
 @dataclass(frozen=True)
 class Sopheme:
     orthokeysymbols: tuple[Orthokeysymbol, ...]
