@@ -38,10 +38,10 @@ class _Parser:
         assert self.__has_active_sopheme
 
         sopheme = Orthokeysymbol(tuple(self.__current_sopheme_keysymbols), self.__current_sopheme_chars)
+        
+        self.__has_active_sopheme = False
         self.__current_sopheme_chars = ""
         self.__current_sopheme_keysymbols = []
-
-        self.__has_active_sopheme = False
 
         return sopheme
     
@@ -53,6 +53,27 @@ class _Parser:
         self.__current_sopheme_keysymbols.append(keysymbol)
 
         self.__has_active_keysymbol = False
+        self.__current_keysymbol_chars = ""
+        self.__current_keysymbol_stress = 0
+        self.__current_keysymbol_optional = False
+
+    
+    def __complete_keysymbol_or_sopheme(self):
+        self.__complete_keysymbol()
+
+        if self.__parentheses_level > 0:
+            self.__state = _ParserState.DONE_KEYSYMBOL
+        else: 
+            yield self.__complete_sopheme()
+
+            self.__state = _ParserState.DONE_SOPHEME
+
+
+    def __complete_keysymbol_group(self):
+        assert self.__parentheses_level > 0
+
+        self.__state = _ParserState.DONE_PHONO
+        self.__parentheses_level -= 1
         
 
     def consume(self, token: Token):
@@ -68,13 +89,19 @@ class _Parser:
             case _ParserState.DONE_KEYSYMBOL_GROUP_START_MARKER:
                 self.__consume_done_keysymbol_group_start_marker(token)
             case _ParserState.DONE_KEYSYMBOL_CHARS:
-                self.__consume_done_keysymbol_chars(token)
+                yield from self.__consume_done_keysymbol_chars(token)
             case _ParserState.DONE_KEYSYMBOL_STRESS_MARKER:
                 self.__consume_done_keysymbol_stress_marker(token)
             case _ParserState.DONE_KEYSYMBOL_STRESS_VALUE:
-                self.__consume_done_keysymbol_stress_value(token)
+                yield from self.__consume_done_keysymbol_stress_value(token)
+            case _ParserState.DONE_KEYSYMBOL_OPTIONAL_MARKER:
+                yield from self.__consume_done_keysymbol_optional_marker(token)
+            case _ParserState.DONE_KEYSYMBOL:
+                self.__consume_done_keysymbol(token)
             case _ParserState.DONE_PHONO:
                 self.__consume_done_phono(token)
+            case _:
+                raise TypeError()
 
                 
     def __consume_start_sopheme(self, token: Token):
@@ -102,10 +129,6 @@ class _Parser:
             
     def __consume_done_ortho(self, token: Token):
         match token.type:
-            case TokenType.CHARS:
-                self.__state = _ParserState.DONE_KEYSYMBOL_CHARS
-                self.__current_keysymbol_chars = token.value
-
             case TokenType.SYMBOL:
                 match token.value:
                     case ".":
@@ -146,7 +169,7 @@ class _Parser:
 
             case _:
                 raise TypeError()
-                    
+
 
     def __consume_done_keysymbol_group_start_marker(self, token: Token):
         match token.type:
@@ -158,10 +181,7 @@ class _Parser:
             case TokenType.SYMBOL:
                 match token.value:
                     case ")":
-                        self.__complete_keysymbol()
-
-                        self.__state = _ParserState.DONE_PHONO
-                        self.__parentheses_level -= 1
+                        self.__complete_keysymbol_group()
                     
                     case _:
                         raise ValueError()
@@ -182,17 +202,13 @@ class _Parser:
 
                     case ")":
                         self.__complete_keysymbol()
-
-                        self.__state = _ParserState.DONE_PHONO
-                        self.__parentheses_level -= 1
+                        self.__complete_keysymbol_group()
                     
                     case _:
                         raise ValueError()
             
             case TokenType.WHITESPACE:
-                self.__complete_keysymbol()
-
-                self.__state = _ParserState.DONE_KEYSYMBOL
+                yield from self.__complete_keysymbol_or_sopheme()
 
             case _:
                 raise TypeError()
@@ -218,18 +234,49 @@ class _Parser:
 
                     case ")":
                         self.__complete_keysymbol()
-
-                        self.__state = _ParserState.DONE_PHONO
-                        self.__parentheses_level -= 1
+                        self.__complete_keysymbol_group()
 
             case TokenType.WHITESPACE:
-                self.__complete_keysymbol()
-                
-                self.__state = _ParserState.DONE_KEYSYMBOL
+                yield from self.__complete_keysymbol_or_sopheme()
 
             case _:
                 raise TypeError()
     
+    def __consume_done_keysymbol_optional_marker(self, token: Token):
+        match token.type:
+            case TokenType.SYMBOL:
+                match token.value:
+                    case ")":
+                        self.__complete_keysymbol()
+                        self.__complete_keysymbol_group()
+
+            case TokenType.WHITESPACE:
+                yield from self.__complete_keysymbol_or_sopheme()
+
+            case _:
+                raise TypeError()
+
+    def __consume_done_keysymbol(self, token: Token):
+        match token.type:
+            case TokenType.CHARS:
+                self.__state = _ParserState.DONE_KEYSYMBOL_CHARS
+                self.__current_keysymbol_chars = token.value
+                self.__has_active_keysymbol = True
+
+            case TokenType.SYMBOL:
+                match token.value:
+                    case ")":
+                        self.__complete_keysymbol_group()
+                    
+                    case _:
+                        raise ValueError()
+            
+            case TokenType.WHITESPACE:
+                ...
+
+            case _:
+                raise TypeError()
+            
     def __consume_done_phono(self, token: Token):
         match token.type:
             case TokenType.WHITESPACE:
