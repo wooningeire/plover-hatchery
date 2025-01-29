@@ -1,9 +1,9 @@
 def test__parse_seq__single_sopheme():
-    from plover_hatchery.lib.sopheme.parse_orthokeysymbol import parse_seq
+    from plover_hatchery.lib.sopheme.parse import parse_sopheme_sequence
     from plover_hatchery.lib.sopheme.Sopheme import Orthokeysymbol, Keysymbol
 
     assert (
-        Orthokeysymbol.format_seq(parse_seq("a.@"))
+        Orthokeysymbol.format_seq(parse_sopheme_sequence("a.@"))
         == Orthokeysymbol.format_seq((
             Orthokeysymbol(
                 (

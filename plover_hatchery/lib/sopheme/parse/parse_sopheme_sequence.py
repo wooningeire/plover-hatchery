@@ -1,52 +1,8 @@
 from enum import Enum, auto
-from typing import NamedTuple
 
-from .Sopheme import Sopheme, Orthokeysymbol, Keysymbol
-from ..stenophoneme import Stenophoneme
+from ..Sopheme import Orthokeysymbol, Keysymbol
+from .lex_sopheme_sequence import Token, TokenType, lex_sopheme_sequence
 
-
-class _TokenType(Enum):
-    START = auto()
-    WHITESPACE = auto()
-    CHARS = auto()
-    SYMBOL = auto()
-
-class _Token(NamedTuple):
-    type: _TokenType
-    value: str
-
-class _Lexer:
-    def __init__(self):
-        self.__state = _TokenType.START
-        self.__current_token = ""
-
-    def step(self, char: str, target_state: _TokenType):
-        if self.__state == target_state:
-            self.__current_token += char
-        else:
-            if self.__state is not _TokenType.START:
-                yield _Token(self.__state, self.__current_token)
-            self.__current_token = char
-
-        self.__state = target_state
-
-    def step_eol(self):
-        return _Token(self.__state, self.__current_token)
-
-
-def _lex_seq(seq: str):
-    lexer = _Lexer()
-
-    for char in seq:
-        if char == " ":
-            yield from lexer.step(char, _TokenType.WHITESPACE)
-        elif char.isalnum() or char in "-/@":
-            yield from lexer.step(char, _TokenType.CHARS)
-        else:
-            yield from lexer.step(char, _TokenType.SYMBOL)
-    
-    yield lexer.step_eol()
-    
 
 
 class _ParserState(Enum):
@@ -99,7 +55,7 @@ class _Parser:
         self.__has_active_keysymbol = False
         
 
-    def consume(self, token: _Token):
+    def consume(self, token: Token):
         print(token, self.__state)
 
         match self.__state:
@@ -121,14 +77,14 @@ class _Parser:
                 self.__consume_done_phono(token)
 
                 
-    def __consume_start_sopheme(self, token: _Token):
+    def __consume_start_sopheme(self, token: Token):
         match token.type:
-            case _TokenType.CHARS:
+            case TokenType.CHARS:
                 self.__state = _ParserState.DONE_ORTHO
                 self.__current_sopheme_chars = token.value
                 self.__has_active_sopheme = True
 
-            case _TokenType.SYMBOL:
+            case TokenType.SYMBOL:
                 match token.value:
                     case ".":
                         self.__state = _ParserState.DONE_DOT
@@ -137,20 +93,20 @@ class _Parser:
                     case _:
                         raise ValueError()
 
-            case _TokenType.WHITESPACE:
+            case TokenType.WHITESPACE:
                 ...
 
             case _:
                 raise TypeError()
         
             
-    def __consume_done_ortho(self, token: _Token):
+    def __consume_done_ortho(self, token: Token):
         match token.type:
-            case _TokenType.CHARS:
+            case TokenType.CHARS:
                 self.__state = _ParserState.DONE_KEYSYMBOL_CHARS
                 self.__current_keysymbol_chars = token.value
 
-            case _TokenType.SYMBOL:
+            case TokenType.SYMBOL:
                 match token.value:
                     case ".":
                         self.__state = _ParserState.DONE_DOT
@@ -158,7 +114,7 @@ class _Parser:
                     case _:
                         raise ValueError()
 
-            case _TokenType.WHITESPACE:
+            case TokenType.WHITESPACE:
                 yield self.__complete_sopheme()
 
                 self.__state = _ParserState.DONE_SOPHEME
@@ -167,14 +123,14 @@ class _Parser:
                 raise TypeError()
             
 
-    def __consume_done_dot(self, token: _Token):
+    def __consume_done_dot(self, token: Token):
         match token.type:
-            case _TokenType.CHARS:
+            case TokenType.CHARS:
                 self.__state = _ParserState.DONE_KEYSYMBOL_CHARS
                 self.__current_keysymbol_chars = token.value
                 self.__has_active_keysymbol = True
 
-            case _TokenType.SYMBOL:
+            case TokenType.SYMBOL:
                 match token.value:
                     case "(":
                         self.__state = _ParserState.DONE_KEYSYMBOL_GROUP_START_MARKER
@@ -183,7 +139,7 @@ class _Parser:
                     case _:
                         raise ValueError()
 
-            case _TokenType.WHITESPACE:
+            case TokenType.WHITESPACE:
                 yield self.__complete_sopheme()
 
                 self.__state = _ParserState.DONE_SOPHEME
@@ -192,14 +148,14 @@ class _Parser:
                 raise TypeError()
                     
 
-    def __consume_done_keysymbol_group_start_marker(self, token: _Token):
+    def __consume_done_keysymbol_group_start_marker(self, token: Token):
         match token.type:
-            case _TokenType.CHARS:
+            case TokenType.CHARS:
                 self.__state = _ParserState.DONE_KEYSYMBOL_CHARS
                 self.__current_keysymbol_chars = token.value
                 self.__has_active_keysymbol = True
 
-            case _TokenType.SYMBOL:
+            case TokenType.SYMBOL:
                 match token.value:
                     case ")":
                         self.__complete_keysymbol()
@@ -210,16 +166,16 @@ class _Parser:
                     case _:
                         raise ValueError()
             
-            case _TokenType.WHITESPACE:
+            case TokenType.WHITESPACE:
                 ...
 
             case _:
                 raise TypeError()
                     
 
-    def __consume_done_keysymbol_chars(self, token: _Token):
+    def __consume_done_keysymbol_chars(self, token: Token):
         match token.type:
-            case _TokenType.SYMBOL:
+            case TokenType.SYMBOL:
                 match token.value:
                     case "!":
                         self.__state = _ParserState.DONE_KEYSYMBOL_STRESS_MARKER
@@ -233,7 +189,7 @@ class _Parser:
                     case _:
                         raise ValueError()
             
-            case _TokenType.WHITESPACE:
+            case TokenType.WHITESPACE:
                 self.__complete_keysymbol()
 
                 self.__state = _ParserState.DONE_KEYSYMBOL
@@ -242,9 +198,9 @@ class _Parser:
                 raise TypeError()
             
 
-    def __consume_done_keysymbol_stress_marker(self, token: _Token):
+    def __consume_done_keysymbol_stress_marker(self, token: Token):
         match token.type:
-            case _TokenType.CHARS:
+            case TokenType.CHARS:
                 self.__state = _ParserState.DONE_KEYSYMBOL_STRESS_VALUE
                 self.__current_keysymbol_stress = int(token.value)
                 assert 1 <= self.__current_keysymbol_stress <= 3
@@ -252,9 +208,9 @@ class _Parser:
             case _:
                 raise TypeError()
             
-    def __consume_done_keysymbol_stress_value(self, token: _Token):
+    def __consume_done_keysymbol_stress_value(self, token: Token):
         match token.type:
-            case _TokenType.SYMBOL:
+            case TokenType.SYMBOL:
                 match token.value:
                     case "?":
                         self.__state = _ParserState.DONE_KEYSYMBOL_OPTIONAL_MARKER
@@ -266,7 +222,7 @@ class _Parser:
                         self.__state = _ParserState.DONE_PHONO
                         self.__parentheses_level -= 1
 
-            case _TokenType.WHITESPACE:
+            case TokenType.WHITESPACE:
                 self.__complete_keysymbol()
                 
                 self.__state = _ParserState.DONE_KEYSYMBOL
@@ -274,9 +230,9 @@ class _Parser:
             case _:
                 raise TypeError()
     
-    def __consume_done_phono(self, token: _Token):
+    def __consume_done_phono(self, token: Token):
         match token.type:
-            case _TokenType.WHITESPACE:
+            case TokenType.WHITESPACE:
                 yield self.__complete_sopheme()
                 
                 self.__state = _ParserState.DONE_SOPHEME
@@ -296,10 +252,10 @@ class _Parser:
 
 
 
-def parse_seq(seq: str):
+def parse_sopheme_sequence(seq: str):
     parser = _Parser()
 
-    for token in _lex_seq(seq):
+    for token in lex_sopheme_sequence(seq):
         yield from parser.consume(token)
 
     yield from parser.consume_eol()

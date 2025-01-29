@@ -127,7 +127,7 @@ _PHONEME_TO_STENO_MAPPINGS = {
 
     Stenophoneme.AA: ("AEU", "AE"),
     Stenophoneme.A: ("A", "AE"),
-    Stenophoneme.EE: ("AOE", "EU", "KWR"),
+    Stenophoneme.EE: ("AOE", "EU"),
     Stenophoneme.E: ("E", "AEU"),
     Stenophoneme.II: ("AOEU",),
     Stenophoneme.I: ("EU",),
