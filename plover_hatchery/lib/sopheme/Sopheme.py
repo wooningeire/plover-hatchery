@@ -9,8 +9,8 @@ from .Keysymbol import Keysymbol
 
 @dataclass(frozen=True)
 class Sopheme:
-    keysymbols: tuple[Keysymbol, ...]
     chars: str
+    keysymbols: tuple[Keysymbol, ...]
 
     def __str__(self):
         keysymbols_string = " ".join(str(keysymbol) for keysymbol in self.keysymbols)

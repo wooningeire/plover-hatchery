@@ -37,7 +37,7 @@ class _Parser:
     def __complete_sopheme(self):
         assert self.__has_active_sopheme
 
-        sopheme = Sopheme(tuple(self.__current_sopheme_keysymbols), self.__current_sopheme_chars)
+        sopheme = Sopheme(self.__current_sopheme_chars, tuple(self.__current_sopheme_keysymbols))
         
         self.__has_active_sopheme = False
         self.__current_sopheme_chars = ""
@@ -77,11 +77,9 @@ class _Parser:
         
 
     def consume(self, token: Token):
-        print(token, self.__state)
-
         match self.__state:
             case _ParserState.DONE_SOPHEME:
-                self.__consume_start_sopheme(token)
+                self.__consume_done_sopheme(token)
             case _ParserState.DONE_ORTHO:
                 yield from self.__consume_done_ortho(token)
             case _ParserState.DONE_DOT:
@@ -99,12 +97,12 @@ class _Parser:
             case _ParserState.DONE_KEYSYMBOL:
                 self.__consume_done_keysymbol(token)
             case _ParserState.DONE_PHONO:
-                self.__consume_done_phono(token)
+                yield from self.__consume_done_phono(token)
             case _:
                 raise TypeError()
 
                 
-    def __consume_start_sopheme(self, token: Token):
+    def __consume_done_sopheme(self, token: Token):
         match token.type:
             case TokenType.CHARS:
                 self.__state = _ParserState.DONE_ORTHO

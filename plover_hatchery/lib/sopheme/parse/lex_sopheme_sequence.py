@@ -18,14 +18,18 @@ class _Lexer:
         self.__current_token = ""
 
     def step(self, char: str, target_state: TokenType):
-        if self.__state == target_state:
+        if self.__state is not TokenType.SYMBOL and self.__state == target_state:
+            self.__state = target_state
             self.__current_token += char
-        else:
-            if self.__state is not TokenType.START:
-                yield Token(self.__state, self.__current_token)
-            self.__current_token = char
+
+            return
+
+
+        if self.__state is not TokenType.START:
+            yield Token(self.__state, self.__current_token)
 
         self.__state = target_state
+        self.__current_token = char
 
     def step_eol(self):
         return Token(self.__state, self.__current_token)

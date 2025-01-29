@@ -68,6 +68,7 @@ class Steneme:
         return Steneme(
             tuple(
                 Sopheme(
+                    sophemes_json["chars"],
                     tuple(
                         Keysymbol(
                             keysymbol_json["symbol"],
@@ -77,7 +78,6 @@ class Steneme:
                         )
                         for keysymbol_json in sophemes_json["keysymbols"]
                     ),
-                    sophemes_json["chars"],
                 )
                 for sophemes_json in json["orthokeysymbols"]
             ),
@@ -88,9 +88,9 @@ class Steneme:
     @staticmethod
     def get_translation(stenemes: "Iterable[Steneme]"):
         return "".join(
-            orthokeysymbol.chars
+            sopheme.chars
             for steneme in stenemes
-            for orthokeysymbol in steneme.sophemes
+            for sopheme in steneme.sophemes
         )
 
 
