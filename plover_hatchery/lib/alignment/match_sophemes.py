@@ -6,7 +6,7 @@ import re
 
 from plover.steno import Stroke
 
-from ..stenophoneme.Stenophoneme import Sophone
+from ..sophone.Sophone import Sophone
 from ..sopheme.Keysymbol import Keysymbol
 from ..sopheme.Sopheme import Sopheme
 from ..sopheme.Steneme import Steneme

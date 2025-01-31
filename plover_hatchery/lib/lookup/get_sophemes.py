@@ -2,7 +2,7 @@ from typing import Iterable
 
 from plover.steno import Stroke
 
-from ..stenophoneme.Stenophoneme import vowel_phonemes
+from ..sophone.Sophone import vowel_phonemes
 from ..sopheme import Sopheme, Keysymbol, Sound
 from ..theory.theory import amphitheory
 from .build_trie.state import ConsonantVowelGroup, OutlineSounds

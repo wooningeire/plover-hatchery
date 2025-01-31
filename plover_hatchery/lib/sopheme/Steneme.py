@@ -4,7 +4,7 @@ from typing import Iterable
 
 from plover.steno import Stroke
 
-from ..stenophoneme.Stenophoneme import Sophone
+from ..sophone.Sophone import Sophone
 from .Keysymbol import Keysymbol
 from .Sopheme import Sopheme
 

@@ -2,7 +2,7 @@ from abc import ABC
 
 from plover.steno import Stroke
 
-from ..stenophoneme.Stenophoneme import Sophone
+from ..sophone.Sophone import Sophone
 from ..sopheme import Keysymbol, Sopheme, Sound
 
 def _vowel_char_to_steno(char: str):

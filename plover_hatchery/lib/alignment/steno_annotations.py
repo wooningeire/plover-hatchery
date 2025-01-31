@@ -3,7 +3,7 @@ from typing import Generic, TypeVar, Iterable
 
 from plover.steno import Stroke
 
-from ..stenophoneme.Stenophoneme import Sophone
+from ..sophone.Sophone import Sophone
 from ..theory.default import lapwing
 
 @dataclass(frozen=True)

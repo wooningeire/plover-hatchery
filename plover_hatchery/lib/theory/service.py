@@ -1,7 +1,7 @@
 
 from plover.steno import Stroke
 
-from ..stenophoneme.Stenophoneme import Sophone
+from ..sophone.Sophone import Sophone
 from ..sopheme import Keysymbol, Sound
 from .spec import TheorySpec
 from ..util.Trie import Trie, ReadonlyTrie

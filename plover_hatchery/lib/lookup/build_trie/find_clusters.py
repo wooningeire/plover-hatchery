@@ -9,7 +9,7 @@ from .state import EntryBuilderState, OutlineSounds
 from .rules.elision import allow_elide_previous_vowel_using_first_left_consonant, allow_elide_previous_vowel_using_first_right_consonant
 from ...util.Trie import NondeterministicTrie, TransitionCostInfo, ReadonlyTrie
 from ...theory.theory import amphitheory
-from ...stenophoneme.Stenophoneme import Sophone, vowel_phonemes
+from ...sophone.Sophone import Sophone, vowel_phonemes
 
 @dataclass(frozen=True)
 class Cluster(ABC):
