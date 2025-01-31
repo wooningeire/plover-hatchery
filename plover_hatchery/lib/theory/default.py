@@ -4,7 +4,7 @@ from plover.steno import Stroke
 
 from .spec import TheorySpec
 from .service import TheoryService
-from ..stenophoneme.Stenophoneme import Stenophoneme
+from ..stenophoneme.Stenophoneme import Sophone
 
 @TheoryService.theory
 class lapwing(TheorySpec, ABC):
@@ -19,79 +19,79 @@ class lapwing(TheorySpec, ABC):
     PHONEMES_TO_CHORDS_LEFT = {
         phoneme: Stroke.from_steno(steno)
         for phoneme, steno in {
-            Stenophoneme.S: "S",
-            Stenophoneme.T: "T",
-            Stenophoneme.K: "K",
-            Stenophoneme.P: "P",
-            Stenophoneme.W: "W",
-            Stenophoneme.H: "H",
-            Stenophoneme.R: "R",
+            Sophone.S: "S",
+            Sophone.T: "T",
+            Sophone.K: "K",
+            Sophone.P: "P",
+            Sophone.W: "W",
+            Sophone.H: "H",
+            Sophone.R: "R",
 
-            Stenophoneme.Z: "STKPW",
-            Stenophoneme.J: "SKWR",
-            Stenophoneme.V: "SR",
-            Stenophoneme.D: "TK",
-            Stenophoneme.G: "TKPW",
-            Stenophoneme.F: "TP",
-            Stenophoneme.N: "TPH",
-            Stenophoneme.Y: "KWR",
-            Stenophoneme.B: "PW",
-            Stenophoneme.M: "PH",
-            Stenophoneme.L: "HR",
+            Sophone.Z: "STKPW",
+            Sophone.J: "SKWR",
+            Sophone.V: "SR",
+            Sophone.D: "TK",
+            Sophone.G: "TKPW",
+            Sophone.F: "TP",
+            Sophone.N: "TPH",
+            Sophone.Y: "KWR",
+            Sophone.B: "PW",
+            Sophone.M: "PH",
+            Sophone.L: "HR",
 
-            Stenophoneme.SH: "SH",
-            Stenophoneme.TH: "TH",
-            Stenophoneme.CH: "KH",
+            Sophone.SH: "SH",
+            Sophone.TH: "TH",
+            Sophone.CH: "KH",
 
-            Stenophoneme.NG: "TPH",
+            Sophone.NG: "TPH",
         }.items()
     }
 
     PHONEMES_TO_CHORDS_VOWELS = {
         phoneme: Stroke.from_steno(steno)
         for phoneme, steno in {
-            Stenophoneme.AA: "AEU",
-            Stenophoneme.A: "A",
-            Stenophoneme.EE: "AOE",
-            Stenophoneme.E: "E",
-            Stenophoneme.II: "AOEU",
-            Stenophoneme.I: "EU",
-            Stenophoneme.OO: "OE",
-            Stenophoneme.O: "O",
-            Stenophoneme.UU: "AOU",
-            Stenophoneme.U: "U",
-            Stenophoneme.AU: "AU",
-            Stenophoneme.OI: "OEU",
-            Stenophoneme.OU: "OU",
-            Stenophoneme.AE: "AE",
-            Stenophoneme.AO: "AO",
+            Sophone.AA: "AEU",
+            Sophone.A: "A",
+            Sophone.EE: "AOE",
+            Sophone.E: "E",
+            Sophone.II: "AOEU",
+            Sophone.I: "EU",
+            Sophone.OO: "OE",
+            Sophone.O: "O",
+            Sophone.UU: "AOU",
+            Sophone.U: "U",
+            Sophone.AU: "AU",
+            Sophone.OI: "OEU",
+            Sophone.OU: "OU",
+            Sophone.AE: "AE",
+            Sophone.AO: "AO",
         }.items()
     }
 
-    PHONEMES_TO_CHORDS_RIGHT: dict[Stenophoneme, Stroke] = {
+    PHONEMES_TO_CHORDS_RIGHT: dict[Sophone, Stroke] = {
         phoneme: Stroke.from_steno(steno)
         for phoneme, steno in {
-            Stenophoneme.DUMMY: "",
+            Sophone.DUMMY: "",
 
-            Stenophoneme.F: "-F",
-            Stenophoneme.R: "-R",
-            Stenophoneme.P: "-P",
-            Stenophoneme.B: "-B",
-            Stenophoneme.L: "-L",
-            Stenophoneme.G: "-G",
-            Stenophoneme.T: "-T",
-            Stenophoneme.S: "-S",
-            Stenophoneme.D: "-D",
-            Stenophoneme.Z: "-Z",
+            Sophone.F: "-F",
+            Sophone.R: "-R",
+            Sophone.P: "-P",
+            Sophone.B: "-B",
+            Sophone.L: "-L",
+            Sophone.G: "-G",
+            Sophone.T: "-T",
+            Sophone.S: "-S",
+            Sophone.D: "-D",
+            Sophone.Z: "-Z",
 
-            Stenophoneme.V: "-FB",
-            Stenophoneme.N: "-PB",
-            Stenophoneme.M: "-PL",
-            Stenophoneme.K: "-BG",
-            Stenophoneme.J: "-PBLG",
-            Stenophoneme.CH: "-FP",
-            Stenophoneme.SH: "-RB",
-            Stenophoneme.TH: "*T",
+            Sophone.V: "-FB",
+            Sophone.N: "-PB",
+            Sophone.M: "-PL",
+            Sophone.K: "-BG",
+            Sophone.J: "-PBLG",
+            Sophone.CH: "-FP",
+            Sophone.SH: "-RB",
+            Sophone.TH: "*T",
         }.items()
 
         # "SHR": "shr",
@@ -101,25 +101,25 @@ class lapwing(TheorySpec, ABC):
         # "-FRB": (Phoneme.R, Phoneme.V),
     }
 
-    PHONEMES_TO_CHORDS_LEFT_ALT: dict[Stenophoneme, Stroke] = {
+    PHONEMES_TO_CHORDS_LEFT_ALT: dict[Sophone, Stroke] = {
         phoneme: Stroke.from_steno(steno)
         for phoneme, steno in {
-            Stenophoneme.F: "W",
-            Stenophoneme.V: "W",
-            Stenophoneme.Z: "S*",
+            Sophone.F: "W",
+            Sophone.V: "W",
+            Sophone.Z: "S*",
         }.items()
     }
 
-    PHONEMES_TO_CHORDS_RIGHT_ALT: dict[Stenophoneme, Stroke] = {
+    PHONEMES_TO_CHORDS_RIGHT_ALT: dict[Sophone, Stroke] = {
         phoneme: Stroke.from_steno(steno)
         for phoneme, steno in {
-            Stenophoneme.S: "-F",
-            Stenophoneme.Z: "-F",
-            Stenophoneme.V: "-F",
-            Stenophoneme.TH: "-F",
-            Stenophoneme.M: "-FR",
-            Stenophoneme.J: "-FR",
-            Stenophoneme.K: "*G",
+            Sophone.S: "-F",
+            Sophone.Z: "-F",
+            Sophone.V: "-F",
+            Sophone.TH: "-F",
+            Sophone.M: "-FR",
+            Sophone.J: "-FR",
+            Sophone.K: "*G",
         }.items()
     }
 

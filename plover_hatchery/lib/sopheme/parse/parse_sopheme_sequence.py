@@ -1,6 +1,7 @@
 from enum import Enum, auto
 
-from ..Sopheme import Sopheme, Keysymbol
+from ..Sopheme import Sopheme
+from ..Keysymbol import Keysymbol
 from .lex_sopheme_sequence import Token, TokenType, lex_sopheme_sequence
 
 
@@ -49,7 +50,7 @@ class _Parser:
     def __complete_keysymbol(self):
         assert self.__has_active_keysymbol
 
-        keysymbol = Keysymbol(self.__current_keysymbol_chars, "", self.__current_keysymbol_stress, self.__current_keysymbol_optional)
+        keysymbol = Keysymbol(self.__current_keysymbol_chars, self.__current_keysymbol_stress, self.__current_keysymbol_optional)
         self.__current_sopheme_keysymbols.append(keysymbol)
 
         self.__has_active_keysymbol = False
@@ -77,213 +78,199 @@ class _Parser:
         
 
     def consume(self, token: Token):
-        match self.__state:
-            case _ParserState.DONE_SOPHEME:
-                self.__consume_done_sopheme(token)
-            case _ParserState.DONE_ORTHO:
-                yield from self.__consume_done_ortho(token)
-            case _ParserState.DONE_DOT:
-                yield from self.__consume_done_dot(token)
-            case _ParserState.DONE_KEYSYMBOL_GROUP_START_MARKER:
-                self.__consume_done_keysymbol_group_start_marker(token)
-            case _ParserState.DONE_KEYSYMBOL_CHARS:
-                yield from self.__consume_done_keysymbol_chars(token)
-            case _ParserState.DONE_KEYSYMBOL_STRESS_MARKER:
-                self.__consume_done_keysymbol_stress_marker(token)
-            case _ParserState.DONE_KEYSYMBOL_STRESS_VALUE:
-                yield from self.__consume_done_keysymbol_stress_value(token)
-            case _ParserState.DONE_KEYSYMBOL_OPTIONAL_MARKER:
-                yield from self.__consume_done_keysymbol_optional_marker(token)
-            case _ParserState.DONE_KEYSYMBOL:
-                self.__consume_done_keysymbol(token)
-            case _ParserState.DONE_PHONO:
-                yield from self.__consume_done_phono(token)
-            case _:
-                raise TypeError()
+        if self.__state is _ParserState.DONE_SOPHEME:
+            self.__consume_done_sopheme(token)
+        elif self.__state is _ParserState.DONE_ORTHO:
+            yield from self.__consume_done_ortho(token)
+        elif self.__state is _ParserState.DONE_DOT:
+            yield from self.__consume_done_dot(token)
+        elif self.__state is _ParserState.DONE_KEYSYMBOL_GROUP_START_MARKER:
+            self.__consume_done_keysymbol_group_start_marker(token)
+        elif self.__state is _ParserState.DONE_KEYSYMBOL_CHARS:
+            yield from self.__consume_done_keysymbol_chars(token)
+        elif self.__state is _ParserState.DONE_KEYSYMBOL_STRESS_MARKER:
+            self.__consume_done_keysymbol_stress_marker(token)
+        elif self.__state is _ParserState.DONE_KEYSYMBOL_STRESS_VALUE:
+            yield from self.__consume_done_keysymbol_stress_value(token)
+        elif self.__state is _ParserState.DONE_KEYSYMBOL_OPTIONAL_MARKER:
+            yield from self.__consume_done_keysymbol_optional_marker(token)
+        elif self.__state is _ParserState.DONE_KEYSYMBOL:
+            self.__consume_done_keysymbol(token)
+        elif self.__state is _ParserState.DONE_PHONO:
+            yield from self.__consume_done_phono(token)
+        else:
+            raise TypeError()
 
                 
     def __consume_done_sopheme(self, token: Token):
-        match token.type:
-            case TokenType.CHARS:
-                self.__state = _ParserState.DONE_ORTHO
-                self.__current_sopheme_chars = token.value
+        if token.type is TokenType.CHARS:
+            self.__state = _ParserState.DONE_ORTHO
+            self.__current_sopheme_chars = token.value
+            self.__has_active_sopheme = True
+
+        elif token.type is TokenType.SYMBOL:
+            if token.value == ".":
+                self.__state = _ParserState.DONE_DOT
+
                 self.__has_active_sopheme = True
+            
+            else:
+                raise ValueError()
 
-            case TokenType.SYMBOL:
-                match token.value:
-                    case ".":
-                        self.__state = _ParserState.DONE_DOT
-                        self.__has_active_sopheme = True
-                    
-                    case _:
-                        raise ValueError()
 
-            case TokenType.WHITESPACE:
-                ...
+        elif token.type is TokenType.WHITESPACE:
+            ...
 
-            case _:
-                raise TypeError()
+        else:
+            raise TypeError()
+
         
             
     def __consume_done_ortho(self, token: Token):
-        match token.type:
-            case TokenType.SYMBOL:
-                match token.value:
-                    case ".":
-                        self.__state = _ParserState.DONE_DOT
-                    
-                    case _:
-                        raise ValueError()
+        if token.type is TokenType.SYMBOL:
+            if token.value == ".":
+                self.__state = _ParserState.DONE_DOT
 
-            case TokenType.WHITESPACE:
-                yield self.__complete_sopheme()
+            else:
+                raise ValueError()
 
-                self.__state = _ParserState.DONE_SOPHEME
+        elif token.type is TokenType.WHITESPACE:
 
-            case _:
-                raise TypeError()
+            yield self.__complete_sopheme()
+
+            self.__state = _ParserState.DONE_SOPHEME
+
+        else:
+            raise TypeError()
             
 
+
     def __consume_done_dot(self, token: Token):
-        match token.type:
-            case TokenType.CHARS:
-                self.__state = _ParserState.DONE_KEYSYMBOL_CHARS
-                self.__current_keysymbol_chars = token.value
-                self.__has_active_keysymbol = True
+        if token.type is TokenType.CHARS:
+            self.__state = _ParserState.DONE_KEYSYMBOL_CHARS
+            self.__current_keysymbol_chars = token.value
+            self.__has_active_keysymbol = True
 
-            case TokenType.SYMBOL:
-                match token.value:
-                    case "(":
-                        self.__state = _ParserState.DONE_KEYSYMBOL_GROUP_START_MARKER
-                        self.__parentheses_level += 1
-                    
-                    case _:
-                        raise ValueError()
+        elif token.type is TokenType.SYMBOL:
+            if token.value == "(":
+                self.__state = _ParserState.DONE_KEYSYMBOL_GROUP_START_MARKER
+                self.__parentheses_level += 1
+            
+            else:
+                raise ValueError()
 
-            case TokenType.WHITESPACE:
-                yield self.__complete_sopheme()
+        elif token.type is TokenType.WHITESPACE:
+            yield self.__complete_sopheme()
 
-                self.__state = _ParserState.DONE_SOPHEME
+            self.__state = _ParserState.DONE_SOPHEME
 
-            case _:
-                raise TypeError()
+        else:
+            raise TypeError()
 
 
     def __consume_done_keysymbol_group_start_marker(self, token: Token):
-        match token.type:
-            case TokenType.CHARS:
-                self.__state = _ParserState.DONE_KEYSYMBOL_CHARS
-                self.__current_keysymbol_chars = token.value
-                self.__has_active_keysymbol = True
+        if token.type is TokenType.CHARS:
+            self.__state = _ParserState.DONE_KEYSYMBOL_CHARS
+            self.__current_keysymbol_chars = token.value
+            self.__has_active_keysymbol = True
 
-            case TokenType.SYMBOL:
-                match token.value:
-                    case ")":
-                        self.__complete_keysymbol_group()
-                    
-                    case _:
-                        raise ValueError()
+        elif token.type is TokenType.SYMBOL:
+            if token.value == ")":
+                self.__complete_keysymbol_group()
             
-            case TokenType.WHITESPACE:
-                ...
+            else:
+                raise ValueError()
+        
+        elif token.type is TokenType.WHITESPACE:
+            ...
 
-            case _:
-                raise TypeError()
-                    
+        else:
+            raise TypeError()
+                
 
     def __consume_done_keysymbol_chars(self, token: Token):
-        match token.type:
-            case TokenType.SYMBOL:
-                match token.value:
-                    case "!":
-                        self.__state = _ParserState.DONE_KEYSYMBOL_STRESS_MARKER
+        if token.type is TokenType.SYMBOL:
+            if token.value == "!":
+                self.__state = _ParserState.DONE_KEYSYMBOL_STRESS_MARKER
 
-                    case ")":
-                        self.__complete_keysymbol()
-                        self.__complete_keysymbol_group()
-                    
-                    case _:
-                        raise ValueError()
+            elif token.value == ")":
+                self.__complete_keysymbol()
+                self.__complete_keysymbol_group()
             
-            case TokenType.WHITESPACE:
-                yield from self.__complete_keysymbol_or_sopheme()
+            else:
+                raise ValueError()
+        
+        elif token.type is TokenType.WHITESPACE:
+            yield from self.__complete_keysymbol_or_sopheme()
 
-            case _:
-                raise TypeError()
-            
+        else:
+            raise TypeError()
+        
 
     def __consume_done_keysymbol_stress_marker(self, token: Token):
-        match token.type:
-            case TokenType.CHARS:
-                self.__state = _ParserState.DONE_KEYSYMBOL_STRESS_VALUE
-                self.__current_keysymbol_stress = int(token.value)
-                assert 1 <= self.__current_keysymbol_stress <= 3
-            
-            case _:
-                raise TypeError()
-            
+        if token.type is TokenType.CHARS:
+            self.__state = _ParserState.DONE_KEYSYMBOL_STRESS_VALUE
+            self.__current_keysymbol_stress = int(token.value)
+            assert 1 <= self.__current_keysymbol_stress <= 3
+        
+        else:
+            raise TypeError()
+        
     def __consume_done_keysymbol_stress_value(self, token: Token):
-        match token.type:
-            case TokenType.SYMBOL:
-                match token.value:
-                    case "?":
-                        self.__state = _ParserState.DONE_KEYSYMBOL_OPTIONAL_MARKER
-                        self.__current_keysymbol_optional = True
+        if token.type is TokenType.SYMBOL:
+            if token.value == "?":
+                self.__state = _ParserState.DONE_KEYSYMBOL_OPTIONAL_MARKER
+                self.__current_keysymbol_optional = True
 
-                    case ")":
-                        self.__complete_keysymbol()
-                        self.__complete_keysymbol_group()
+            elif token.value == ")":
+                self.__complete_keysymbol()
+                self.__complete_keysymbol_group()
 
-            case TokenType.WHITESPACE:
-                yield from self.__complete_keysymbol_or_sopheme()
+        elif token.type is TokenType.WHITESPACE:
+            yield from self.__complete_keysymbol_or_sopheme()
 
-            case _:
-                raise TypeError()
+        else:
+            raise TypeError()
     
     def __consume_done_keysymbol_optional_marker(self, token: Token):
-        match token.type:
-            case TokenType.SYMBOL:
-                match token.value:
-                    case ")":
-                        self.__complete_keysymbol()
-                        self.__complete_keysymbol_group()
+        if token.type is TokenType.SYMBOL:
+            if token.value == ")":
+                self.__complete_keysymbol()
+                self.__complete_keysymbol_group()
 
-            case TokenType.WHITESPACE:
-                yield from self.__complete_keysymbol_or_sopheme()
+        elif token.type is TokenType.WHITESPACE:
+            yield from self.__complete_keysymbol_or_sopheme()
 
-            case _:
-                raise TypeError()
+        else:
+            raise TypeError()
 
     def __consume_done_keysymbol(self, token: Token):
-        match token.type:
-            case TokenType.CHARS:
-                self.__state = _ParserState.DONE_KEYSYMBOL_CHARS
-                self.__current_keysymbol_chars = token.value
-                self.__has_active_keysymbol = True
+        if token.type is TokenType.CHARS:
+            self.__state = _ParserState.DONE_KEYSYMBOL_CHARS
+            self.__current_keysymbol_chars = token.value
+            self.__has_active_keysymbol = True
 
-            case TokenType.SYMBOL:
-                match token.value:
-                    case ")":
-                        self.__complete_keysymbol_group()
-                    
-                    case _:
-                        raise ValueError()
+        elif token.type is TokenType.SYMBOL:
+            if token.value == ")":
+                self.__complete_keysymbol_group()
             
-            case TokenType.WHITESPACE:
-                ...
+            else:
+                raise ValueError()
+        
+        elif token.type is TokenType.WHITESPACE:
+            ...
 
-            case _:
-                raise TypeError()
-            
+        else:
+            raise TypeError()
+        
     def __consume_done_phono(self, token: Token):
-        match token.type:
-            case TokenType.WHITESPACE:
-                yield self.__complete_sopheme()
-                
-                self.__state = _ParserState.DONE_SOPHEME
+        if token.type is TokenType.WHITESPACE:
+            yield self.__complete_sopheme()
+            
+            self.__state = _ParserState.DONE_SOPHEME
 
-            case _:
-                raise TypeError()
+        else:
+            raise TypeError()
     
     def consume_eol(self):
         if self.__parentheses_level > 0:

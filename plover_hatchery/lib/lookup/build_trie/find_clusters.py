@@ -9,7 +9,7 @@ from .state import EntryBuilderState, OutlineSounds
 from .rules.elision import allow_elide_previous_vowel_using_first_left_consonant, allow_elide_previous_vowel_using_first_right_consonant
 from ...util.Trie import NondeterministicTrie, TransitionCostInfo, ReadonlyTrie
 from ...theory.theory import amphitheory
-from ...stenophoneme.Stenophoneme import Stenophoneme, vowel_phonemes
+from ...stenophoneme.Stenophoneme import Sophone, vowel_phonemes
 
 @dataclass(frozen=True)
 class Cluster(ABC):
@@ -60,7 +60,7 @@ def _find_clusters(
     current_head = amphitheory.clusters_trie.ROOT
     current_index = (start_group_index, start_phoneme_index)
     while current_head is not None and current_index is not None:
-        current_head = amphitheory.clusters_trie.get_dst_node(current_head, sounds.get_consonant(*current_index).phoneme)
+        current_head = amphitheory.clusters_trie.get_dst_node(current_head, amphitheory.sound_sophone(sounds.get_consonant(*current_index)))
 
         if current_head is None: return
 
@@ -83,8 +83,8 @@ def _find_vowel_clusters(
         current_nodes = {
             node
             for current_node in current_nodes
-            for node in (amphitheory.vowel_clusters_trie.get_dst_node(current_node, sound.phoneme),)
-                    + ((amphitheory.vowel_clusters_trie.get_dst_node(current_node, Stenophoneme.ANY_VOWEL),) if sound.phoneme in vowel_phonemes else ())
+            for node in (amphitheory.vowel_clusters_trie.get_dst_node(current_node, amphitheory.sound_sophone(sound)),)
+                    + ((amphitheory.vowel_clusters_trie.get_dst_node(current_node, Sophone.ANY_VOWEL),) if amphitheory.sound_sophone(sound) in vowel_phonemes else ())
             if node is not None
         }
 

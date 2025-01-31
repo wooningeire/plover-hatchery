@@ -1,8 +1,8 @@
 
 from plover.steno import Stroke
 
-from ..stenophoneme.Stenophoneme import Stenophoneme
-from ..sopheme.Sound import Sound
+from ..stenophoneme.Stenophoneme import Sophone
+from ..sopheme import Keysymbol, Sound
 from .spec import TheorySpec
 from ..util.Trie import Trie, ReadonlyTrie
 
@@ -21,8 +21,8 @@ class TheoryService:
 
         return TheoryService(spec)
 
-    def __build_clusters_trie(self) -> ReadonlyTrie[Stenophoneme, Stroke]:
-        clusters_trie: Trie[Stenophoneme, Stroke] = Trie()
+    def __build_clusters_trie(self) -> ReadonlyTrie[Sophone, Stroke]:
+        clusters_trie: Trie[Sophone, Stroke] = Trie()
         for phonemes, stroke in self.spec.CLUSTERS.items():
             current_head = clusters_trie.ROOT
             for key in phonemes:
@@ -31,8 +31,8 @@ class TheoryService:
             clusters_trie.set_translation(current_head, stroke)
         return clusters_trie.frozen()
     
-    def __build_vowel_clusters_trie(self) -> ReadonlyTrie["Stenophoneme | Stroke", Stroke]:
-        clusters_trie: "Trie[Stenophoneme | Stroke, Stroke]" = Trie()
+    def __build_vowel_clusters_trie(self) -> ReadonlyTrie["Sophone | Stroke", Stroke]:
+        clusters_trie: "Trie[Sophone | Stroke, Stroke]" = Trie()
         for phonemes, stroke in self.spec.VOWEL_CONSCIOUS_CLUSTERS.items():
             current_head = clusters_trie.ROOT
             for key in phonemes:
@@ -42,7 +42,7 @@ class TheoryService:
         return clusters_trie.frozen()
     
     def __build_consonants_splitter(self):
-        _CONSONANT_CHORDS: dict[Stroke, tuple[Stenophoneme, ...]] = {
+        _CONSONANT_CHORDS: dict[Stroke, tuple[Sophone, ...]] = {
             **{
                 stroke: (phoneme,)
                 for phoneme, stroke in self.spec.PHONEMES_TO_CHORDS_LEFT.items()
@@ -55,14 +55,14 @@ class TheoryService:
             **{
                 Stroke.from_steno(steno): phonemes
                 for steno, phonemes in {
-                    "PHR": (Stenophoneme.P, Stenophoneme.L),
-                    "TPHR": (Stenophoneme.F, Stenophoneme.L),
+                    "PHR": (Sophone.P, Sophone.L),
+                    "TPHR": (Sophone.F, Sophone.L),
                 }.items()
             },
         }
 
         def _build_consonants_trie():
-            consonants_trie: Trie[str, tuple[Stenophoneme, ...]] = Trie()
+            consonants_trie: Trie[str, tuple[Sophone, ...]] = Trie()
             for stroke, _phoneme in _CONSONANT_CHORDS.items():
                 current_head = consonants_trie.get_dst_node_else_create_chain(consonants_trie.ROOT, stroke.keys())
                 consonants_trie.set_translation(current_head, _phoneme)
@@ -79,7 +79,7 @@ class TheoryService:
 
                 longest_chord_end_index = chord_start_index
 
-                entry: tuple[Stenophoneme, ...] = ()
+                entry: tuple[Sophone, ...] = ()
 
                 for seek_index in range(chord_start_index, len(keys)):
                     key = keys[seek_index]
@@ -107,13 +107,114 @@ class TheoryService:
             for phoneme, stroke in self.spec.PHONEMES_TO_CHORDS_VOWELS.items()
         }
     
-    def left_consonant_chord(self, sound: Sound) -> Stroke:
-        if sound.steneme is not None and len(sound.steneme.sophemes) > 0 and sound.steneme.sophemes[0].chars == "c" and sound.phoneme == Stenophoneme.S:
-            return Stroke.from_steno("KPW")
-        return self.spec.PHONEMES_TO_CHORDS_LEFT[sound.phoneme]
+    def sound_sophone(self, sound: Sound):
+        spelled = {
+            "a": Sophone.A,
+            "e": Sophone.E,
+            "i": Sophone.I,
+            "o": Sophone.O,
+            "u": Sophone.U,
+        }.get(sound.sopheme.chars)
+
+        return {
+            "p": (Sophone.P,),
+            "t": (Sophone.T, Sophone.D),
+            "?": (),  # glottal stop
+            "t^": (Sophone.T, Sophone.R),  # tapped R
+            "k": (Sophone.K,),
+            "x": (Sophone.K,),
+            "b": (Sophone.B,),
+            "d": (Sophone.D, Sophone.T),
+            "g": (Sophone.G,),
+            "ch": (Sophone.CH,),
+            "jh": (Sophone.J,),
+            "s": (Sophone.S,),
+            "z": (Sophone.Z,),
+            "sh": (Sophone.SH,),
+            "zh": (Sophone.SH, Sophone.J),
+            "f": (Sophone.F,),
+            "v": (Sophone.V,),
+            "th": (Sophone.TH,),
+            "dh": (Sophone.TH,),
+            "h": (Sophone.H,),
+            "m": (Sophone.M,),
+            "m!": (Sophone.M,),
+            "n": (Sophone.N,),
+            "n!": (Sophone.N,),
+            "ng": (Sophone.NG,),
+            "l": (Sophone.L,),
+            "ll": (Sophone.L,),
+            "lw": (Sophone.L,),
+            "l!": (Sophone.L,),
+            "r": (Sophone.R,),
+            "y": (Sophone.Y,),
+            "w": (Sophone.W,),
+            "hw": (Sophone.W,),
+            
+            "e": (Sophone.E, Sophone.EE, Sophone.AA),
+            "ao": (Sophone.A, Sophone.AA, Sophone.O, Sophone.U),
+            "a": (Sophone.A, Sophone.AA),
+            "ah": (Sophone.A, Sophone.O),
+            "oa": (Sophone.A, Sophone.O, Sophone.U),
+            "aa": (Sophone.O, Sophone.A),
+            "ar": (Sophone.A,),
+            "eh": (Sophone.A,),
+            "ou": (Sophone.OO, Sophone.O),
+            "ouw": (Sophone.OO,),
+            "oou": (Sophone.OO,),
+            "o": (Sophone.O,),
+            "au": (Sophone.O, Sophone.A),
+            "oo": (Sophone.O,),
+            "or": (Sophone.O,),
+            "our": (Sophone.O,),
+            "ii": (Sophone.EE,),
+            "iy": (Sophone.EE,),
+            "i": (Sophone.I, Sophone.EE, Sophone.E),
+            "@r": (spelled,),
+            "@": (spelled,),
+            "uh": (Sophone.U,),
+            "u": (Sophone.U, Sophone.O, Sophone.OO),
+            "uu": (Sophone.UU,),
+            "iu": (Sophone.UU,),
+            "ei": (Sophone.AA, Sophone.E),
+            "ee": (Sophone.AA, Sophone.E, Sophone.A),
+            "ai": (Sophone.II,),
+            "ae": (Sophone.II,),
+            "aer": (Sophone.II,),
+            "aai": (Sophone.II,),
+            "oi": (Sophone.OI,),
+            "oir": (Sophone.OI,),
+            "ow": (Sophone.OU,),
+            "owr": (Sophone.OU,),
+            "oow": (Sophone.OU,),
+            "ir": (Sophone.EE,),
+            "@@r": (spelled,),
+            "er": (Sophone.E, Sophone.U),
+            "eir": (Sophone.E,),
+            "ur": (Sophone.U, Sophone.UU),
+            "i@": (spelled,),
+        }[sound.keysymbol.base_symbol][0]
     
-    def right_consonant_chord(self, sound: Sound) -> Stroke:
-        return self.spec.PHONEMES_TO_CHORDS_RIGHT[sound.phoneme]
+    def left_consonant_strokes(self, sound: Sound):
+        if sound.sopheme.chars == "c" and Sophone.S == self.sound_sophone(sound):
+            yield Stroke.from_steno("KPW")
+
+        # for sophone in self.sound_sophone(sound):
+        #     for stroke in self.spec.PHONEMES_TO_CHORDS_LEFT[sophone]:
+        #         yield stroke
+        yield self.spec.PHONEMES_TO_CHORDS_LEFT[self.sound_sophone(sound)]
+    
+    def right_consonant_strokes(self, sound: Sound):
+        # for sophone in self.sound_sophone(sound):
+        #     for stroke in self.spec.PHONEMES_TO_CHORDS_RIGHT[sophone]:
+        #         yield stroke
+        yield self.spec.PHONEMES_TO_CHORDS_RIGHT[self.sound_sophone(sound)]
+    
+    def right_alt_consonant_strokes(self, sound: Sound):
+        # for sophone in self.sound_sophone(sound):
+        #     for stroke in self.spec.PHONEMES_TO_CHORDS_RIGHT_ALT[sophone]:
+        #         yield stroke
+        yield self.spec.PHONEMES_TO_CHORDS_RIGHT_ALT[self.sound_sophone(sound)]
     
     def split_consonant_phonemes(self, stroke: Stroke):
         return self.__split_consonant_phonemes(stroke)

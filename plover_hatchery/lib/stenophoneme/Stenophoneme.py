@@ -1,6 +1,6 @@
 from enum import Enum, auto
 
-class Stenophoneme(Enum):
+class Sophone(Enum):
     S = auto()
     T = auto()
     K = auto()
@@ -55,19 +55,19 @@ class Stenophoneme(Enum):
         return self.__str__()
 
 vowel_phonemes = {
-    Stenophoneme.AA,
-    Stenophoneme.A,
-    Stenophoneme.EE,
-    Stenophoneme.E,
-    Stenophoneme.II,
-    Stenophoneme.I,
-    Stenophoneme.OO,
-    Stenophoneme.O,
-    Stenophoneme.UU,
-    Stenophoneme.U,
-    Stenophoneme.AU,
-    Stenophoneme.OI,
-    Stenophoneme.OU,
-    Stenophoneme.AE,
-    Stenophoneme.AO,
+    Sophone.AA,
+    Sophone.A,
+    Sophone.EE,
+    Sophone.E,
+    Sophone.II,
+    Sophone.I,
+    Sophone.OO,
+    Sophone.O,
+    Sophone.UU,
+    Sophone.U,
+    Sophone.AU,
+    Sophone.OI,
+    Sophone.OU,
+    Sophone.AE,
+    Sophone.AO,
 }

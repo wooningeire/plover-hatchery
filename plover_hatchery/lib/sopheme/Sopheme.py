@@ -1,11 +1,7 @@
 from dataclasses import dataclass
 from typing import Iterable
 
-from plover.steno import Stroke
-
-from ..stenophoneme.Stenophoneme import Stenophoneme
 from .Keysymbol import Keysymbol
-
 
 @dataclass(frozen=True)
 class Sopheme:
@@ -24,3 +20,12 @@ class Sopheme:
     @staticmethod
     def format_seq(sophemes: "Iterable[Sopheme]"):
         return " ".join(str(sopheme) for sopheme in sophemes)
+    
+    @staticmethod
+    def parse_seq(sophemes_str: str):
+        from .parse import parse_sopheme_sequence
+        return parse_sopheme_sequence(sophemes_str)
+
+    @staticmethod
+    def get_translation(sophemes: "Iterable[Sopheme]"):
+        return "".join(sopheme.chars for sopheme in sophemes)

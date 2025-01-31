@@ -5,8 +5,8 @@ from plover.steno import Stroke
 from .spec import TheorySpec
 from .service import TheoryService
 
-from ..stenophoneme.Stenophoneme import Stenophoneme
-
+from ..stenophoneme.Stenophoneme import Sophone
+from ..sopheme import Sound, Sopheme, Keysymbol
 
 @TheoryService.theory
 class amphitheory(TheorySpec, ABC):
@@ -19,82 +19,82 @@ class amphitheory(TheorySpec, ABC):
     ASTERISK_SUBSTROKE = Stroke.from_steno("*")
 
 
-    PHONEMES_TO_CHORDS_LEFT: dict[Stenophoneme, Stroke] = {
+    PHONEMES_TO_CHORDS_LEFT: dict[Sophone, Stroke] = {
         phoneme: Stroke.from_steno(steno)
         for phoneme, steno in {
-            Stenophoneme.S: "S",
-            Stenophoneme.T: "T",
-            Stenophoneme.K: "K",
-            Stenophoneme.P: "P",
-            Stenophoneme.W: "W",
-            Stenophoneme.H: "H",
-            Stenophoneme.R: "R",
+            Sophone.S: "S",
+            Sophone.T: "T",
+            Sophone.K: "K",
+            Sophone.P: "P",
+            Sophone.W: "W",
+            Sophone.H: "H",
+            Sophone.R: "R",
 
-            Stenophoneme.Z: "STKPW",
-            Stenophoneme.J: "SKWR",
-            Stenophoneme.V: "SR",
-            Stenophoneme.D: "TK",
-            Stenophoneme.G: "TKPW",
-            Stenophoneme.F: "TP",
-            Stenophoneme.N: "TPH",
-            Stenophoneme.Y: "KWR",
-            Stenophoneme.B: "PW",
-            Stenophoneme.M: "PH",
-            Stenophoneme.L: "HR",
+            Sophone.Z: "STKPW",
+            Sophone.J: "SKWR",
+            Sophone.V: "SR",
+            Sophone.D: "TK",
+            Sophone.G: "TKPW",
+            Sophone.F: "TP",
+            Sophone.N: "TPH",
+            Sophone.Y: "KWR",
+            Sophone.B: "PW",
+            Sophone.M: "PH",
+            Sophone.L: "HR",
 
-            Stenophoneme.SH: "SH",
-            Stenophoneme.TH: "TH",
-            Stenophoneme.CH: "KH",
+            Sophone.SH: "SH",
+            Sophone.TH: "TH",
+            Sophone.CH: "KH",
 
-            Stenophoneme.NG: "TPH",
+            Sophone.NG: "TPH",
         }.items()
     }
 
-    PHONEMES_TO_CHORDS_VOWELS: dict[Stenophoneme, Stroke] = {
+    PHONEMES_TO_CHORDS_VOWELS: dict[Sophone, Stroke] = {
         phoneme: Stroke.from_steno(steno)
         for phoneme, steno in {
-            Stenophoneme.AA: "AEU",
-            Stenophoneme.A: "A",
-            Stenophoneme.EE: "AOE",
-            Stenophoneme.E: "E",
-            Stenophoneme.II: "AOEU",
-            Stenophoneme.I: "EU",
-            Stenophoneme.OO: "OE",
-            Stenophoneme.O: "O",
-            Stenophoneme.UU: "AOU",
-            Stenophoneme.U: "U",
-            Stenophoneme.AU: "AU",
-            Stenophoneme.OI: "OEU",
-            Stenophoneme.OU: "OU",
-            Stenophoneme.AE: "AE",
-            Stenophoneme.AO: "AO",
+            Sophone.AA: "AEU",
+            Sophone.A: "A",
+            Sophone.EE: "AOE",
+            Sophone.E: "E",
+            Sophone.II: "AOEU",
+            Sophone.I: "EU",
+            Sophone.OO: "OE",
+            Sophone.O: "O",
+            Sophone.UU: "AOU",
+            Sophone.U: "U",
+            Sophone.AU: "AU",
+            Sophone.OI: "OEU",
+            Sophone.OU: "OU",
+            Sophone.AE: "AE",
+            Sophone.AO: "AO",
         }.items()
     }
 
-    PHONEMES_TO_CHORDS_RIGHT: dict[Stenophoneme, Stroke] = {
+    PHONEMES_TO_CHORDS_RIGHT: dict[Sophone, Stroke] = {
         phoneme: Stroke.from_steno(steno)
         for phoneme, steno in {
-            Stenophoneme.DUMMY: "",
+            Sophone.DUMMY: "",
 
-            Stenophoneme.F: "-F",
-            Stenophoneme.R: "-R",
-            Stenophoneme.P: "-P",
-            Stenophoneme.B: "-B",
-            Stenophoneme.L: "-L",
-            Stenophoneme.G: "-G",
-            Stenophoneme.T: "-T",
-            Stenophoneme.S: "-S",
-            Stenophoneme.D: "-D",
-            Stenophoneme.Z: "-Z",
+            Sophone.F: "-F",
+            Sophone.R: "-R",
+            Sophone.P: "-P",
+            Sophone.B: "-B",
+            Sophone.L: "-L",
+            Sophone.G: "-G",
+            Sophone.T: "-T",
+            Sophone.S: "-S",
+            Sophone.D: "-D",
+            Sophone.Z: "-Z",
 
-            Stenophoneme.V: "-FB",
-            Stenophoneme.N: "-PB",
-            Stenophoneme.M: "-PL",
-            Stenophoneme.K: "-BG",
-            Stenophoneme.J: "-PBLG",
-            Stenophoneme.CH: "-FP",
-            Stenophoneme.SH: "-RB",
-            Stenophoneme.TH: "*T",
+            Sophone.V: "-FB",
+            Sophone.N: "-PB",
+            Sophone.M: "-PL",
+            Sophone.K: "-BG",
+            Sophone.J: "-PBLG",
+            Sophone.CH: "-FP",
+            Sophone.SH: "-RB",
+            Sophone.TH: "*T",
         }.items()
 
         # "SHR": "shr",
@@ -105,25 +105,25 @@ class amphitheory(TheorySpec, ABC):
     }
 
 
-    PHONEMES_TO_CHORDS_LEFT_ALT: dict[Stenophoneme, Stroke] = {
+    PHONEMES_TO_CHORDS_LEFT_ALT: dict[Sophone, Stroke] = {
         phoneme: Stroke.from_steno(steno)
         for phoneme, steno in {
-            Stenophoneme.F: "W",
-            Stenophoneme.V: "W",
-            Stenophoneme.Z: "S*",
+            Sophone.F: "W",
+            Sophone.V: "W",
+            Sophone.Z: "S*",
         }.items()
     }
 
-    PHONEMES_TO_CHORDS_RIGHT_ALT: dict[Stenophoneme, Stroke] = {
+    PHONEMES_TO_CHORDS_RIGHT_ALT: dict[Sophone, Stroke] = {
         phoneme: Stroke.from_steno(steno)
         for phoneme, steno in {
-            Stenophoneme.S: "-F",
-            Stenophoneme.Z: "-F",
-            Stenophoneme.V: "-F",
-            Stenophoneme.TH: "-F",
-            Stenophoneme.M: "-FR",
-            Stenophoneme.J: "-FR",
-            Stenophoneme.K: "*G",
+            Sophone.S: "-F",
+            Sophone.Z: "-F",
+            Sophone.V: "-F",
+            Sophone.TH: "-F",
+            Sophone.M: "-FR",
+            Sophone.J: "-FR",
+            Sophone.K: "*G",
         }.items()
     }
 
@@ -138,75 +138,75 @@ class amphitheory(TheorySpec, ABC):
         for steno in ("AEU",)
     }
 
-    CLUSTERS: dict[tuple[Stenophoneme, ...], Stroke] = {
+    CLUSTERS: dict[tuple[Sophone, ...], Stroke] = {
         phonemes: Stroke.from_steno(steno)
         for phonemes, steno in {
-            (Stenophoneme.D, Stenophoneme.S): "STK",
-            (Stenophoneme.D, Stenophoneme.S, Stenophoneme.T): "STK",
-            (Stenophoneme.D, Stenophoneme.S, Stenophoneme.K): "STK",
-            (Stenophoneme.K, Stenophoneme.N): "K",
-            (Stenophoneme.K, Stenophoneme.M, Stenophoneme.P): "KP",
-            (Stenophoneme.K, Stenophoneme.M, Stenophoneme.B): "KPW",
-            (Stenophoneme.L, Stenophoneme.F): "-FL",
-            (Stenophoneme.L, Stenophoneme.V): "-FL",
-            (Stenophoneme.G, Stenophoneme.L): "-LG",
-            (Stenophoneme.L, Stenophoneme.J): "-LG",
-            (Stenophoneme.K, Stenophoneme.L): "*LG",
-            (Stenophoneme.N, Stenophoneme.J): "-PBG",
-            (Stenophoneme.M, Stenophoneme.J): "-PLG",
-            (Stenophoneme.R, Stenophoneme.F): "*FR",
-            (Stenophoneme.R, Stenophoneme.S): "*FR",
-            (Stenophoneme.R, Stenophoneme.M): "*FR",
-            (Stenophoneme.R, Stenophoneme.V): "-FRB",
-            (Stenophoneme.L, Stenophoneme.CH): "-LG",
-            (Stenophoneme.R, Stenophoneme.CH): "-FRPB",
-            (Stenophoneme.N, Stenophoneme.CH): "-FRPBLG",
-            (Stenophoneme.L, Stenophoneme.SH): "*RB",
-            (Stenophoneme.R, Stenophoneme.SH): "*RB",
-            (Stenophoneme.N, Stenophoneme.SH): "*RB",
-            (Stenophoneme.M, Stenophoneme.P): "*PL",
-            (Stenophoneme.T, Stenophoneme.L): "-LT",
+            (Sophone.D, Sophone.S): "STK",
+            (Sophone.D, Sophone.S, Sophone.T): "STK",
+            (Sophone.D, Sophone.S, Sophone.K): "STK",
+            (Sophone.K, Sophone.N): "K",
+            (Sophone.K, Sophone.M, Sophone.P): "KP",
+            (Sophone.K, Sophone.M, Sophone.B): "KPW",
+            (Sophone.L, Sophone.F): "-FL",
+            (Sophone.L, Sophone.V): "-FL",
+            (Sophone.G, Sophone.L): "-LG",
+            (Sophone.L, Sophone.J): "-LG",
+            (Sophone.K, Sophone.L): "*LG",
+            (Sophone.N, Sophone.J): "-PBG",
+            (Sophone.M, Sophone.J): "-PLG",
+            (Sophone.R, Sophone.F): "*FR",
+            (Sophone.R, Sophone.S): "*FR",
+            (Sophone.R, Sophone.M): "*FR",
+            (Sophone.R, Sophone.V): "-FRB",
+            (Sophone.L, Sophone.CH): "-LG",
+            (Sophone.R, Sophone.CH): "-FRPB",
+            (Sophone.N, Sophone.CH): "-FRPBLG",
+            (Sophone.L, Sophone.SH): "*RB",
+            (Sophone.R, Sophone.SH): "*RB",
+            (Sophone.N, Sophone.SH): "*RB",
+            (Sophone.M, Sophone.P): "*PL",
+            (Sophone.T, Sophone.L): "-LT",
         }.items()
     }
 
-    VOWEL_CONSCIOUS_CLUSTERS: "dict[tuple[Stenophoneme | Stroke, ...], Stroke]" = {
+    VOWEL_CONSCIOUS_CLUSTERS: "dict[tuple[Sophone | Stroke, ...], Stroke]" = {
         tuple(
             Stroke.from_steno(phoneme) if isinstance(phoneme, str) else phoneme
             for phoneme in phonemes
         ): Stroke.from_steno(steno)
         for phonemes, steno in {
-            (Stenophoneme.ANY_VOWEL, Stenophoneme.N, Stenophoneme.T): "SPW",
-            (Stenophoneme.ANY_VOWEL, Stenophoneme.N, Stenophoneme.D): "SPW",
-            (Stenophoneme.ANY_VOWEL, Stenophoneme.M, Stenophoneme.P): "KPW",
-            (Stenophoneme.ANY_VOWEL, Stenophoneme.M, Stenophoneme.B): "KPW",
-            (Stenophoneme.ANY_VOWEL, Stenophoneme.N, Stenophoneme.K): "SKPW",
-            (Stenophoneme.ANY_VOWEL, Stenophoneme.N, Stenophoneme.G): "SKPW",
-            (Stenophoneme.ANY_VOWEL, Stenophoneme.N, Stenophoneme.J): "SKPW",
-            (Stenophoneme.E, Stenophoneme.K, Stenophoneme.S): "SKW",
-            (Stenophoneme.E, Stenophoneme.K, Stenophoneme.S, Stenophoneme.T): "STKW",
-            (Stenophoneme.E, Stenophoneme.K, Stenophoneme.S, Stenophoneme.K): "SKW",
-            (Stenophoneme.E, Stenophoneme.K, Stenophoneme.S, Stenophoneme.P): "SKPW",
-            (Stenophoneme.ANY_VOWEL, Stenophoneme.N): "TPH",
-            (Stenophoneme.ANY_VOWEL, Stenophoneme.N, Stenophoneme.S): "STPH",
-            (Stenophoneme.ANY_VOWEL, Stenophoneme.N, Stenophoneme.F): "TPW",
-            (Stenophoneme.ANY_VOWEL, Stenophoneme.N, Stenophoneme.V): "TPW",
-            (Stenophoneme.ANY_VOWEL, Stenophoneme.M): "PH",
+            (Sophone.ANY_VOWEL, Sophone.N, Sophone.T): "SPW",
+            (Sophone.ANY_VOWEL, Sophone.N, Sophone.D): "SPW",
+            (Sophone.ANY_VOWEL, Sophone.M, Sophone.P): "KPW",
+            (Sophone.ANY_VOWEL, Sophone.M, Sophone.B): "KPW",
+            (Sophone.ANY_VOWEL, Sophone.N, Sophone.K): "SKPW",
+            (Sophone.ANY_VOWEL, Sophone.N, Sophone.G): "SKPW",
+            (Sophone.ANY_VOWEL, Sophone.N, Sophone.J): "SKPW",
+            (Sophone.E, Sophone.K, Sophone.S): "SKW",
+            (Sophone.E, Sophone.K, Sophone.S, Sophone.T): "STKW",
+            (Sophone.E, Sophone.K, Sophone.S, Sophone.K): "SKW",
+            (Sophone.E, Sophone.K, Sophone.S, Sophone.P): "SKPW",
+            (Sophone.ANY_VOWEL, Sophone.N): "TPH",
+            (Sophone.ANY_VOWEL, Sophone.N, Sophone.S): "STPH",
+            (Sophone.ANY_VOWEL, Sophone.N, Sophone.F): "TPW",
+            (Sophone.ANY_VOWEL, Sophone.N, Sophone.V): "TPW",
+            (Sophone.ANY_VOWEL, Sophone.M): "PH",
         }.items()
     }
 
 
-    DIPHTHONG_TRANSITIONS_BY_FIRST_VOWEL: dict[Stenophoneme, Stenophoneme] = {
+    DIPHTHONG_TRANSITIONS_BY_FIRST_VOWEL: dict[Sophone, Sophone] = {
         prev_vowel_phoneme: phoneme
         for prev_vowel_phoneme, phoneme in {
-            Stenophoneme.E: Stenophoneme.Y,
-            Stenophoneme.OO: Stenophoneme.W,
-            Stenophoneme.OU: Stenophoneme.W,
-            Stenophoneme.I: Stenophoneme.Y,
-            Stenophoneme.EE: Stenophoneme.Y,
-            Stenophoneme.UU: Stenophoneme.W,
-            Stenophoneme.AA: Stenophoneme.Y,
-            Stenophoneme.OI: Stenophoneme.Y,
-            Stenophoneme.II: Stenophoneme.Y,
+            Sophone.E: Sophone.Y,
+            Sophone.OO: Sophone.W,
+            Sophone.OU: Sophone.W,
+            Sophone.I: Sophone.Y,
+            Sophone.EE: Sophone.Y,
+            Sophone.UU: Sophone.W,
+            Sophone.AA: Sophone.Y,
+            Sophone.OI: Sophone.Y,
+            Sophone.II: Sophone.Y,
         }.items()
     }
 

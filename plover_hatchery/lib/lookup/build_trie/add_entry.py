@@ -53,7 +53,7 @@ def add_entry(trie: NondeterministicTrie[str, str], sounds: OutlineSounds, trans
         # if it matches verbatim
         if vowels_src_node is None:
             vowels_src_node = state.left_consonant_src_node
-        postvowels_node = trie.get_first_dst_node_else_create(vowels_src_node, amphitheory.spec.PHONEMES_TO_CHORDS_VOWELS[vowel.phoneme].rtfcre, TransitionCostInfo(0, translation))
+        postvowels_node = trie.get_first_dst_node_else_create(vowels_src_node, amphitheory.spec.vowel_to_steno(vowel), TransitionCostInfo(0, translation))
 
         handle_clusters(upcoming_clusters, state.left_consonant_src_node, state.right_consonant_src_node, state, True)
 

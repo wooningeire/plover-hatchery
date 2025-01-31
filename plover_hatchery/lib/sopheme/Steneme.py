@@ -4,7 +4,7 @@ from typing import Iterable
 
 from plover.steno import Stroke
 
-from ..stenophoneme.Stenophoneme import Stenophoneme
+from ..stenophoneme.Stenophoneme import Sophone
 from .Keysymbol import Keysymbol
 from .Sopheme import Sopheme
 
@@ -13,7 +13,7 @@ from .Sopheme import Sopheme
 class Steneme:
     sophemes: tuple[Sopheme, ...]
     steno: tuple[Stroke, ...]
-    phoneme: "Stenophoneme | None"
+    phoneme: "Sophone | None"
 
     def __str__(self):
         out = " ".join(str(sopheme) for sopheme in self.sophemes)
@@ -60,7 +60,7 @@ class Steneme:
                 for sopheme in self.sophemes
             ],
             "steno": "/".join(stroke.rtfcre for stroke in self.steno),
-            "phono": self.phoneme.name if isinstance(self.phoneme, Stenophoneme) else self.phoneme,
+            "phono": self.phoneme.name if isinstance(self.phoneme, Sophone) else self.phoneme,
         }
 
     @staticmethod
@@ -72,7 +72,6 @@ class Steneme:
                     tuple(
                         Keysymbol(
                             keysymbol_json["symbol"],
-                            Keysymbol.get_match_symbol(keysymbol_json["symbol"]),
                             keysymbol_json["stress"],
                             keysymbol_json["optional"],
                         )
@@ -82,7 +81,7 @@ class Steneme:
                 for sophemes_json in json["orthokeysymbols"]
             ),
             tuple(Stroke.from_steno(steno) for steno in json["steno"].split("/")) if len(json["steno"]) > 0 else (),
-            Stenophoneme.__dict__.get(json["phono"], json["phono"]),  
+            Sophone.__dict__.get(json["phono"], json["phono"]),  
         )
     
     @staticmethod
@@ -97,26 +96,26 @@ class Steneme:
 _steneme_shorthands = {
     ((((keysymbols), ortho),), phoneme): ortho
     for (phoneme, keysymbols), orthos in {
-        (Stenophoneme.P, ("p",)): ("p", "pp"),
-        (Stenophoneme.T, ("t",)): ("t", "tt"),
-        (Stenophoneme.K, ("k",)): ("k", "kk", "ck", "q"),
-        (Stenophoneme.B, ("b",)): ("b", "bb"),
-        (Stenophoneme.D, ("d",)): ("d", "dd"),
-        (Stenophoneme.G, ("g",)): ("g", "gg"),
-        (Stenophoneme.CH, ("ch",)): ("ch",),
-        (Stenophoneme.J, ("jh",)): ("j",),
-        (Stenophoneme.S, ("s",)): ("s", "ss"),
-        (Stenophoneme.Z, ("z",)): ("z", "zz"),
-        (Stenophoneme.SH, ("sh",)): ("sh", "ti", "ci", "si", "ssi"),
-        (Stenophoneme.F, ("f",)): ("f", "ff", "ph"),
-        (Stenophoneme.V, ("v",)): ("v", "vv"),
-        (Stenophoneme.H, ("h",)): ("h",),
-        (Stenophoneme.M, ("m",)): ("m", "mm"),
-        (Stenophoneme.N, ("n",)): ("n", "nn"),
-        (Stenophoneme.L, ("l",)): ("l", "ll"),
-        (Stenophoneme.R, ("r",)): ("r", "rr"),
-        (Stenophoneme.Y, ("y",)): ("y",),
-        (Stenophoneme.W, ("w",)): ("w",),
+        (Sophone.P, ("p",)): ("p", "pp"),
+        (Sophone.T, ("t",)): ("t", "tt"),
+        (Sophone.K, ("k",)): ("k", "kk", "ck", "q"),
+        (Sophone.B, ("b",)): ("b", "bb"),
+        (Sophone.D, ("d",)): ("d", "dd"),
+        (Sophone.G, ("g",)): ("g", "gg"),
+        (Sophone.CH, ("ch",)): ("ch",),
+        (Sophone.J, ("jh",)): ("j",),
+        (Sophone.S, ("s",)): ("s", "ss"),
+        (Sophone.Z, ("z",)): ("z", "zz"),
+        (Sophone.SH, ("sh",)): ("sh", "ti", "ci", "si", "ssi"),
+        (Sophone.F, ("f",)): ("f", "ff", "ph"),
+        (Sophone.V, ("v",)): ("v", "vv"),
+        (Sophone.H, ("h",)): ("h",),
+        (Sophone.M, ("m",)): ("m", "mm"),
+        (Sophone.N, ("n",)): ("n", "nn"),
+        (Sophone.L, ("l",)): ("l", "ll"),
+        (Sophone.R, ("r",)): ("r", "rr"),
+        (Sophone.Y, ("y",)): ("y",),
+        (Sophone.W, ("w",)): ("w",),
     }.items()
     for ortho in orthos
 }

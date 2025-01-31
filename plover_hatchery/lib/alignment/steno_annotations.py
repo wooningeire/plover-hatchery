@@ -3,7 +3,7 @@ from typing import Generic, TypeVar, Iterable
 
 from plover.steno import Stroke
 
-from ..stenophoneme.Stenophoneme import Stenophoneme
+from ..stenophoneme.Stenophoneme import Sophone
 from ..theory.default import lapwing
 
 @dataclass(frozen=True)
@@ -72,7 +72,7 @@ class AnnotatedChord(Generic[T]):
 @dataclass(frozen=True)
 class Phono:
     keysymbols: tuple[str, ...]
-    phoneme: "Stenophoneme | str | None"
+    phoneme: "Sophone | str | None"
     steno: tuple[Stroke, ...]
 
     def __str__(self):

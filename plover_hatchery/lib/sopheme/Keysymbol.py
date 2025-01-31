@@ -1,10 +1,55 @@
 from dataclasses import dataclass
 import re
 
+
+_vowel_symbols = {
+    "e",
+    "ao",
+    "a",
+    "ah",
+    "oa",
+    "aa",
+    "ar",
+    "eh",
+    "ou",
+    "ouw",
+    "oou",
+    "o",
+    "au",
+    "oo",
+    "or",
+    "our",
+    "ii",
+    "iy",
+    "i",
+    "@r",
+    "@",
+    "uh",
+    "u",
+    "uu",
+    "iu",
+    "ei",
+    "ee",
+    "ai",
+    "ae",
+    "aer",
+    "aai",
+    "oi",
+    "oir",
+    "ow",
+    "owr",
+    "oow",
+    "ir",
+    "@@r",
+    "er",
+    "eir",
+    "ur",
+    "i@",
+}
+
 @dataclass(frozen=True)
 class Keysymbol:
     symbol: str
-    match_symbol: str
     stress: int = 0
     optional: bool = False
 
@@ -19,6 +64,11 @@ class Keysymbol:
     
     __repr__ = __str__
 
-    @staticmethod
-    def get_match_symbol(symbol: str):
-        return re.sub(r"[\[\]\d]", "", symbol.lower())
+    @property
+    def is_vowel(self):
+        return self.base_symbol in _vowel_symbols
+
+    @property
+    def base_symbol(self):
+        """Strips brackets and digits from a keysymbol"""
+        return re.sub(r"[\[\]\d]", "", self.symbol.lower())
