@@ -1,7 +1,7 @@
 from typing import NamedTuple
 from dataclasses import dataclass, field
 
-from ...util.Trie import NondeterministicTrie
+from ...trie import NondeterministicTrie
 from ...sopheme.Sound import Sound
 
 class ConsonantVowelGroup(NamedTuple):

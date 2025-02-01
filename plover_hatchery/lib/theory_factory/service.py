@@ -4,7 +4,7 @@ from plover.steno import Stroke
 from ..sophone.Sophone import Sophone
 from ..sopheme import Keysymbol, Sound
 from .spec import TheorySpec
-from ..util.Trie import Trie, ReadonlyTrie
+from ..trie import Trie, ReadonlyTrie
 
 class TheoryService:
     def __init__(self, spec: type[TheorySpec]):

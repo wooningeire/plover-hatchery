@@ -3,7 +3,7 @@ from typing import TextIO
 from plover.steno import Stroke
 import plover.log
 
-from ..util.Trie import NondeterministicTrie
+from ..trie import NondeterministicTrie
 from ..sopheme import Sopheme
 from .build_trie import add_entry
 from .build_lookup import create_lookup_for

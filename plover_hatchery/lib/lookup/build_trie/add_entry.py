@@ -2,8 +2,8 @@ from typing import Optional
 
 import plover.log
 
-from ...util.Trie import TransitionCostInfo, NondeterministicTrie
-from ...util.config import TRIE_STROKE_BOUNDARY_KEY, TRIE_LINKER_KEY
+from ...trie import TransitionCostInfo, NondeterministicTrie
+from ...config import TRIE_STROKE_BOUNDARY_KEY, TRIE_LINKER_KEY
 from ...theory_defaults.amphitheory import amphitheory
 
 from .state import EntryBuilderState, OutlineSounds

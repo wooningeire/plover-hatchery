@@ -1,8 +1,8 @@
 from plover.steno import Stroke
 import plover.log
 
-from ..util.Trie import Transition, NondeterministicTrie
-from ..util.config import TRIE_STROKE_BOUNDARY_KEY, TRIE_LINKER_KEY
+from ..trie import Transition, NondeterministicTrie
+from ..config import TRIE_STROKE_BOUNDARY_KEY, TRIE_LINKER_KEY
 from ..theory_defaults.amphitheory import amphitheory
 
 def create_lookup_for(trie:  NondeterministicTrie[str, str]):

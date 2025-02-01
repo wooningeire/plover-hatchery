@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Generator, Generic, TypeVar, Mapping, Protocol, Iterable
 from abc import ABC
 
-from ..util.Trie import Trie
+from ..trie import Trie
 
 _Item = TypeVar("_Item")
 

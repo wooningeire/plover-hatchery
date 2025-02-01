@@ -1,6 +1,6 @@
 import plover.log
 
-from ....util.Trie import TransitionCostInfo
+from ....trie import TransitionCostInfo
 from ....theory_defaults.amphitheory import amphitheory
 
 from ..state import EntryBuilderState
