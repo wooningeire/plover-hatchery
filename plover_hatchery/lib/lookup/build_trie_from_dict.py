@@ -5,7 +5,7 @@ import plover.log
 
 from ..trie import NondeterministicTrie
 from ..sopheme import Sopheme
-from .build_trie import add_entry
+from ..build_trie import add_entry
 from .build_lookup import create_lookup_for
 from .build_reverse_lookup import create_reverse_lookup_for
 from .get_sophemes import get_sopheme_sounds

@@ -2,9 +2,9 @@ from typing import Optional
 
 import plover.log
 
-from ...trie import TransitionCostInfo, NondeterministicTrie
-from ...config import TRIE_STROKE_BOUNDARY_KEY, TRIE_LINKER_KEY
-from ...theory_defaults.amphitheory import amphitheory
+from ..trie import TransitionCostInfo, NondeterministicTrie
+from ..config import TRIE_STROKE_BOUNDARY_KEY, TRIE_LINKER_KEY
+from ..theory_defaults.amphitheory import amphitheory
 
 from .state import EntryBuilderState, OutlineSounds
 from .find_clusters import Cluster, handle_clusters

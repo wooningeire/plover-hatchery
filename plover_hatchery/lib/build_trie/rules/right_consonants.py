@@ -2,10 +2,10 @@ from typing import Optional
 
 import plover.log
 
-from ....trie import TransitionCostInfo
-from ....config import TRIE_STROKE_BOUNDARY_KEY, TRIE_LINKER_KEY
-from ....theory_defaults.amphitheory import amphitheory
-from ....sophone.Sophone import Sophone
+from ...trie import TransitionCostInfo
+from ...config import TRIE_STROKE_BOUNDARY_KEY, TRIE_LINKER_KEY
+from ...theory_defaults.amphitheory import amphitheory
+from ...sophone.Sophone import Sophone
 
 from ..state import EntryBuilderState
 from .elision import allow_elide_previous_vowel_using_first_right_consonant

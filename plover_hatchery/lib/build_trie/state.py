@@ -1,8 +1,8 @@
 from typing import NamedTuple
 from dataclasses import dataclass, field
 
-from ...trie import NondeterministicTrie
-from ...sopheme.Sound import Sound
+from ..trie import NondeterministicTrie
+from ..sopheme.Sound import Sound
 
 class ConsonantVowelGroup(NamedTuple):
     consonants: tuple[Sound, ...]

@@ -1,7 +1,7 @@
 import plover.log
 
-from ....trie import TransitionCostInfo
-from ....theory_defaults.amphitheory import amphitheory
+from ...trie import TransitionCostInfo
+from ...theory_defaults.amphitheory import amphitheory
 
 from ..state import EntryBuilderState
 from .elision import allow_elide_previous_vowel_using_first_left_consonant

@@ -7,9 +7,9 @@ from plover.steno import Stroke
 
 from .state import EntryBuilderState, OutlineSounds
 from .rules.elision import allow_elide_previous_vowel_using_first_left_consonant, allow_elide_previous_vowel_using_first_right_consonant
-from ...trie import NondeterministicTrie, TransitionCostInfo, ReadonlyTrie
-from ...theory_defaults.amphitheory import amphitheory
-from ...sophone.Sophone import Sophone, vowel_phonemes
+from ..trie import NondeterministicTrie, TransitionCostInfo, ReadonlyTrie
+from ..theory_defaults.amphitheory import amphitheory
+from ..sophone.Sophone import Sophone, vowel_phonemes
 
 @dataclass(frozen=True)
 class Cluster(ABC):
