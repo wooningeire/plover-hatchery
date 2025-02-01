@@ -1,5 +1,5 @@
 from typing import NamedTuple
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from ...util.Trie import NondeterministicTrie
 from ...sopheme.Sound import Sound
@@ -91,37 +91,41 @@ class OutlineSounds:
             return None
         
         return self.get_consonant(*last_index)
-    
+
 @dataclass
 class EntryBuilderState:
-    """Convenience struct for making entry state easier to pass into helper functions"""
+    """Convenience struct for making entry state easier to pass into helper functions
+
+    Two types of elision:
+     - squish (placing vowel between two consonant chords on the same side)
+     - boundary (placing vowel on the transition from right to left consonant chords)
+    """
 
     trie: NondeterministicTrie[str, str]
     phonemes: OutlineSounds
     translation: str
+    
+    left_consonant_src_nodes: list[int] = field(default_factory=lambda: [])
+    """The node from which the next left consonant chord will be attached"""
+    right_consonant_src_nodes: list[int] = field(default_factory=lambda: [])
+    """The node from which the next right consonant chord will be attached"""
+    last_left_alt_consonant_nodes: list[int] = field(default_factory=lambda: [])
+    """The latest node constructed by adding the alternate chord for a left consonant"""
+    last_right_alt_consonant_nodes: list[int] = field(default_factory=lambda: [])
+    """The latest node constructed by adding the alternate chord for a right consonant"""
 
-    # The node from which the next left consonant chord will be attached
-    left_consonant_src_node: "int | None" = None
-    # The node from which the next right consonant chord will be attached
-    right_consonant_src_node: "int | None" = None
-    # The latest node constructed by adding the alternate chord for a left consonant
-    last_left_alt_consonant_node: "int | None" = None
-    # The latest node constructed by adding the alternate chord for a right consonant
-    last_right_alt_consonant_node: "int | None" = None
 
-    # The node constructed by adding the previous left consonant; can be None if the previous phoneme was a vowel
-    prev_left_consonant_node: "int | None" = None
+    prev_left_consonant_nodes: list[int] = field(default_factory=lambda: [])
+    """The node constructed by adding the previous left consonant; can be empty if the previous phoneme was a vowel"""
 
-    # Two types of elision:
-    #  - squish (placing vowel between two consonant chords on the same side)
-    #  - boundary (placing vowel on the transition from right to left consonant chords)
 
-    # The latest node which the previous vowel set was attached to
-    left_elision_squish_src_node: "int | None" = None
-    # The latest node which the stroke boundary between a right consonant and a left consonant was attached to
-    right_elision_squish_src_node: "int | None" = None
-    # The latest node constructed by adding the stroke bunnedry between a right consonant and left consonant
-    left_elision_boundary_src_node: "int | None" = None
+    left_elision_squish_src_nodes: list[int] = field(default_factory=lambda: [])
+    """The latest node which the previous vowel set was attached to"""
+    right_elision_squish_src_nodes: list[int] = field(default_factory=lambda: [])
+    """The latest node which the stroke boundary between a right consonant and a left consonant was attached to"""
+    left_elision_boundary_src_nodes: list[int] = field(default_factory=lambda: [])
+    """The latest node constructed by adding the stroke bunnedry between a right consonant and left consonant"""
+
 
     group_index: int = -1
     phoneme_index: int = -1

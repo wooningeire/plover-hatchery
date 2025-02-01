@@ -25,8 +25,8 @@ class _ClusterLeft(Cluster):
     def apply(self, trie: NondeterministicTrie[str, str], translation: str, current_left: "int | None", current_right: "int | None"):
         if current_left is None: return
 
-        if self.initial_state.left_consonant_src_node is not None:
-            trie.link_chain(self.initial_state.left_consonant_src_node, current_left, self.stroke.keys(), TransitionCostInfo(amphitheory.spec.TransitionCosts.CLUSTER, translation))
+        if len(self.initial_state.left_consonant_src_nodes) > 0:
+            trie.link_chain(self.initial_state.left_consonant_src_nodes[0], current_left, self.stroke.keys(), TransitionCostInfo(amphitheory.spec.TransitionCosts.CLUSTER, translation))
 
         if self.initial_state.can_elide_prev_vowel_left:
             allow_elide_previous_vowel_using_first_left_consonant(self.initial_state, self.stroke, current_left, amphitheory.spec.TransitionCosts.CLUSTER)
@@ -36,8 +36,8 @@ class _ClusterRight(Cluster):
     def apply(self, trie: NondeterministicTrie[str, str], translation: str, current_left: "int | None", current_right: "int | None"):
         if current_right is None: return
 
-        if self.initial_state.right_consonant_src_node is not None:
-            trie.link_chain(self.initial_state.right_consonant_src_node, current_right, self.stroke.keys(), TransitionCostInfo(amphitheory.spec.TransitionCosts.CLUSTER, translation))
+        if len(self.initial_state.right_consonant_src_nodes) > 0:
+            trie.link_chain(self.initial_state.right_consonant_src_nodes[0], current_right, self.stroke.keys(), TransitionCostInfo(amphitheory.spec.TransitionCosts.CLUSTER, translation))
 
         if self.initial_state.is_first_consonant:
             allow_elide_previous_vowel_using_first_right_consonant(self.initial_state, self.stroke, current_right, amphitheory.spec.TransitionCosts.CLUSTER)
