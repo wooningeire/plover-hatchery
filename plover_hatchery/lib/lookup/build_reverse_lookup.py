@@ -1,7 +1,7 @@
 from plover.steno import Stroke
 import plover.log
 
-from ..theory.theory import amphitheory
+from ..theory_defaults.amphitheory import amphitheory
 from ..util.Trie import NondeterministicTrie
 from ..util.config import TRIE_STROKE_BOUNDARY_KEY, TRIE_LINKER_KEY
 

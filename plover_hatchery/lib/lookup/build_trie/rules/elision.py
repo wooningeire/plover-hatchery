@@ -1,7 +1,7 @@
 from plover.steno import Stroke
 
 from ....util.Trie import TransitionCostInfo
-from ....theory.theory import amphitheory
+from ....theory_defaults.amphitheory import amphitheory
 from ..state import EntryBuilderState
 
 def allow_elide_previous_vowel_using_first_left_consonant(state: EntryBuilderState, phoneme_substroke: Stroke, left_consonant_node: int, additional_cost=0, allow_boundary_elision=True):

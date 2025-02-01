@@ -4,7 +4,7 @@ import plover.log
 
 from ...util.Trie import TransitionCostInfo, NondeterministicTrie
 from ...util.config import TRIE_STROKE_BOUNDARY_KEY, TRIE_LINKER_KEY
-from ...theory.theory import amphitheory
+from ...theory_defaults.amphitheory import amphitheory
 
 from .state import EntryBuilderState, OutlineSounds
 from .find_clusters import Cluster, handle_clusters

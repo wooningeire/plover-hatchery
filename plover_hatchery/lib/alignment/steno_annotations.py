@@ -4,7 +4,7 @@ from typing import Generic, TypeVar, Iterable
 from plover.steno import Stroke
 
 from ..sophone.Sophone import Sophone
-from ..theory.default import lapwing
+from ..theory_defaults.lapwing import lapwing
 
 @dataclass(frozen=True)
 class AsteriskableKey:

@@ -4,7 +4,7 @@ from plover.steno import Stroke
 
 from ..sophone.Sophone import vowel_phonemes
 from ..sopheme import Sopheme, Keysymbol, Sound
-from ..theory.theory import amphitheory
+from ..theory_defaults.amphitheory import amphitheory
 from .build_trie.state import ConsonantVowelGroup, OutlineSounds
 
 # def get_outline_phonemes(outline: Iterable[Stroke]):

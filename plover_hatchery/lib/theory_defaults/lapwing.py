@@ -2,8 +2,7 @@ from abc import ABC
 
 from plover.steno import Stroke
 
-from .spec import TheorySpec
-from .service import TheoryService
+from ..theory_factory import TheorySpec, TheoryService
 from ..sophone.Sophone import Sophone
 
 @TheoryService.theory

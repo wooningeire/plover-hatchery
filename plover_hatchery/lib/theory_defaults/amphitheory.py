@@ -2,11 +2,8 @@ from abc import ABC
 
 from plover.steno import Stroke
 
-from .spec import TheorySpec
-from .service import TheoryService
-
+from ..theory_factory import TheorySpec, TheoryService
 from ..sophone.Sophone import Sophone
-from ..sopheme import Sound, Sopheme, Keysymbol
 
 @TheoryService.theory
 class amphitheory(TheorySpec, ABC):
