@@ -5,10 +5,16 @@ import plover.log
 
 from ..trie import NondeterministicTrie
 from ..sopheme import Sopheme
-from ..build_trie import add_entry
 from .build_lookup import create_lookup_for
 from .build_reverse_lookup import create_reverse_lookup_for
 from .get_sophemes import get_sopheme_sounds
+
+
+
+from ..pipes.SoundsEnumerator import SoundsEnumerator
+
+enumerator = SoundsEnumerator()
+
 
 def build_lookup_json(mappings: dict[str, str]):
     trie: NondeterministicTrie[str, str] = NondeterministicTrie()
@@ -34,7 +40,7 @@ def build_lookup_hatchery(file: TextIO):
             sophemes = tuple(Sopheme.parse_seq(line.strip()))
 
             try:
-                add_entry(trie, get_sopheme_sounds(sophemes), Sopheme.get_translation(sophemes))
+                enumerator.execute(trie, get_sopheme_sounds(sophemes), Sopheme.get_translation(sophemes))
             except Exception as e:
                 # import traceback
                 # print(f"failed to add {line.strip()}: {e} ({''.join(traceback.format_tb(e.__traceback__))})")
