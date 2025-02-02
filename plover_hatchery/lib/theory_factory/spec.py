@@ -94,7 +94,6 @@ class TheorySpec(ABC):
     PHONEMES_TO_CHORDS_RIGHT_ALT: dict[Sophone, Stroke]
 
     LINKER_CHORD: Stroke
-    INITIAL_VOWEL_CHORD: "Stroke | None"
 
     CYCLER_STROKE: Stroke
     # CYCLER_STROKE_BACKWARD = Stroke.from_steno("+*")

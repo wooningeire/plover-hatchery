@@ -2,13 +2,20 @@ from ..trie import NondeterministicTrie, TransitionCostInfo
 from ..config import TRIE_STROKE_BOUNDARY_KEY, TRIE_LINKER_KEY
 from ..theory_defaults.amphitheory import amphitheory
 from .SoundsEnumerator import SoundsEnumerator
-from .state import  EntryBuilderState, OutlineSounds, ConsonantVowelGroup
-from .find_clusters import Cluster
+from .state import EntryBuilderState, OutlineSounds, ConsonantVowelGroup
 from .find_clusters import Cluster, handle_clusters
 from .rules.left_consonants import add_left_consonant
 from .rules.right_consonants import add_right_consonant
+from .Hook import Hook
+
+class ManageStateHooks:
+    def __init__(self):
+        self.complete_nonfinal_group: Hook[EntryBuilderState, ConsonantVowelGroup] = Hook()
 
 def use_manage_state(enumerator: SoundsEnumerator):
+    hooks = ManageStateHooks()
+
+
     state: EntryBuilderState 
 
     vowels_src_node: "int | None"
@@ -86,10 +93,10 @@ def use_manage_state(enumerator: SoundsEnumerator):
         state.right_consonant_src_nodes = (postvowels_node,)
         state.left_consonant_src_nodes = (state.trie.get_first_dst_node_else_create(postvowels_node, TRIE_STROKE_BOUNDARY_KEY, TransitionCostInfo(0, state.translation)),)
 
-        if amphitheory.spec.INITIAL_VOWEL_CHORD is not None and state.is_first_consonant_set and len(group.consonants) == 0:
-            state.trie.link_chain(state.trie.ROOT, state.left_consonant_src_nodes[0], amphitheory.spec.INITIAL_VOWEL_CHORD.keys(), TransitionCostInfo(0, state.translation))
-
         state.prev_left_consonant_nodes = ()
+
+
+        hooks.complete_nonfinal_group.emit(state, group)
 
     
     @enumerator.begin_final_group.listen
@@ -120,3 +127,6 @@ def use_manage_state(enumerator: SoundsEnumerator):
             return
         
         state.trie.set_translation(state.right_consonant_src_nodes[0], state.translation)
+
+
+    return hooks

@@ -1,9 +1,10 @@
-from ..pipes import SoundsEnumerator, use_manage_state
-
+from ..pipes import *
 
 enumerator = SoundsEnumerator()
 
-use_manage_state(enumerator)
+state_management = use_manage_state(enumerator)
+
+use_initial_vowel_chord(state_management, "@")
 
 
 
