@@ -1,8 +1,11 @@
 from typing import NamedTuple
 from dataclasses import dataclass, field
+import dataclasses
 
 from ..trie import NondeterministicTrie
 from ..sopheme.Sound import Sound
+
+from ..pipes import LeftSquishElision, BoundaryElision
 
 class ConsonantVowelGroup(NamedTuple):
     consonants: tuple[Sound, ...]
@@ -105,26 +108,32 @@ class EntryBuilderState:
     phonemes: OutlineSounds
     translation: str
     
-    left_consonant_src_nodes: list[int] = field(default_factory=lambda: [])
+    left_consonant_src_nodes: tuple[int, ...] = ()
     """The node from which the next left consonant chord will be attached"""
-    right_consonant_src_nodes: list[int] = field(default_factory=lambda: [])
+    right_consonant_src_nodes: tuple[int, ...] = ()
     """The node from which the next right consonant chord will be attached"""
-    last_left_alt_consonant_nodes: list[int] = field(default_factory=lambda: [])
+    last_left_alt_consonant_nodes: tuple[int, ...] = ()
     """The latest node constructed by adding the alternate chord for a left consonant"""
-    last_right_alt_consonant_nodes: list[int] = field(default_factory=lambda: [])
+    last_right_alt_consonant_nodes: tuple[int, ...] = ()
     """The latest node constructed by adding the alternate chord for a right consonant"""
 
 
-    prev_left_consonant_nodes: list[int] = field(default_factory=lambda: [])
+    prev_left_consonant_nodes: tuple[int, ...] = ()
     """The node constructed by adding the previous left consonant; can be empty if the previous phoneme was a vowel"""
 
 
-    left_elision_squish_src_nodes: list[int] = field(default_factory=lambda: [])
-    """The latest node which the previous vowel set was attached to"""
-    right_elision_squish_src_nodes: list[int] = field(default_factory=lambda: [])
+    left_squish_elision: LeftSquishElision = field(default_factory=LeftSquishElision)
+    # """The latest node which the previous vowel set was attached to"""
+    right_elision_squish_src_nodes: tuple[int, ...] = ()
     """The latest node which the stroke boundary between a right consonant and a left consonant was attached to"""
-    left_elision_boundary_src_nodes: list[int] = field(default_factory=lambda: [])
-    """The latest node constructed by adding the stroke bunnedry between a right consonant and left consonant"""
+    boundary_elision: BoundaryElision = field(default_factory=BoundaryElision)
+    # """The latest node constructed by adding the stroke bunnedry between a right consonant and left consonant"""
+
+    def clone(self):
+        clone = dataclasses.replace(self)
+        clone.left_squish_elision = self.left_squish_elision.clone()
+        clone.boundary_elision = self.boundary_elision.clone()
+        return clone
 
 
     group_index: int = -1

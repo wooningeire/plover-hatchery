@@ -6,7 +6,7 @@ from typing import Any
 from plover.steno import Stroke
 
 from .state import EntryBuilderState, OutlineSounds
-from .rules.elision import allow_elide_previous_vowel_using_first_left_consonant, allow_elide_previous_vowel_using_first_right_consonant
+from .rules.elision import allow_elide_previous_vowel_using_first_right_consonant
 from ..trie import NondeterministicTrie, TransitionCostInfo, ReadonlyTrie
 from ..theory_defaults.amphitheory import amphitheory
 from ..sophone.Sophone import Sophone, vowel_phonemes
@@ -28,8 +28,10 @@ class _ClusterLeft(Cluster):
         if len(self.initial_state.left_consonant_src_nodes) > 0:
             trie.link_chain(self.initial_state.left_consonant_src_nodes[0], current_left, self.stroke.keys(), TransitionCostInfo(amphitheory.spec.TransitionCosts.CLUSTER, translation))
 
+        state = self.initial_state
         if self.initial_state.can_elide_prev_vowel_left:
-            allow_elide_previous_vowel_using_first_left_consonant(self.initial_state, self.stroke, current_left, amphitheory.spec.TransitionCosts.CLUSTER)
+            state.left_squish_elision.execute(state.trie, state.translation, current_left, self.stroke, amphitheory.spec.TransitionCosts.CLUSTER)
+            state.boundary_elision.execute(state.trie, state.translation, current_left, self.stroke, amphitheory.spec.TransitionCosts.CLUSTER)
 
 @dataclass(frozen=True)
 class _ClusterRight(Cluster):
@@ -109,9 +111,9 @@ def _get_clusters_from_node(
     if stroke is None: return None
 
     if len(stroke & amphitheory.spec.LEFT_BANK_CONSONANTS_SUBSTROKE) > 0:
-        return current_index, _ClusterLeft(stroke, dataclasses.replace(state))
+        return current_index, _ClusterLeft(stroke, state.clone())
     else:
-        return current_index, _ClusterRight(stroke, dataclasses.replace(state))
+        return current_index, _ClusterRight(stroke, state.clone())
     
 
 def handle_clusters(

@@ -4,7 +4,6 @@ from ...trie import TransitionCostInfo
 from ...theory_defaults.amphitheory import amphitheory
 
 from ..state import EntryBuilderState
-from .elision import allow_elide_previous_vowel_using_first_left_consonant
 
 def add_left_consonant(state: EntryBuilderState):
     if len(state.left_consonant_src_nodes) == 0:
@@ -15,8 +14,8 @@ def add_left_consonant(state: EntryBuilderState):
     left_stroke_keys = left_stroke.keys()
 
     left_consonant_node = state.trie.get_first_dst_node_else_create_chain(state.left_consonant_src_nodes[0], left_stroke_keys, TransitionCostInfo(0, state.translation))
-    if len(state.left_elision_boundary_src_nodes) > 0:
-        state.trie.link_chain(state.left_elision_boundary_src_nodes[0], left_consonant_node, left_stroke_keys, TransitionCostInfo(0, state.translation))
+    # if len(state.left_elision_boundary_src_nodes) > 0:
+    #     state.trie.link_chain(state.left_elision_boundary_src_nodes[0], left_consonant_node, left_stroke_keys, TransitionCostInfo(0, state.translation))
 
     if len(state.last_left_alt_consonant_nodes) > 0:
         state.trie.link_chain(
@@ -25,7 +24,8 @@ def add_left_consonant(state: EntryBuilderState):
         )
 
     if state.can_elide_prev_vowel_left:
-        allow_elide_previous_vowel_using_first_left_consonant(state, left_stroke, left_consonant_node)
+        state.left_squish_elision.execute(state.trie, state.translation, left_consonant_node, left_stroke, 0)
+        state.boundary_elision.execute(state.trie, state.translation, left_consonant_node, left_stroke, 0)
         
     left_alt_consonant_node = _add_left_alt_consonant(state, left_consonant_node)
 
@@ -63,8 +63,8 @@ def _add_left_alt_consonant(state: EntryBuilderState, left_consonant_node: int):
     left_alt_stroke_keys = left_alt_stroke.keys()
 
     left_alt_consonant_node = state.trie.get_first_dst_node_else_create_chain(state.left_consonant_src_nodes[0], left_alt_stroke_keys, TransitionCostInfo(amphitheory.spec.TransitionCosts.ALT_CONSONANT, state.translation))
-    if len(state.left_elision_boundary_src_nodes) > 0:
-        state.trie.link_chain(state.left_elision_boundary_src_nodes[0], left_alt_consonant_node, left_alt_stroke_keys, TransitionCostInfo(0, state.translation))
+    # if len(state.left_elision_boundary_src_nodes) > 0:
+    #     state.trie.link_chain(state.left_elision_boundary_src_nodes[0], left_alt_consonant_node, left_alt_stroke_keys, TransitionCostInfo(0, state.translation))
 
     if len(state.last_left_alt_consonant_nodes) > 0:
         state.trie.link_chain(
@@ -74,7 +74,9 @@ def _add_left_alt_consonant(state: EntryBuilderState, left_consonant_node: int):
 
     if state.can_elide_prev_vowel_left:
         # uses original left consonant node because it is ok to continue onto the vowel if the previous consonant is present
-        allow_elide_previous_vowel_using_first_left_consonant(state, left_alt_stroke, left_consonant_node, amphitheory.spec.TransitionCosts.ALT_CONSONANT, False)
-        allow_elide_previous_vowel_using_first_left_consonant(state, left_alt_stroke, left_alt_consonant_node, amphitheory.spec.TransitionCosts.ALT_CONSONANT)
+        state.left_squish_elision.execute(state.trie, state.translation, left_consonant_node, left_alt_stroke, amphitheory.spec.TransitionCosts.ALT_CONSONANT)
+
+        state.left_squish_elision.execute(state.trie, state.translation, left_alt_consonant_node, left_alt_stroke, amphitheory.spec.TransitionCosts.ALT_CONSONANT)
+        state.boundary_elision.execute(state.trie, state.translation, left_alt_consonant_node, left_alt_stroke, amphitheory.spec.TransitionCosts.ALT_CONSONANT)
 
     return left_alt_consonant_node
