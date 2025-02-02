@@ -2,10 +2,15 @@ from ..pipes import *
 
 enumerator = SoundsEnumerator()
 
-state_management = use_manage_state(enumerator)
+manage_state = use_manage_state(enumerator)
 
-use_initial_vowel_chord(state_management, "@")
-use_consonant_clusters(state_management, {
+
+left_chords = use_left_chords(manage_state, {})
+
+use_left_alt_chords(manage_state, left_chords, {})
+
+
+use_consonant_clusters(manage_state, left_chords, {
     "D S": "STK",
     "D S T": "STK",
     "D S K": "STK",
@@ -32,7 +37,7 @@ use_consonant_clusters(state_management, {
     "M P": "*PL",
     "T L": "-LT",
 })
-use_vowel_clusters(state_management, {
+use_vowel_clusters(manage_state, left_chords, {
     ". N T": "SPW",
     ". N D": "SPW",
     ". M P": "KPW",
@@ -51,6 +56,8 @@ use_vowel_clusters(state_management, {
     ". M": "PH",
 })
 
+
+use_initial_vowel_chord(manage_state, "@")
 
 
 # _keys = use_keys("@STKPWHRAO*EUFRPBLGTSDZ")

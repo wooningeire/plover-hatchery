@@ -1,15 +1,17 @@
 from plover.steno import Stroke
 
 from ...sophone.Sophone import Sophone, vowel_phonemes
-from ...trie import Trie, ReadonlyTrie
+from ...trie import Trie, ReadonlyTrie, NondeterministicTrie
 from ...theory_defaults.amphitheory import amphitheory
 
 from ..use_manage_state import ManageStateHooks
+from ..use_left_chords import LeftChordsHooks
 from ..state import EntryBuilderState, ConsonantVowelGroup, OutlineSounds
 
 from .find_clusters import Cluster, handle_clusters, get_clusters_from_node, check_found_clusters
 
-def use_vowel_clusters(manage_state: ManageStateHooks, clusters: dict[str, str]):
+
+def use_vowel_clusters(manage_state: ManageStateHooks, left_chords: LeftChordsHooks, clusters: dict[str, str]):
     def build_vowel_clusters_trie() -> ReadonlyTrie[Sophone, Stroke]:
         trie: Trie[Sophone, Stroke] = Trie()
         for phonemes, steno in clusters.items():
@@ -62,7 +64,7 @@ def use_vowel_clusters(manage_state: ManageStateHooks, clusters: dict[str, str])
 
 
     @manage_state.begin.listen
-    def _():
+    def _(trie: NondeterministicTrie[str, str]):
         nonlocal upcoming_clusters
 
         upcoming_clusters = {}
@@ -77,13 +79,14 @@ def use_vowel_clusters(manage_state: ManageStateHooks, clusters: dict[str, str])
             state,
         )
     
-    @manage_state.complete_nonfinal_group.listen
-    def _(state: EntryBuilderState, group: ConsonantVowelGroup, new_stroke_node: int):
+    
+    @left_chords.complete_nonfinal_group.listen
+    def _(state: EntryBuilderState, left_src_nodes: tuple[int, ...]):
         handle_clusters(upcoming_clusters, state, find_vowel_clusters)
 
         check_found_clusters(
             upcoming_clusters,
-            state.left_consonant_src_nodes[0],
+            left_src_nodes[0],
             state.right_consonant_src_nodes[0] if len(state.right_consonant_src_nodes) > 0 else None,
             state,
         )

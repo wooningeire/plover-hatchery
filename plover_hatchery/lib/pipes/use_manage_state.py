@@ -3,15 +3,17 @@ from ..config import TRIE_STROKE_BOUNDARY_KEY, TRIE_LINKER_KEY
 from ..theory_defaults.amphitheory import amphitheory
 from .SoundsEnumerator import SoundsEnumerator
 from .state import EntryBuilderState, OutlineSounds, ConsonantVowelGroup
-from .rules.left_consonants import add_left_consonant
 from .rules.right_consonants import add_right_consonant
 from .Hook import Hook
 
 class ManageStateHooks:
     def __init__(self):
-        self.begin: Hook[()] = Hook()
+        self.begin: Hook[NondeterministicTrie[str, str]] = Hook()
+        self.begin_consonant: Hook[EntryBuilderState] = Hook()
+        self.begin_nonfinal_group: Hook[EntryBuilderState, ConsonantVowelGroup] = Hook()
         self.complete_nonfinal_group: Hook[EntryBuilderState, ConsonantVowelGroup, int] = Hook()
         self.complete_consonant: "Hook[EntryBuilderState, int | None, int | None]" = Hook()
+        self.complete_consonant_2: "Hook[EntryBuilderState, int | None, int | None]" = Hook()
 
 
 def use_manage_state(enumerator: SoundsEnumerator):
@@ -30,9 +32,10 @@ def use_manage_state(enumerator: SoundsEnumerator):
         nonlocal state
 
         state = EntryBuilderState(trie, sounds, translation)
+
         state.left_consonant_src_nodes = (trie.ROOT,)
 
-        hooks.begin.emit()
+        hooks.begin.emit(trie)
 
 
     @enumerator.begin_nonfinal_group.listen
@@ -40,6 +43,10 @@ def use_manage_state(enumerator: SoundsEnumerator):
         nonlocal vowels_src_node
 
         state.group_index = group_index
+
+
+        hooks.begin_nonfinal_group.emit(state, group)
+
 
         vowels_src_node = None
         if len(group.consonants) == 0 and not state.is_first_consonant_set:
@@ -55,23 +62,22 @@ def use_manage_state(enumerator: SoundsEnumerator):
         state.phoneme_index = consonant_index
 
 
-        left_consonant_node, left_alt_consonant_node = add_left_consonant(state)
+        hooks.begin_consonant.emit(state)
 
 
         right_consonant_node = state.right_consonant_src_nodes[0] if len(state.right_consonant_src_nodes) > 0 else None
         right_alt_consonant_node = state.last_right_alt_consonant_nodes[0] if len(state.last_right_alt_consonant_nodes) > 0 else None
         if not state.is_first_consonant_set:
-            right_consonant_node, right_alt_consonant_node, rtl_stroke_boundary_adjacent_nodes = add_right_consonant(state, left_consonant_node)
+            right_consonant_node, right_alt_consonant_node, rtl_stroke_boundary_adjacent_nodes = add_right_consonant(state, state.newest_left_consonant_node)
             if rtl_stroke_boundary_adjacent_nodes is not None:
                 state.right_squish_elision.set_src_nodes((rtl_stroke_boundary_adjacent_nodes[0],) if rtl_stroke_boundary_adjacent_nodes[0] is not None else ())
                 state.boundary_elision.set_src_nodes((rtl_stroke_boundary_adjacent_nodes[1],))
 
 
-        hooks.complete_consonant.emit(state, left_consonant_node, right_consonant_node)
+        hooks.complete_consonant.emit(state, state.newest_left_consonant_node, right_consonant_node)
+        hooks.complete_consonant_2.emit(state, state.newest_left_consonant_node, right_consonant_node)
 
 
-        state.left_consonant_src_nodes = state.prev_left_consonant_nodes = (left_consonant_node,)
-        state.last_left_alt_consonant_nodes = (left_alt_consonant_node,) if left_alt_consonant_node is not None else ()
         state.right_consonant_src_nodes = (right_consonant_node,) if right_consonant_node is not None else ()
         state.last_right_alt_consonant_nodes = (right_alt_consonant_node,) if right_alt_consonant_node is not None else ()
 
@@ -97,9 +103,6 @@ def use_manage_state(enumerator: SoundsEnumerator):
 
 
         state.right_consonant_src_nodes = (postvowels_node,)
-        state.left_consonant_src_nodes = (new_stroke_node,)
-
-        state.prev_left_consonant_nodes = ()
 
     
     @enumerator.begin_final_group.listen
@@ -121,8 +124,6 @@ def use_manage_state(enumerator: SoundsEnumerator):
         state.right_consonant_src_nodes = (right_consonant_node,) if right_consonant_node is not None else ()
         state.last_right_alt_consonant_nodes = (right_alt_consonant_node,) if right_alt_consonant_node is not None else ()
 
-
-        state.left_consonant_src_nodes = ()
 
 
     @enumerator.complete.listen
