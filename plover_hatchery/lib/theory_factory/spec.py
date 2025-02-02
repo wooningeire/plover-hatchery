@@ -100,8 +100,6 @@ class TheorySpec(ABC):
 
     PROHIBITED_STROKES: set[Stroke]
 
-    CLUSTERS: dict[tuple[Sophone, ...], Stroke]
-
     VOWEL_CONSCIOUS_CLUSTERS: "dict[tuple[Sophone | Stroke, ...], Stroke]"
 
 

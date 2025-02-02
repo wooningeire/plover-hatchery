@@ -5,6 +5,33 @@ enumerator = SoundsEnumerator()
 state_management = use_manage_state(enumerator)
 
 use_initial_vowel_chord(state_management, "@")
+use_clusters(state_management, {
+    "D S": "STK",
+    "D S T": "STK",
+    "D S K": "STK",
+    "K N": "K",
+    "K M P": "KP",
+    "K M B": "KPW",
+    "L F": "-FL",
+    "L V": "-FL",
+    "G L": "-LG",
+    "L J": "-LG",
+    "K L": "*LG",
+    "N J": "-PBG",
+    "M J": "-PLG",
+    "R F": "*FR",
+    "R S": "*FR",
+    "R M": "*FR",
+    "R V": "-FRB",
+    "L CH": "-LG",
+    "R CH": "-FRPB",
+    "N CH": "-FRPBLG",
+    "L SH": "*RB",
+    "R SH": "*RB",
+    "N SH": "*RB",
+    "M P": "*PL",
+    "T L": "-LT",
+})
 
 
 

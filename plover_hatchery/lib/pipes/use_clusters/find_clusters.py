@@ -1,14 +1,13 @@
 import dataclasses
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Callable, Iterable
 
 from plover.steno import Stroke
 
-from .state import EntryBuilderState, OutlineSounds
-from ..trie import NondeterministicTrie, TransitionCostInfo, ReadonlyTrie
-from ..theory_defaults.amphitheory import amphitheory
-from ..sophone.Sophone import Sophone, vowel_phonemes
+from ..state import EntryBuilderState, OutlineSounds
+from ...trie import NondeterministicTrie, TransitionCostInfo, ReadonlyTrie
+from ...theory_defaults.amphitheory import amphitheory
 
 @dataclass(frozen=True)
 class Cluster(ABC):
@@ -54,55 +53,7 @@ class _ClusterRight(Cluster):
         #         trie, cluster_stroke, right_consonant_f_node, origin.pre_rtl_stroke_boundary, translation, TransitionCosts.CLUSTER + TransitionCosts.F_CONSONANT,
         #     )
 
-def _find_clusters(
-    sounds: OutlineSounds,
-    start_group_index: int,
-    start_phoneme_index: int,
-
-    state: EntryBuilderState,
-):
-    current_head = amphitheory.clusters_trie.ROOT
-    current_index = (start_group_index, start_phoneme_index)
-    while current_head is not None and current_index is not None:
-        current_head = amphitheory.clusters_trie.get_dst_node(current_head, amphitheory.sound_sophone(sounds.get_consonant(*current_index)))
-
-        if current_head is None: return
-
-        if (result := _get_clusters_from_node(current_head, current_index, amphitheory.clusters_trie, state)) is not None:
-            yield result
-
-        current_index = sounds.increment_consonant_index(*current_index)
-
-def _find_vowel_clusters(
-    sounds: OutlineSounds,
-    start_group_index: int,
-    start_phoneme_index: int,
-
-    state: EntryBuilderState,
-):
-    current_nodes = {amphitheory.vowel_clusters_trie.ROOT}
-    current_index = (start_group_index, start_phoneme_index)
-    while current_nodes is not None and current_index is not None:
-        sound = sounds[current_index]
-        current_nodes = {
-            node
-            for current_node in current_nodes
-            for node in (amphitheory.vowel_clusters_trie.get_dst_node(current_node, amphitheory.sound_sophone(sound)),)
-                    + ((amphitheory.vowel_clusters_trie.get_dst_node(current_node, Sophone.ANY_VOWEL),) if amphitheory.sound_sophone(sound) in vowel_phonemes else ())
-            if node is not None
-        }
-
-        if len(current_nodes) == 0: return
-
-        for current_node in current_nodes:
-            if (result := _get_clusters_from_node(current_node, current_index, amphitheory.vowel_clusters_trie, state)) is None:
-                continue
-
-            yield result
-
-        current_index = sounds.increment_index(*current_index)
-
-def _get_clusters_from_node(
+def get_clusters_from_node(
     node: int,
     current_index: tuple[int, int],
     clusters_trie: ReadonlyTrie[Any, Stroke],
@@ -125,9 +76,9 @@ def handle_clusters(
     
     state: EntryBuilderState,
 
-    consider_vowels: bool,
+    find_clusters: "Callable[[OutlineSounds, int, int, EntryBuilderState], Iterable[tuple[tuple[int, int], Cluster]]]",
 ):
-    for index, cluster in (_find_vowel_clusters if consider_vowels else _find_clusters)(state.phonemes, state.group_index, state.phoneme_index, state):
+    for index, cluster in find_clusters(state.phonemes, state.group_index, state.phoneme_index, state):
         if index not in upcoming_clusters:
             upcoming_clusters[index] = [cluster]
         else:

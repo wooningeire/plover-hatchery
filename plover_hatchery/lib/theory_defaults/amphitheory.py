@@ -135,37 +135,6 @@ class amphitheory(TheorySpec, ABC):
         for steno in ("AEU",)
     }
 
-    CLUSTERS: dict[tuple[Sophone, ...], Stroke] = {
-        phonemes: Stroke.from_steno(steno)
-        for phonemes, steno in {
-            (Sophone.D, Sophone.S): "STK",
-            (Sophone.D, Sophone.S, Sophone.T): "STK",
-            (Sophone.D, Sophone.S, Sophone.K): "STK",
-            (Sophone.K, Sophone.N): "K",
-            (Sophone.K, Sophone.M, Sophone.P): "KP",
-            (Sophone.K, Sophone.M, Sophone.B): "KPW",
-            (Sophone.L, Sophone.F): "-FL",
-            (Sophone.L, Sophone.V): "-FL",
-            (Sophone.G, Sophone.L): "-LG",
-            (Sophone.L, Sophone.J): "-LG",
-            (Sophone.K, Sophone.L): "*LG",
-            (Sophone.N, Sophone.J): "-PBG",
-            (Sophone.M, Sophone.J): "-PLG",
-            (Sophone.R, Sophone.F): "*FR",
-            (Sophone.R, Sophone.S): "*FR",
-            (Sophone.R, Sophone.M): "*FR",
-            (Sophone.R, Sophone.V): "-FRB",
-            (Sophone.L, Sophone.CH): "-LG",
-            (Sophone.R, Sophone.CH): "-FRPB",
-            (Sophone.N, Sophone.CH): "-FRPBLG",
-            (Sophone.L, Sophone.SH): "*RB",
-            (Sophone.R, Sophone.SH): "*RB",
-            (Sophone.N, Sophone.SH): "*RB",
-            (Sophone.M, Sophone.P): "*PL",
-            (Sophone.T, Sophone.L): "-LT",
-        }.items()
-    }
-
     VOWEL_CONSCIOUS_CLUSTERS: "dict[tuple[Sophone | Stroke, ...], Stroke]" = {
         tuple(
             Stroke.from_steno(phoneme) if isinstance(phoneme, str) else phoneme
