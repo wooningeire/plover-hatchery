@@ -71,8 +71,6 @@ def get_clusters_from_node(
 
 def handle_clusters(
     upcoming_clusters: dict[tuple[int, int], list[Cluster]],
-    left_consonant_node: "int | None",
-    right_consonant_node: "int | None",
     
     state: EntryBuilderState,
 
@@ -84,6 +82,15 @@ def handle_clusters(
         else:
             upcoming_clusters[index].append(cluster)
 
-    if (state.group_index, state.phoneme_index) in upcoming_clusters:
-        for cluster in upcoming_clusters[state.group_index, state.phoneme_index]:
-            cluster.apply(state.trie, state.translation, left_consonant_node, right_consonant_node)
+
+def check_found_clusters(
+    upcoming_clusters: dict[tuple[int, int], list[Cluster]],
+    left_consonant_node: "int | None",
+    right_consonant_node: "int | None",
+    
+    state: EntryBuilderState,
+):
+    if (state.group_index, state.phoneme_index) not in upcoming_clusters: return
+    
+    for cluster in upcoming_clusters[state.group_index, state.phoneme_index]:
+        cluster.apply(state.trie, state.translation, left_consonant_node, right_consonant_node)

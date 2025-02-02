@@ -7,7 +7,7 @@ from ...theory_defaults.amphitheory import amphitheory
 from ..use_manage_state import ManageStateHooks
 from ..state import EntryBuilderState, ConsonantVowelGroup, OutlineSounds
 
-from .find_clusters import Cluster, handle_clusters, get_clusters_from_node
+from .find_clusters import Cluster, handle_clusters, get_clusters_from_node, check_found_clusters
 
 def use_vowel_clusters(manage_state: ManageStateHooks, clusters: dict[str, str]):
     def build_vowel_clusters_trie() -> ReadonlyTrie[Sophone, Stroke]:
@@ -67,13 +67,23 @@ def use_vowel_clusters(manage_state: ManageStateHooks, clusters: dict[str, str])
 
         upcoming_clusters = {}
 
+
+    @manage_state.complete_consonant.listen
+    def _(state: EntryBuilderState, left_node: "int | None", right_node: "int | None"):
+        check_found_clusters(
+            upcoming_clusters,
+            left_node,
+            right_node,
+            state,
+        )
     
     @manage_state.complete_nonfinal_group.listen
     def _(state: EntryBuilderState, group: ConsonantVowelGroup, new_stroke_node: int):
-        handle_clusters(
+        handle_clusters(upcoming_clusters, state, find_vowel_clusters)
+
+        check_found_clusters(
             upcoming_clusters,
             state.left_consonant_src_nodes[0],
             state.right_consonant_src_nodes[0] if len(state.right_consonant_src_nodes) > 0 else None,
             state,
-            find_vowel_clusters,
         )
