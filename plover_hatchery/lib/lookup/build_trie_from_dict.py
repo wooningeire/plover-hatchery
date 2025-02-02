@@ -5,15 +5,11 @@ import plover.log
 
 from ..trie import NondeterministicTrie
 from ..sopheme import Sopheme
+from ..theory_defaults.amphitheory_2 import enumerator
 from .build_lookup import create_lookup_for
 from .build_reverse_lookup import create_reverse_lookup_for
 from .get_sophemes import get_sopheme_sounds
 
-
-
-from ..pipes.SoundsEnumerator import SoundsEnumerator
-
-enumerator = SoundsEnumerator()
 
 
 def build_lookup_json(mappings: dict[str, str]):
