@@ -31,16 +31,16 @@ def use_left_alt_chords(manage_state: ManageStateHooks, left_chords: LeftChordsH
 
 
     @left_chords.node_created.listen
-    def _(state: EntryBuilderState, left_node: int, left_stroke: Stroke, src_nodes: tuple[int, ...]):
+    def _(state: EntryBuilderState, left_node: int, left_strokes: tuple[Stroke, ...], src_nodes: tuple[int, ...]):
         nonlocal newest_left_alt_node
 
 
-        if len(last_left_alt_nodes) == 0: return
-
-        state.trie.link_chain(
-            last_left_alt_nodes[0], left_node, left_stroke.keys(),
-            TransitionCostInfo(amphitheory.spec.TransitionCosts.ALT_CONSONANT + (amphitheory.spec.TransitionCosts.VOWEL_ELISION if state.is_first_consonant else 0), state.translation)
-        )
+        if len(last_left_alt_nodes) > 0:
+            for left_stroke in left_strokes:
+                state.trie.link_chain(
+                    last_left_alt_nodes[0], left_node, left_stroke.keys(),
+                    TransitionCostInfo(amphitheory.spec.TransitionCosts.ALT_CONSONANT + (amphitheory.spec.TransitionCosts.VOWEL_ELISION if state.is_first_consonant else 0), state.translation)
+                )
 
 
 
@@ -50,25 +50,6 @@ def use_left_alt_chords(manage_state: ManageStateHooks, left_chords: LeftChordsH
             return
         
         left_alt_stroke = chords[sophone]
-        left_stroke = next(amphitheory.left_consonant_strokes(state.consonant))
-
-
-        should_use_alt_from_prev = (
-            state.last_consonant is None
-            or state.last_consonant.keysymbol in amphitheory.spec.PHONEMES_TO_CHORDS_RIGHT and (
-                amphitheory.can_add_stroke_on(amphitheory.spec.PHONEMES_TO_CHORDS_RIGHT[amphitheory.sound_sophone(state.last_consonant)], left_stroke)
-                or not amphitheory.can_add_stroke_on(amphitheory.spec.PHONEMES_TO_CHORDS_RIGHT[amphitheory.sound_sophone(state.last_consonant)], left_alt_stroke)
-            )
-        )
-        should_use_alt_from_next = (
-            state.next_consonant is None
-            or state.next_consonant.keysymbol in amphitheory.spec.PHONEMES_TO_CHORDS_RIGHT and (
-                amphitheory.can_add_stroke_on(left_stroke, amphitheory.spec.PHONEMES_TO_CHORDS_RIGHT[amphitheory.sound_sophone(state.next_consonant)])
-                or not amphitheory.can_add_stroke_on(left_alt_stroke, amphitheory.spec.PHONEMES_TO_CHORDS_RIGHT[amphitheory.sound_sophone(state.next_consonant)])
-            )
-        )
-        if should_use_alt_from_prev and should_use_alt_from_next:
-            return
 
 
         left_alt_stroke_keys = left_alt_stroke.keys()

@@ -7,7 +7,11 @@ manage_state = use_manage_state(enumerator)
 
 left_chords = use_left_chords(manage_state, {})
 
-use_left_alt_chords(manage_state, left_chords, {})
+use_left_alt_chords(manage_state, left_chords, {
+    "F": "W",
+    "V": "W",
+    "Z": "S*",
+})
 
 
 use_consonant_clusters(manage_state, left_chords, {
