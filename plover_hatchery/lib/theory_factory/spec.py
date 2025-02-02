@@ -100,9 +100,6 @@ class TheorySpec(ABC):
 
     PROHIBITED_STROKES: set[Stroke]
 
-    VOWEL_CONSCIOUS_CLUSTERS: "dict[tuple[Sophone | Stroke, ...], Stroke]"
-
-
     DIPHTHONG_TRANSITIONS_BY_FIRST_VOWEL: dict[Sophone, Sophone]
 
     class TransitionCosts(ABC):

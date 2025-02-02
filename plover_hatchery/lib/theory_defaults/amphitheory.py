@@ -135,32 +135,6 @@ class amphitheory(TheorySpec, ABC):
         for steno in ("AEU",)
     }
 
-    VOWEL_CONSCIOUS_CLUSTERS: "dict[tuple[Sophone | Stroke, ...], Stroke]" = {
-        tuple(
-            Stroke.from_steno(phoneme) if isinstance(phoneme, str) else phoneme
-            for phoneme in phonemes
-        ): Stroke.from_steno(steno)
-        for phonemes, steno in {
-            (Sophone.ANY_VOWEL, Sophone.N, Sophone.T): "SPW",
-            (Sophone.ANY_VOWEL, Sophone.N, Sophone.D): "SPW",
-            (Sophone.ANY_VOWEL, Sophone.M, Sophone.P): "KPW",
-            (Sophone.ANY_VOWEL, Sophone.M, Sophone.B): "KPW",
-            (Sophone.ANY_VOWEL, Sophone.N, Sophone.K): "SKPW",
-            (Sophone.ANY_VOWEL, Sophone.N, Sophone.G): "SKPW",
-            (Sophone.ANY_VOWEL, Sophone.N, Sophone.J): "SKPW",
-            (Sophone.E, Sophone.K, Sophone.S): "SKW",
-            (Sophone.E, Sophone.K, Sophone.S, Sophone.T): "STKW",
-            (Sophone.E, Sophone.K, Sophone.S, Sophone.K): "SKW",
-            (Sophone.E, Sophone.K, Sophone.S, Sophone.P): "SKPW",
-            (Sophone.ANY_VOWEL, Sophone.N): "TPH",
-            (Sophone.ANY_VOWEL, Sophone.N, Sophone.S): "STPH",
-            (Sophone.ANY_VOWEL, Sophone.N, Sophone.F): "TPW",
-            (Sophone.ANY_VOWEL, Sophone.N, Sophone.V): "TPW",
-            (Sophone.ANY_VOWEL, Sophone.M): "PH",
-        }.items()
-    }
-
-
     DIPHTHONG_TRANSITIONS_BY_FIRST_VOWEL: dict[Sophone, Sophone] = {
         prev_vowel_phoneme: phoneme
         for prev_vowel_phoneme, phoneme in {

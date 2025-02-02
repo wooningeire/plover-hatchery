@@ -1,1 +1,2 @@
-from .use_clusters import use_clusters
+from .use_consonant_clusters import use_consonant_clusters
+from .use_vowel_clusters import use_vowel_clusters

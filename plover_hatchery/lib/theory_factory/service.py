@@ -10,7 +10,6 @@ class TheoryService:
     def __init__(self, spec: type[TheorySpec]):
         self.spec = spec
 
-        self.vowel_clusters_trie = self.__build_vowel_clusters_trie()
         self.__split_consonant_phonemes = self.__build_consonants_splitter()
         self.chords_to_phonemes_vowels = self.__build_chords_to_phonemes_vowels()
 
@@ -19,16 +18,6 @@ class TheoryService:
         assert not (spec.LINKER_CHORD & ~spec.LEFT_BANK_CONSONANTS_SUBSTROKE), "Linker chord must only consist of starter keys"
 
         return TheoryService(spec)
-    
-    def __build_vowel_clusters_trie(self) -> ReadonlyTrie["Sophone | Stroke", Stroke]:
-        clusters_trie: "Trie[Sophone | Stroke, Stroke]" = Trie()
-        for phonemes, stroke in self.spec.VOWEL_CONSCIOUS_CLUSTERS.items():
-            current_head = clusters_trie.ROOT
-            for key in phonemes:
-                current_head = clusters_trie.get_dst_node_else_create(current_head, key)
-
-            clusters_trie.set_translation(current_head, stroke)
-        return clusters_trie.frozen()
     
     def __build_consonants_splitter(self):
         _CONSONANT_CHORDS: dict[Stroke, tuple[Sophone, ...]] = {
