@@ -1,2 +1,1 @@
-from .LeftSquishElision import LeftSquishElision
-from .BoundaryElision import BoundaryElision
+from .Elider import Elider

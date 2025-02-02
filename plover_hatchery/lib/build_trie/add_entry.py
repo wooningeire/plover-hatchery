@@ -37,8 +37,8 @@ def add_entry(trie: NondeterministicTrie[str, str], sounds: OutlineSounds, trans
             if not state.is_first_consonant_set:
                 right_consonant_node, right_alt_consonant_node, rtl_stroke_boundary_adjacent_nodes = add_right_consonant(state, left_consonant_node)
                 if rtl_stroke_boundary_adjacent_nodes is not None:
-                    state.right_elision_squish_src_nodes = (rtl_stroke_boundary_adjacent_nodes[0],) if rtl_stroke_boundary_adjacent_nodes[0] is not None else ()
-                    state.boundary_elision.set_nodes((rtl_stroke_boundary_adjacent_nodes[1],))
+                    state.right_squish_elision.set_src_nodes((rtl_stroke_boundary_adjacent_nodes[0],) if rtl_stroke_boundary_adjacent_nodes[0] is not None else ())
+                    state.boundary_elision.set_src_nodes((rtl_stroke_boundary_adjacent_nodes[1],))
 
             handle_clusters(upcoming_clusters, left_consonant_node, right_consonant_node, state, False)
 

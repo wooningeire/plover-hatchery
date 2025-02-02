@@ -8,7 +8,6 @@ from ...theory_defaults.amphitheory import amphitheory
 from ...sophone.Sophone import Sophone
 
 from ..state import EntryBuilderState
-from .elision import allow_elide_previous_vowel_using_first_right_consonant
 
 
 def add_right_consonant(state: EntryBuilderState, left_consonant_node: Optional[int]):
@@ -36,7 +35,7 @@ def add_right_consonant(state: EntryBuilderState, left_consonant_node: Optional[
         state.trie.link_chain(state.prev_left_consonant_nodes[0], right_consonant_node, right_stroke_keys, TransitionCostInfo(0, state.translation))
 
 
-    pre_rtl_stroke_boundary_node = state.right_elision_squish_src_nodes[0] if len(state.right_elision_squish_src_nodes) > 0 else None
+    pre_rtl_stroke_boundary_node = state.right_squish_elision.get_src_nodes()[0] if len(state.right_squish_elision.get_src_nodes()) > 0 else None
     rtl_stroke_boundary_node = None
 
     if left_consonant_node is not None and phoneme is not Sophone.DUMMY:
@@ -46,7 +45,7 @@ def add_right_consonant(state: EntryBuilderState, left_consonant_node: Optional[
         
 
     if state.is_first_consonant:
-        allow_elide_previous_vowel_using_first_right_consonant(state, right_stroke, right_consonant_node)
+        state.right_squish_elision.execute(state.trie, state.translation, right_consonant_node, right_stroke, 0)
 
 
     right_consonant_f_node = _add_right_alt_consonant(state, right_consonant_node)
@@ -98,6 +97,6 @@ def _add_right_alt_consonant(state: EntryBuilderState, right_consonant_node: int
         state.trie.link_chain(state.prev_left_consonant_nodes[0], right_alt_consonant_node, right_alt_stroke_keys, TransitionCostInfo(0, state.translation))
         
     if state.is_first_consonant:
-        allow_elide_previous_vowel_using_first_right_consonant(state, right_alt_stroke, right_consonant_node, amphitheory.spec.TransitionCosts.ALT_CONSONANT)
+        state.right_squish_elision.execute(state.trie, state.translation, right_consonant_node, right_alt_stroke, amphitheory.spec.TransitionCosts.ALT_CONSONANT)
 
     return right_alt_consonant_node

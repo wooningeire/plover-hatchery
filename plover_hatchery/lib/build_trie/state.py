@@ -5,7 +5,7 @@ import dataclasses
 from ..trie import NondeterministicTrie
 from ..sopheme.Sound import Sound
 
-from ..pipes import LeftSquishElision, BoundaryElision
+from ..pipes import Elider
 
 class ConsonantVowelGroup(NamedTuple):
     consonants: tuple[Sound, ...]
@@ -122,11 +122,14 @@ class EntryBuilderState:
     """The node constructed by adding the previous left consonant; can be empty if the previous phoneme was a vowel"""
 
 
-    left_squish_elision: LeftSquishElision = field(default_factory=LeftSquishElision)
+    left_squish_elision: Elider = field(default_factory=Elider)
+    """Elide vowels by placing a left consonant after a right consonant"""
     # """The latest node which the previous vowel set was attached to"""
-    right_elision_squish_src_nodes: tuple[int, ...] = ()
-    """The latest node which the stroke boundary between a right consonant and a left consonant was attached to"""
-    boundary_elision: BoundaryElision = field(default_factory=BoundaryElision)
+    right_squish_elision: Elider = field(default_factory=Elider)
+    """Elide vowels by placing a right consonant after a right consonant"""
+    # """The latest node which the stroke boundary between a right consonant and a left consonant was attached to"""
+    boundary_elision: Elider = field(default_factory=Elider)
+    """Elide vowels by placing a left consonant after a right consonant"""
     # """The latest node constructed by adding the stroke bunnedry between a right consonant and left consonant"""
 
     def clone(self):
