@@ -71,7 +71,10 @@ def use_left_chords(manage_state: ManageStateHooks, chords_raw: dict[str, str]):
         
         left_consonant_node = None
 
-        strokes = tuple(amphitheory.left_consonant_strokes(state.consonant))
+        strokes = (
+            *amphitheory.left_consonant_strokes(state.consonant),
+            chords[amphitheory.sound_sophone(state.consonant)],
+        )
 
         for stroke in strokes:
             if left_consonant_node is None:

@@ -5,7 +5,33 @@ enumerator = SoundsEnumerator()
 manage_state = use_manage_state(enumerator)
 
 
-left_chords = use_left_chords(manage_state, {})
+left_chords = use_left_chords(manage_state, {
+    "S": "S",
+    "T": "T",
+    "K": "K",
+    "P": "P",
+    "W": "W",
+    "H": "H",
+    "R": "R",
+
+    "Z": "STKPW",
+    "J": "SKWR",
+    "V": "SR",
+    "D": "TK",
+    "G": "TKPW",
+    "F": "TP",
+    "N": "TPH",
+    "Y": "KWR",
+    "B": "PW",
+    "M": "PH",
+    "L": "HR",
+
+    "SH": "SH",
+    "TH": "TH",
+    "CH": "KH",
+
+    "NG": "TPH",
+})
 
 use_left_alt_chords(manage_state, left_chords, {
     "F": "W",

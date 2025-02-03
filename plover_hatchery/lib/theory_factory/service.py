@@ -180,7 +180,6 @@ class TheoryService:
         # for sophone in self.sound_sophone(sound):
         #     for stroke in self.spec.PHONEMES_TO_CHORDS_LEFT[sophone]:
         #         yield stroke
-        yield self.spec.PHONEMES_TO_CHORDS_LEFT[self.sound_sophone(sound)]
     
     def right_consonant_strokes(self, sound: Sound):
         # for sophone in self.sound_sophone(sound):
