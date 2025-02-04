@@ -3,7 +3,9 @@ from ..pipes import *
 
 add_entry = consonants_vowels_enumeration(
     banks(
-        left_strokes=map_sophones({
+        initial_vowel_chord("@"),
+
+        left_chords=map_sophones({
             "S": "S",
             "T": "T",
             "K": "K",
@@ -31,7 +33,7 @@ add_entry = consonants_vowels_enumeration(
             "NG": "TPH",
         }),
 
-        mid_strokes=map_sophones({
+        mid_chords=map_sophones({
             "AA": "AEU",
             "A": "A",
             "EE": "AOE",
@@ -49,7 +51,7 @@ add_entry = consonants_vowels_enumeration(
             "AO": "AO",
         }),
 
-        right_strokes=map_sophones({
+        right_chords=map_sophones({
             "F": "-F",
             "R": "-R",
             "P": "-P",
