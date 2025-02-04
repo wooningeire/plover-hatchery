@@ -1,6 +1,9 @@
 from ..pipes import *
 
 
+map_sophones = sophone_mapper(default_sound_to_sophone_mapping)
+
+
 add_entry = consonants_vowels_enumeration(
     banks(
         initial_vowel_chord("@"),
