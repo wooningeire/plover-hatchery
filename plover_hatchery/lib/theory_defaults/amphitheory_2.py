@@ -4,6 +4,8 @@ from ..pipes import *
 add_entry = consonants_vowels_enumeration(
     banks(
         initial_vowel_chord("@"),
+        left_squish_elision(),
+        right_squish_elision(),
 
         left_chords=map_sophones({
             "S": "S",

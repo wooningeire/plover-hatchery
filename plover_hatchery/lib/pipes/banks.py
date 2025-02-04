@@ -12,13 +12,32 @@ from .state import EntryBuilderState, OutlineSounds, ConsonantVowelGroup
 from .join import join, join_on_strokes, tuplify
 from .consonants_vowels_enumeration import ConsonantsVowelsEnumerationPlugin
 
+@dataclass
+class BanksState:
+    trie: NondeterministicTrie[str, str]
+    sounds: OutlineSounds
+    translation: str
+
+    left_src_nodes: tuple[int, ...]
+    mid_src_nodes: tuple[int, ...]
+    right_src_nodes: tuple[int, ...]
+
+    last_right_node: "int | None" = None
+
 
 @dataclass
 class BanksPlugin:
-    class OnComplete(Protocol):
-        def __call__(self, *, trie: NondeterministicTrie[str, str], translation: str, new_stroke_node: int, group_index: int, sound_index: int) -> None: ...
+    class OnCompleteVowel(Protocol):
+        def __call__(self,
+            *,
+            banks_state: BanksState,
+            mid_node: int,
+            new_stroke_node: int,
+            group_index: int,
+            sound_index: int,
+        ) -> None: ...
 
-    on_vowel_complete: OnComplete
+    on_complete_vowel: "OnCompleteVowel | None" = None
 
 
 def banks(
@@ -27,26 +46,30 @@ def banks(
     mid_chords: Callable[[Sound], Generator[Stroke, None, None]],
     right_chords: Callable[[Sound], Generator[Stroke, None, None]],
 ):
-    def on_vowel_complete(trie: NondeterministicTrie[str, str], translation: str, new_stroke_node: int, group_index: int, sound_index: int):
+    def on_complete_vowel(
+        state: BanksState,
+        mid_node: int,
+        new_stroke_node: int,
+        group_index: int,
+        sound_index: int,
+    ):
         for plugin in plugins:
-            plugin.on_vowel_complete(trie=trie, translation=translation, new_stroke_node=new_stroke_node, group_index=group_index, sound_index=sound_index)
+            if plugin.on_complete_vowel is None: continue
+            plugin.on_complete_vowel(
+                banks_state=state,
+                mid_node=mid_node,
+                new_stroke_node=new_stroke_node,
+                group_index=group_index,
+                sound_index=sound_index,
+            )
 
 
-    @dataclass
-    class State:
-        trie: NondeterministicTrie[str, str]
-        sounds: OutlineSounds
-        translation: str
-
-        left_src_nodes: tuple[int, ...] = ()
-        mid_src_nodes: tuple[int, ...] = ()
-        right_src_nodes: tuple[int, ...] = ()
 
 
     def on_begin(trie: NondeterministicTrie[str, str], sounds: OutlineSounds, translation: str):
         left_src_nodes = (trie.ROOT,)
 
-        return State(
+        return BanksState(
             trie,
             sounds,
             translation,
@@ -57,7 +80,7 @@ def banks(
         )
 
 
-    def on_consonant(state: State, consonant: Sound, *_, **__):
+    def on_consonant(state: BanksState, consonant: Sound, **_):
         left_node = join_on_strokes(state.trie, state.left_src_nodes, left_chords(consonant), state.translation)
         right_node = join_on_strokes(state.trie, state.right_src_nodes, right_chords(consonant), state.translation)
 
@@ -69,8 +92,10 @@ def banks(
         state.mid_src_nodes = state.left_src_nodes
         state.right_src_nodes = tuplify(right_node)
 
+        state.last_right_node = right_node
+
     
-    def on_vowel(state: State, vowel: Sound, group_index: int, sound_index: int):
+    def on_vowel(state: BanksState, vowel: Sound, group_index: int, sound_index: int):
         mid_node = join(state.trie, state.mid_src_nodes, (stroke.rtfcre for stroke in mid_chords(vowel)), state.translation)
 
 
@@ -84,11 +109,11 @@ def banks(
         state.mid_src_nodes = state.left_src_nodes
         state.right_src_nodes += tuplify(mid_node)
 
-        if new_stroke_node is not None:
-            on_vowel_complete(state.trie, state.translation, new_stroke_node, group_index, sound_index)
+        if mid_node is not None and new_stroke_node is not None:
+            on_complete_vowel(state, mid_node, new_stroke_node, group_index, sound_index)
 
 
-    def on_complete(state: State):
+    def on_complete(state: BanksState):
         for right_src_node in state.right_src_nodes:
             state.trie.set_translation(right_src_node, state.translation)
 

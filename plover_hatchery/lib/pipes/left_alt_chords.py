@@ -1,19 +1,14 @@
+from typing import Callable, Generator
+
 from plover.steno import Stroke
 
 from ..trie import TransitionCostInfo, NondeterministicTrie
 from ..sophone.Sophone import Sophone
+from ..sopheme import Sound
 from ..theory_defaults.amphitheory import amphitheory
 
-from .state import EntryBuilderState, ConsonantVowelGroup
 
-
-def use_left_alt_chords(manage_state: BanksHooks, chords_raw: dict[str, str]):
-    chords = {
-        Sophone.__dict__[key]: Stroke.from_steno(steno)
-        for key, steno in chords_raw.items()
-    }
-
-
+def left_alt_chords(chords: Callable[[Sound], Generator[Stroke, None, None]]):
     newest_left_alt_node: "int | None"
     last_left_alt_nodes: tuple[int, ...]
     """The latest node constructed by adding the alternate chord for a left consonant"""
