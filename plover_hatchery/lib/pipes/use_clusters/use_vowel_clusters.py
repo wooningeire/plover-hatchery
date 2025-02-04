@@ -4,7 +4,6 @@ from ...sophone.Sophone import Sophone, vowel_phonemes
 from ...trie import Trie, ReadonlyTrie, NondeterministicTrie
 from ...theory_defaults.amphitheory import amphitheory
 
-from ..use_banks import BanksHooks
 from ..state import EntryBuilderState, ConsonantVowelGroup, OutlineSounds
 
 from .find_clusters import Cluster, handle_clusters, get_clusters_from_node, check_found_clusters

@@ -2,7 +2,6 @@ from plover.steno import Stroke
 
 from ..trie import TransitionCostInfo
 from .state import EntryBuilderState, ConsonantVowelGroup
-from .use_banks import BanksHooks
 
 
 def use_initial_vowel_chord(manage_state: BanksHooks, initial_vowel_chord: str):

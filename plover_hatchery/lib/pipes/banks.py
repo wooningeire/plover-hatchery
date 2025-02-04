@@ -8,12 +8,12 @@ from ..sophone.Sophone import Sophone
 from ..trie import NondeterministicTrie, TransitionCostInfo
 from ..config import TRIE_STROKE_BOUNDARY_KEY, TRIE_LINKER_KEY
 from ..theory_defaults.amphitheory import amphitheory
-from .use_consonants_vowels_enumeration import use_consonants_vowels_enumeration
 from .state import EntryBuilderState, OutlineSounds, ConsonantVowelGroup
 from .join import join, join_on_strokes, tuplify
+from .consonants_vowels_enumeration import ConsonantsVowelsEnumerationPlugin
 
 
-def use_banks(
+def banks(
     *,
     left_strokes: Callable[[Sound], Generator[Stroke, None, None]],
     mid_strokes: Callable[[Sound], Generator[Stroke, None, None]],
@@ -77,7 +77,7 @@ def use_banks(
             state.trie.set_translation(right_src_node, state.translation)
 
 
-    return use_consonants_vowels_enumeration(
+    return ConsonantsVowelsEnumerationPlugin(
         on_begin=on_begin,
         on_consonant=on_consonant,
         on_vowel=on_vowel,

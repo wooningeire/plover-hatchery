@@ -4,7 +4,6 @@ from ..trie import TransitionCostInfo, NondeterministicTrie
 from ..sophone.Sophone import Sophone
 from ..theory_defaults.amphitheory import amphitheory
 
-from .use_banks import BanksHooks
 from .state import EntryBuilderState, ConsonantVowelGroup
 
 
