@@ -1,4 +1,5 @@
-from typing import Callable, Generator
+from typing import Callable, Generator, Protocol, TypeVar
+from dataclasses import dataclass
 
 from plover.steno import Stroke
 
@@ -6,70 +7,88 @@ from ..trie import TransitionCostInfo, NondeterministicTrie
 from ..sophone.Sophone import Sophone
 from ..sopheme import Sound
 from ..theory_defaults.amphitheory import amphitheory
+from .banks import BanksPlugin, BanksState
+from .join import join_on_strokes
 
 
-def left_alt_chords(chords: Callable[[Sound], Generator[Stroke, None, None]]):
-    newest_left_alt_node: "int | None"
-    last_left_alt_nodes: tuple[int, ...]
+T = TypeVar("T")
+
+@dataclass
+class LeftAltChordsPlugin:
+    class OnCompleteVowel(Protocol):
+        def __call__(self,
+            *,
+            left_alt_chords_state: "LeftAltChordsState",
+            banks_state: BanksState,
+        ) -> None: ...
+
+    on_complete_vowel: OnCompleteVowel
+
+
+@dataclass
+class LeftAltChordsState:
+    newest_left_alt_node: "int | None" = None
+    last_left_alt_node: "int | None" = None
     """The latest node constructed by adding the alternate chord for a left consonant"""
 
 
-    @manage_state.begin.listen
-    def _(trie: NondeterministicTrie[str, str]):
-        nonlocal newest_left_alt_node
-        nonlocal last_left_alt_nodes
+def left_alt_chords(
+    *plugins: LeftAltChordsPlugin,
+    chords: Callable[[Sound], Generator[Stroke, None, None]],
+):
+    def on_begin():
+        return LeftAltChordsState()
+    
 
-        newest_left_alt_node = None
-        last_left_alt_nodes = ()
+    def on_before_complete_consonant(state: LeftAltChordsState, banks_state: BanksState, consonant: Sound, **_):
+        # if len(last_left_alt_nodes) > 0:
+        #     for left_stroke in left_strokes:
+        #         state.trie.link_chain(
+        #             last_left_alt_nodes[0], left_node, left_stroke.keys(),
+        #             TransitionCostInfo(amphitheory.spec.TransitionCosts.ALT_CONSONANT + (amphitheory.spec.TransitionCosts.VOWEL_ELISION if state.is_first_consonant else 0), state.translation)
+        #         )
 
-
-    @manage_state.left_node_created.listen
-    def _(state: EntryBuilderState, left_node: int, left_strokes: tuple[Stroke, ...], src_nodes: tuple[int, ...]):
-        nonlocal newest_left_alt_node
-
-
-        if len(last_left_alt_nodes) > 0:
-            for left_stroke in left_strokes:
-                state.trie.link_chain(
-                    last_left_alt_nodes[0], left_node, left_stroke.keys(),
-                    TransitionCostInfo(amphitheory.spec.TransitionCosts.ALT_CONSONANT + (amphitheory.spec.TransitionCosts.VOWEL_ELISION if state.is_first_consonant else 0), state.translation)
-                )
-
-
-
-
-        sophone = amphitheory.sound_sophone(state.consonant)
-        if len(src_nodes) == 0 or sophone not in chords:
-            return
         
-        left_alt_stroke = chords[sophone]
 
-
-        left_alt_stroke_keys = left_alt_stroke.keys()
-
-        left_alt_consonant_node = state.trie.get_first_dst_node_else_create_chain(src_nodes[0], left_alt_stroke_keys, TransitionCostInfo(amphitheory.spec.TransitionCosts.ALT_CONSONANT, state.translation))
+        left_alt_node = join_on_strokes(banks_state.trie, banks_state.left_src_nodes, chords(consonant), banks_state.translation)
         # if len(state.left_elision_boundary_src_nodes) > 0:
         #     state.trie.link_chain(state.left_elision_boundary_src_nodes[0], left_alt_consonant_node, left_alt_stroke_keys, TransitionCostInfo(0, state.translation))
 
-        if len(last_left_alt_nodes) > 0:
-            state.trie.link_chain(
-                last_left_alt_nodes[0], left_alt_consonant_node, left_alt_stroke_keys,
-                TransitionCostInfo(amphitheory.spec.TransitionCosts.ALT_CONSONANT + (amphitheory.spec.TransitionCosts.VOWEL_ELISION if state.is_first_consonant else 0), state.translation)
-            )
+        # if len(last_left_alt_nodes) > 0:
+        #     state.trie.link_chain(
+        #         last_left_alt_nodes[0], left_alt_consonant_node, left_alt_stroke_keys,
+        #         TransitionCostInfo(amphitheory.spec.TransitionCosts.ALT_CONSONANT + (amphitheory.spec.TransitionCosts.VOWEL_ELISION if state.is_first_consonant else 0), state.translation)
+        #     )
 
-        if state.can_elide_prev_vowel_left:
-            # uses original left consonant node because it is ok to continue onto the vowel if the previous consonant is present
-            state.left_squish_elision.execute(state.trie, state.translation, left_node, left_alt_stroke, amphitheory.spec.TransitionCosts.ALT_CONSONANT)
+        # if state.can_elide_prev_vowel_left:
+        #     # uses original left consonant node because it is ok to continue onto the vowel if the previous consonant is present
+        #     state.left_squish_elision.execute(state.trie, state.translation, left_node, left_alt_stroke, amphitheory.spec.TransitionCosts.ALT_CONSONANT)
 
-            state.left_squish_elision.execute(state.trie, state.translation, left_alt_consonant_node, left_alt_stroke, amphitheory.spec.TransitionCosts.ALT_CONSONANT)
-            state.boundary_elision.execute(state.trie, state.translation, left_alt_consonant_node, left_alt_stroke, amphitheory.spec.TransitionCosts.ALT_CONSONANT)
+        #     state.left_squish_elision.execute(state.trie, state.translation, left_alt_consonant_node, left_alt_stroke, amphitheory.spec.TransitionCosts.ALT_CONSONANT)
+        #     state.boundary_elision.execute(state.trie, state.translation, left_alt_consonant_node, left_alt_stroke, amphitheory.spec.TransitionCosts.ALT_CONSONANT)
 
 
-        newest_left_alt_node = left_alt_consonant_node
+        state.newest_left_alt_node = left_alt_node
 
     
-    @manage_state.complete_consonant_2.listen
-    def _(state: EntryBuilderState, left_node: "int | None", right_node: "int | None"):
-        nonlocal last_left_alt_nodes
+    def on_complete_consonant(state: LeftAltChordsState, banks_state: BanksState, **_):
+        if state.newest_left_alt_node is None: return
+        state.last_left_alt_node = state.newest_left_alt_node
 
-        last_left_alt_nodes = (newest_left_alt_node,) if newest_left_alt_node is not None else ()
+        banks_state.left_src_nodes += (state.last_left_alt_node,)
+
+    
+    def on_complete_vowel(state: LeftAltChordsState, banks_state: BanksState, **_):
+        for plugin in plugins:
+            plugin.on_complete_vowel(
+                left_alt_chords_state=state,
+                banks_state=banks_state,
+            )
+
+    
+    return BanksPlugin(
+        on_begin=on_begin,
+        on_before_complete_consonant=on_before_complete_consonant,
+        on_complete_consonant=on_complete_consonant,
+        on_complete_vowel=on_complete_vowel,
+    )

@@ -7,8 +7,20 @@ map_sophones = sophone_mapper(default_sound_to_sophone_mapping)
 add_entry = consonants_vowels_enumeration(
     banks(
         initial_vowel_chord("@"),
+
         left_squish_elision(),
         right_squish_elision(),
+        boundary_elision(),
+
+        left_alt_chords(
+            left_alt_squish_elision(),
+
+            chords=map_sophones({
+                "F": "W",
+                "V": "W",
+                "Z": "S*",
+            })
+        ),
 
         left_chords=map_sophones({
             "S": "S",

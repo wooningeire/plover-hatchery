@@ -1,4 +1,4 @@
-from typing import Callable, Generator, TypeVar, Protocol
+from typing import Callable, Generator, TypeVar, Protocol, Generic, Any
 from dataclasses import dataclass
 
 from plover.steno import Stroke
@@ -18,18 +18,41 @@ class BanksState:
     sounds: OutlineSounds
     translation: str
 
+    plugin_states: tuple[Any, ...]
+
     left_src_nodes: tuple[int, ...]
     mid_src_nodes: tuple[int, ...]
     right_src_nodes: tuple[int, ...]
 
+    last_left_node: "int | None" = None
     last_right_node: "int | None" = None
 
 
+T = TypeVar("T")
+U = TypeVar("U")
+
 @dataclass
-class BanksPlugin:
-    class OnCompleteVowel(Protocol):
+class BanksPlugin(Generic[T]):
+    class OnBegin(Protocol[U]):
+        def __call__(self) -> U: ...
+    class OnBeforeCompleteConsonant(Protocol[U]):
         def __call__(self,
             *,
+            state: U,
+            banks_state: BanksState,
+            consonant: Sound,
+        ) -> None: ...
+    class OnCompleteConsonant(Protocol[U]):
+        def __call__(self,
+            *,
+            state: U,
+            banks_state: BanksState,
+            consonant: Sound,
+        ) -> None: ...
+    class OnCompleteVowel(Protocol[U]):
+        def __call__(self,
+            *,
+            state: U,
             banks_state: BanksState,
             mid_node: int,
             new_stroke_node: int,
@@ -37,7 +60,10 @@ class BanksPlugin:
             sound_index: int,
         ) -> None: ...
 
-    on_complete_vowel: "OnCompleteVowel | None" = None
+    on_begin: "OnBegin[T] | None" = None
+    on_before_complete_consonant: "OnBeforeCompleteConsonant[T] | None" = None
+    on_complete_consonant: "OnCompleteConsonant[T] | None" = None
+    on_complete_vowel: "OnCompleteVowel[T] | None" = None
 
 
 def banks(
@@ -46,17 +72,34 @@ def banks(
     mid_chords: Callable[[Sound], Generator[Stroke, None, None]],
     right_chords: Callable[[Sound], Generator[Stroke, None, None]],
 ):
+    def on_begin_hook():
+        return tuple(plugin.on_begin() if plugin.on_begin is not None else None for plugin in plugins)
+    
+
+    def on_before_complete_consonant(banks_state: BanksState, consonant: Sound):
+        for plugin, state in zip(plugins, banks_state.plugin_states):
+            if plugin.on_before_complete_consonant is None: continue
+            plugin.on_before_complete_consonant(state=state, banks_state=banks_state, consonant=consonant)
+    
+
+    def on_complete_consonant(banks_state: BanksState, consonant: Sound):
+        for plugin, state in zip(plugins, banks_state.plugin_states):
+            if plugin.on_complete_consonant is None: continue
+            plugin.on_complete_consonant(state=state, banks_state=banks_state, consonant=consonant)
+    
+
     def on_complete_vowel(
-        state: BanksState,
+        banks_state: BanksState,
         mid_node: int,
         new_stroke_node: int,
         group_index: int,
         sound_index: int,
     ):
-        for plugin in plugins:
+        for plugin, state in zip(plugins, banks_state.plugin_states):
             if plugin.on_complete_vowel is None: continue
             plugin.on_complete_vowel(
-                banks_state=state,
+                state=state,
+                banks_state=banks_state,
                 mid_node=mid_node,
                 new_stroke_node=new_stroke_node,
                 group_index=group_index,
@@ -77,6 +120,8 @@ def banks(
             left_src_nodes=left_src_nodes,
             mid_src_nodes=left_src_nodes,
             right_src_nodes=(),
+
+            plugin_states=on_begin_hook(),
         )
 
 
@@ -88,11 +133,18 @@ def banks(
             state.trie.link(right_node, left_node, TRIE_STROKE_BOUNDARY_KEY, TransitionCostInfo(0, state.translation))
 
 
+        on_before_complete_consonant(state, consonant)
+
+
         state.left_src_nodes = tuplify(left_node)
         state.mid_src_nodes = state.left_src_nodes
         state.right_src_nodes = tuplify(right_node)
 
+        state.last_left_node = left_node
         state.last_right_node = right_node
+
+
+        on_complete_consonant(state, consonant)
 
     
     def on_vowel(state: BanksState, vowel: Sound, group_index: int, sound_index: int):
