@@ -118,7 +118,6 @@ class EntryBuilderState:
     """The latest node constructed by adding the alternate chord for a right consonant"""
 
 
-    newest_left_consonant_node: int = 0
     prev_left_consonant_nodes: tuple[int, ...] = ()
     """The node constructed by adding the previous left consonant; can be empty if the previous phoneme was a vowel"""
 

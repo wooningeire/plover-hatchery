@@ -38,13 +38,15 @@ def build_lookup_hatchery(file: TextIO):
             try:
                 enumerator.execute(trie, get_sopheme_sounds(sophemes), Sopheme.get_translation(sophemes))
             except Exception as e:
-                # import traceback
-                # print(f"failed to add {line.strip()}: {e} ({''.join(traceback.format_tb(e.__traceback__))})")
+                import traceback
+                print(f"failed to add {line.strip()}: {e} ({''.join(traceback.format_tb(e.__traceback__))})")
                 ...
         except Exception as e:
             # print(f"failed to parse {line.strip()}: {e}")
             ...
     # while len(line := file.readline()) > 0:
     #     _add_entry(trie, Sopheme.parse_seq())
+
+    print(trie)
 
     return create_lookup_for(trie), create_reverse_lookup_for(trie)

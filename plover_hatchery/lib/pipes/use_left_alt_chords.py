@@ -4,12 +4,11 @@ from ..trie import TransitionCostInfo, NondeterministicTrie
 from ..sophone.Sophone import Sophone
 from ..theory_defaults.amphitheory import amphitheory
 
-from .use_manage_state import ManageStateHooks
-from .use_left_chords import LeftChordsHooks
+from .use_banks import BanksHooks
 from .state import EntryBuilderState, ConsonantVowelGroup
 
 
-def use_left_alt_chords(manage_state: ManageStateHooks, left_chords: LeftChordsHooks, chords_raw: dict[str, str]):
+def use_left_alt_chords(manage_state: BanksHooks, chords_raw: dict[str, str]):
     chords = {
         Sophone.__dict__[key]: Stroke.from_steno(steno)
         for key, steno in chords_raw.items()
@@ -30,7 +29,7 @@ def use_left_alt_chords(manage_state: ManageStateHooks, left_chords: LeftChordsH
         last_left_alt_nodes = ()
 
 
-    @left_chords.node_created.listen
+    @manage_state.left_node_created.listen
     def _(state: EntryBuilderState, left_node: int, left_strokes: tuple[Stroke, ...], src_nodes: tuple[int, ...]):
         nonlocal newest_left_alt_node
 
@@ -75,7 +74,7 @@ def use_left_alt_chords(manage_state: ManageStateHooks, left_chords: LeftChordsH
         newest_left_alt_node = left_alt_consonant_node
 
     
-    @manage_state.complete_consonant.listen
+    @manage_state.complete_consonant_2.listen
     def _(state: EntryBuilderState, left_node: "int | None", right_node: "int | None"):
         nonlocal last_left_alt_nodes
 

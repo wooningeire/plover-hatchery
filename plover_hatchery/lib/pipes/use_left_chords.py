@@ -3,9 +3,8 @@ from plover.steno import Stroke
 from ..trie import TransitionCostInfo, NondeterministicTrie
 from ..sophone.Sophone import Sophone
 from ..theory_defaults.amphitheory import amphitheory
-from ..config import TRIE_LINKER_KEY
 
-from .use_manage_state import ManageStateHooks
+from .use_banks import BanksHooks
 from .state import EntryBuilderState, ConsonantVowelGroup
 from .Hook import Hook
 
@@ -15,7 +14,7 @@ class LeftChordsHooks:
         self.complete_nonfinal_group: Hook[EntryBuilderState, tuple[int, ...]] = Hook()
 
 
-def use_left_chords(manage_state: ManageStateHooks, chords_raw: dict[str, str]):
+def use_left_chords(manage_state: BanksHooks, chords_raw: dict[str, str]):
     chords = {
         Sophone.__dict__[key]: Stroke.from_steno(steno)
         for key, steno in chords_raw.items()
@@ -78,7 +77,9 @@ def use_left_chords(manage_state: ManageStateHooks, chords_raw: dict[str, str]):
 
         for stroke in strokes:
             if left_consonant_node is None:
+                print(f"left src node = {state.left_consonant_src_nodes[0]}")
                 left_consonant_node = state.trie.get_first_dst_node_else_create_chain(state.left_consonant_src_nodes[0], stroke.keys(), TransitionCostInfo(0, state.translation))
+                print(f"created left node {left_consonant_node}")
             else:
                 state.trie.link_chain(state.left_consonant_src_nodes[0], left_consonant_node, stroke.keys(), TransitionCostInfo(0, state.translation))
 

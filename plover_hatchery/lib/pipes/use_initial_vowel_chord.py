@@ -2,15 +2,15 @@ from plover.steno import Stroke
 
 from ..trie import TransitionCostInfo
 from .state import EntryBuilderState, ConsonantVowelGroup
-from .use_manage_state import ManageStateHooks
+from .use_banks import BanksHooks
 
 
-def use_initial_vowel_chord(manage_state: ManageStateHooks, initial_vowel_chord: str):
+def use_initial_vowel_chord(manage_state: BanksHooks, initial_vowel_chord: str):
     stroke = Stroke.from_steno(initial_vowel_chord)
 
     @manage_state.complete_nonfinal_group.listen
-    def _(state: EntryBuilderState, group: ConsonantVowelGroup, new_stroke_node: int):
-        if not state.is_first_consonant_set or len(group.consonants) > 0: return
+    def _(state: EntryBuilderState, group: ConsonantVowelGroup, new_stroke_node: int | None):
+        if not state.is_first_consonant_set or len(group.consonants) > 0 or new_stroke_node is None: return
 
         state.trie.link_chain(
             state.trie.ROOT,

@@ -87,10 +87,8 @@ class TheorySpec(ABC):
     ASTERISK_SUBSTROKE: Stroke
 
 
-    PHONEMES_TO_CHORDS_LEFT: dict[Sophone, Stroke]
     PHONEMES_TO_CHORDS_VOWELS: dict[Sophone, Stroke]
     PHONEMES_TO_CHORDS_RIGHT: dict[Sophone, Stroke]
-    PHONEMES_TO_CHORDS_LEFT_ALT: dict[Sophone, Stroke]
     PHONEMES_TO_CHORDS_RIGHT_ALT: dict[Sophone, Stroke]
 
     LINKER_CHORD: Stroke

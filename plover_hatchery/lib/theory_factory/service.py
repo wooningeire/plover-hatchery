@@ -21,10 +21,10 @@ class TheoryService:
     
     def __build_consonants_splitter(self):
         _CONSONANT_CHORDS: dict[Stroke, tuple[Sophone, ...]] = {
-            **{
-                stroke: (phoneme,)
-                for phoneme, stroke in self.spec.PHONEMES_TO_CHORDS_LEFT.items()
-            },
+            # **{
+            #     stroke: (phoneme,)
+            #     for phoneme, stroke in self.spec.PHONEMES_TO_CHORDS_LEFT.items()
+            # },
             **{
                 stroke: (phoneme,)
                 for phoneme, stroke in self.spec.PHONEMES_TO_CHORDS_RIGHT.items()

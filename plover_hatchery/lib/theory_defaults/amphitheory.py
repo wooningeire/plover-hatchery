@@ -16,37 +16,6 @@ class amphitheory(TheorySpec, ABC):
     ASTERISK_SUBSTROKE = Stroke.from_steno("*")
 
 
-    PHONEMES_TO_CHORDS_LEFT: dict[Sophone, Stroke] = {
-        phoneme: Stroke.from_steno(steno)
-        for phoneme, steno in {
-            Sophone.S: "S",
-            Sophone.T: "T",
-            Sophone.K: "K",
-            Sophone.P: "P",
-            Sophone.W: "W",
-            Sophone.H: "H",
-            Sophone.R: "R",
-
-            Sophone.Z: "STKPW",
-            Sophone.J: "SKWR",
-            Sophone.V: "SR",
-            Sophone.D: "TK",
-            Sophone.G: "TKPW",
-            Sophone.F: "TP",
-            Sophone.N: "TPH",
-            Sophone.Y: "KWR",
-            Sophone.B: "PW",
-            Sophone.M: "PH",
-            Sophone.L: "HR",
-
-            Sophone.SH: "SH",
-            Sophone.TH: "TH",
-            Sophone.CH: "KH",
-
-            Sophone.NG: "TPH",
-        }.items()
-    }
-
     PHONEMES_TO_CHORDS_VOWELS: dict[Sophone, Stroke] = {
         phoneme: Stroke.from_steno(steno)
         for phoneme, steno in {
@@ -99,16 +68,6 @@ class amphitheory(TheorySpec, ABC):
         # "KHR": "chr",
         # "-FRP": (Phoneme.M, Phoneme.P),
         # "-FRB": (Phoneme.R, Phoneme.V),
-    }
-
-
-    PHONEMES_TO_CHORDS_LEFT_ALT: dict[Sophone, Stroke] = {
-        phoneme: Stroke.from_steno(steno)
-        for phoneme, steno in {
-            Sophone.F: "W",
-            Sophone.V: "W",
-            Sophone.Z: "S*",
-        }.items()
     }
 
     PHONEMES_TO_CHORDS_RIGHT_ALT: dict[Sophone, Stroke] = {
