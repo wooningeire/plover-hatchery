@@ -1,4 +1,4 @@
-from typing import Callable, Generator
+from typing import Callable, Generator, TypeVar, Protocol
 from dataclasses import dataclass
 
 from plover.steno import Stroke
@@ -13,12 +13,25 @@ from .join import join, join_on_strokes, tuplify
 from .consonants_vowels_enumeration import ConsonantsVowelsEnumerationPlugin
 
 
+@dataclass
+class BanksPlugin:
+    class OnComplete(Protocol):
+        def __call__(self, *, new_stroke_node: int, group_index: int, sound_index: int) -> None: ...
+
+    on_vowel_complete: OnComplete
+
+
 def banks(
-    *,
+    *plugins: BanksPlugin,
     left_strokes: Callable[[Sound], Generator[Stroke, None, None]],
     mid_strokes: Callable[[Sound], Generator[Stroke, None, None]],
     right_strokes: Callable[[Sound], Generator[Stroke, None, None]],
 ):
+    def on_vowel_complete(new_stroke_node: int, group_index: int, sound_index: int):
+        for plugin in plugins:
+            plugin.on_vowel_complete(new_stroke_node=new_stroke_node, group_index=group_index, sound_index=sound_index)
+
+
     @dataclass
     class State:
         trie: NondeterministicTrie[str, str]
@@ -44,7 +57,7 @@ def banks(
         )
 
 
-    def on_consonant(state: State, consonant: Sound):
+    def on_consonant(state: State, consonant: Sound, *_, **__):
         left_node = join_on_strokes(state.trie, state.left_src_nodes, left_strokes(consonant), state.translation)
         right_node = join_on_strokes(state.trie, state.right_src_nodes, right_strokes(consonant), state.translation)
 
@@ -57,12 +70,14 @@ def banks(
         state.right_src_nodes = tuplify(right_node)
 
     
-    def on_vowel(state: State, vowel: Sound):
+    def on_vowel(state: State, vowel: Sound, group_index: int, sound_index: int):
         mid_node = join(state.trie, state.mid_src_nodes, (stroke.rtfcre for stroke in mid_strokes(vowel)), state.translation)
 
 
         if mid_node is not None:
             new_stroke_node = state.trie.get_first_dst_node_else_create(mid_node, TRIE_STROKE_BOUNDARY_KEY, TransitionCostInfo(0, state.translation))
+
+            on_vowel_complete(new_stroke_node, group_index, sound_index)
         else:
             new_stroke_node = None
 
