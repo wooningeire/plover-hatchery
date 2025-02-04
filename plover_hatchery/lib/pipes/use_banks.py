@@ -1,167 +1,64 @@
+from typing import Callable, Generator
+from dataclasses import dataclass
+
 from plover.steno import Stroke
 
+from ..sopheme import Sound
 from ..sophone.Sophone import Sophone
 from ..trie import NondeterministicTrie, TransitionCostInfo
 from ..config import TRIE_STROKE_BOUNDARY_KEY, TRIE_LINKER_KEY
 from ..theory_defaults.amphitheory import amphitheory
-from .SoundsEnumerator import SoundsEnumerator
+from .use_consonants_vowels_enumeration import use_consonants_vowels_enumeration
 from .state import EntryBuilderState, OutlineSounds, ConsonantVowelGroup
-from .Hook import Hook
-
-class BanksHooks:
-    def __init__(self):
-        self.begin: Hook[NondeterministicTrie[str, str]] = Hook()
-        self.begin_consonant: Hook[EntryBuilderState] = Hook()
-        self.left_node_created: Hook[EntryBuilderState, int, tuple[Stroke, ...], tuple[int, ...]] = Hook()
-        self.begin_nonfinal_group: Hook[EntryBuilderState] = Hook()
-        self.before_complete_nonfinal_group: Hook[EntryBuilderState] = Hook()
-        self.complete_nonfinal_group: "Hook[EntryBuilderState, ConsonantVowelGroup, int | None]" = Hook()
-        self.complete_consonant: "Hook[EntryBuilderState, int | None, int | None]" = Hook()
-        self.complete_consonant_2: "Hook[EntryBuilderState, int | None, int | None]" = Hook()
+from .join import join, join_on_strokes, tuplify
 
 
-def use_banks(enumerator: SoundsEnumerator, chords_raw: dict[str, str]):
-    chords = {
-        Sophone.__dict__[key]: Stroke.from_steno(steno)
-        for key, steno in chords_raw.items()
-    }
+def use_banks(
+    *,
+    left_strokes: Callable[[Sound], Generator[Stroke, None, None]],
+    mid_strokes: Callable[[Sound], Generator[Stroke, None, None]],
+    right_strokes: Callable[[Sound], Generator[Stroke, None, None]],
+):
+    @dataclass
+    class State:
+        trie: NondeterministicTrie[str, str]
+        sounds: OutlineSounds
+        translation: str
+
+        left_src_nodes: tuple[int, ...] = ()
+        mid_src_nodes: tuple[int, ...] = ()
+        right_src_nodes: tuple[int, ...] = ()
 
 
-    hooks = BanksHooks()
-
-
-    state: EntryBuilderState 
-
-    left_src_nodes: tuple[int, ...] = ()
-    mid_src_nodes: tuple[int, ...] = ()
-    right_src_nodes: tuple[int, ...] = ()
-
-
-    @enumerator.begin.listen
-    def _(trie: NondeterministicTrie[str, str], sounds: OutlineSounds, translation: str):
-        nonlocal state
-        
-        nonlocal left_src_nodes
-        nonlocal mid_src_nodes
-        nonlocal right_src_nodes
-
-        print(f"entry \"{translation}\"")
-
-        state = EntryBuilderState(trie, sounds, translation)
-
+    def on_begin(trie: NondeterministicTrie[str, str], sounds: OutlineSounds, translation: str):
         left_src_nodes = (trie.ROOT,)
-        mid_src_nodes = left_src_nodes
-        right_src_nodes = ()
 
-        hooks.begin.emit(trie)
+        return State(
+            trie,
+            sounds,
+            translation,
 
-
-    @enumerator.begin_group.listen
-    def _(group_index: int):
-        nonlocal mid_src_nodes
-
-        state.group_index = group_index
-
-
-
-        # mid_src_nodes = ()
-        # if len(group.consonants) == 0 and not state.is_first_consonant_set:
-        #     mid_src_nodes = (state.trie.get_first_dst_node_else_create(
-        #         left_src_nodes[0],
-        #         TRIE_LINKER_KEY,
-        #         TransitionCostInfo(0, state.translation)
-        #     ),)
-
-
-    @enumerator.consonant.listen
-    def _(consonant_index: int):
-        state.phoneme_index = consonant_index
-
-        nonlocal left_src_nodes
-        nonlocal mid_src_nodes
-        nonlocal right_src_nodes
-
-
-
-        hooks.begin_consonant.emit(state)
-
-
-        left_node = None
-
-        new_left_src_nodes: list[int] = []
-
-        left_strokes = (
-            *amphitheory.left_consonant_strokes(state.consonant),
-            chords[amphitheory.sound_sophone(state.consonant)],
+            left_src_nodes=left_src_nodes,
+            mid_src_nodes=left_src_nodes,
+            right_src_nodes=(),
         )
 
-        for left_src_node in left_src_nodes:
-            for stroke in left_strokes:
-                if left_node is None:
-                    left_node = state.trie.get_first_dst_node_else_create_chain(left_src_node, stroke.keys(), TransitionCostInfo(0, state.translation))
-                else:
-                    state.trie.link_chain(left_src_node, left_node, stroke.keys(), TransitionCostInfo(0, state.translation))
 
-
-
-        if left_node is not None:
-            hooks.left_node_created.emit(state, left_node, left_strokes, left_src_nodes)
-                
-
-            new_left_src_nodes.append(left_node)
-
-
-        right_node = None
-
-        new_right_src_nodes: list[int] = []
-
-        right_strokes = (
-            # *amphitheory.left_consonant_strokes(state.consonant),
-            amphitheory.spec.PHONEMES_TO_CHORDS_RIGHT[amphitheory.sound_sophone(state.consonant)],
-        ) if amphitheory.sound_sophone(state.consonant) in amphitheory.spec.PHONEMES_TO_CHORDS_RIGHT else ()
-
-        for right_src_node in right_src_nodes:
-            for stroke in right_strokes:
-                if right_node is None:
-                    right_node = state.trie.get_first_dst_node_else_create_chain(right_src_node, stroke.keys(), TransitionCostInfo(0, state.translation))
-                else:
-                    state.trie.link_chain(right_src_node, right_node, stroke.keys(), TransitionCostInfo(0, state.translation))
-
-        if right_node is not None:
-            # hooks.right_node_created.emit(state, right_node, strokes, right_src_nodes)
-                
-
-            new_right_src_nodes.append(right_node)
+    def on_consonant(state: State, consonant: Sound):
+        left_node = join_on_strokes(state.trie, state.left_src_nodes, left_strokes(consonant), state.translation)
+        right_node = join_on_strokes(state.trie, state.right_src_nodes, right_strokes(consonant), state.translation)
 
         if left_node is not None and right_node is not None:
             state.trie.link(right_node, left_node, TRIE_STROKE_BOUNDARY_KEY, TransitionCostInfo(0, state.translation))
 
 
-        hooks.complete_consonant.emit(state, left_node, right_node)
-        hooks.complete_consonant_2.emit(state, left_node, right_node)
-
-
-        left_src_nodes = tuple(new_left_src_nodes)
-        mid_src_nodes = left_src_nodes
-        right_src_nodes = tuple(new_right_src_nodes)
+        state.left_src_nodes = tuplify(left_node)
+        state.mid_src_nodes = state.left_src_nodes
+        state.right_src_nodes = tuplify(right_node)
 
     
-    @enumerator.vowel.listen
-    def _(group: ConsonantVowelGroup):
-        nonlocal left_src_nodes
-        nonlocal mid_src_nodes
-        nonlocal right_src_nodes
-
-        state.phoneme_index = len(group.consonants)
-
-
-        mid_node = None
-
-        for mid_src_node in mid_src_nodes:
-            if mid_node is None:
-                mid_node = state.trie.get_first_dst_node_else_create(mid_src_node, amphitheory.spec.vowel_to_steno(group.vowel), TransitionCostInfo(0, state.translation))
-            else:
-                state.trie.link(mid_src_node, mid_node, amphitheory.spec.vowel_to_steno(group.vowel), TransitionCostInfo(0, state.translation))
+    def on_vowel(state: State, vowel: Sound):
+        mid_node = join(state.trie, state.mid_src_nodes, (stroke.rtfcre for stroke in mid_strokes(vowel)), state.translation)
 
 
         if mid_node is not None:
@@ -169,23 +66,20 @@ def use_banks(enumerator: SoundsEnumerator, chords_raw: dict[str, str]):
         else:
             new_stroke_node = None
 
-        hooks.before_complete_nonfinal_group.emit(state)
 
-        hooks.complete_nonfinal_group.emit(state, group, new_stroke_node)
-
-
-
-
-        left_src_nodes = (new_stroke_node,) if new_stroke_node is not None else ()
-        mid_src_nodes = left_src_nodes
-        right_src_nodes += (mid_node,) if mid_node is not None else ()
+        state.left_src_nodes = tuplify(new_stroke_node)
+        state.mid_src_nodes = state.left_src_nodes
+        state.right_src_nodes += tuplify(mid_node)
 
 
-
-    @enumerator.complete.listen
-    def _():
-        for right_src_node in right_src_nodes:
+    def on_complete(state: State):
+        for right_src_node in state.right_src_nodes:
             state.trie.set_translation(right_src_node, state.translation)
 
 
-    return hooks
+    return use_consonants_vowels_enumeration(
+        on_begin=on_begin,
+        on_consonant=on_consonant,
+        on_vowel=on_vowel,
+        on_complete=on_complete,
+    )

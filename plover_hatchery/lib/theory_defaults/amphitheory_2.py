@@ -1,34 +1,75 @@
 from ..pipes import *
 
-enumerator = SoundsEnumerator()
 
-banks = use_banks(enumerator, {
-    "S": "S",
-    "T": "T",
-    "K": "K",
-    "P": "P",
-    "W": "W",
-    "H": "H",
-    "R": "R",
+add_entry = use_banks(
+    left_strokes=map_sophones({
+        "S": "S",
+        "T": "T",
+        "K": "K",
+        "P": "P",
+        "W": "W",
+        "H": "H",
+        "R": "R",
 
-    "Z": "STKPW",
-    "J": "SKWR",
-    "V": "SR",
-    "D": "TK",
-    "G": "TKPW",
-    "F": "TP",
-    "N": "TPH",
-    "Y": "KWR",
-    "B": "PW",
-    "M": "PH",
-    "L": "HR",
+        "Z": "STKPW",
+        "J": "SKWR",
+        "V": "SR",
+        "D": "TK",
+        "G": "TKPW",
+        "F": "TP",
+        "N": "TPH",
+        "Y": "KWR",
+        "B": "PW",
+        "M": "PH",
+        "L": "HR",
 
-    "SH": "SH",
-    "TH": "TH",
-    "CH": "KH",
+        "SH": "SH",
+        "TH": "TH",
+        "CH": "KH",
 
-    "NG": "TPH",
-})
+        "NG": "TPH",
+    }),
+
+    mid_strokes=map_sophones({
+        "AA": "AEU",
+        "A": "A",
+        "EE": "AOE",
+        "E": "E",
+        "II": "AOEU",
+        "I": "EU",
+        "OO": "OE",
+        "O": "O",
+        "UU": "AOU",
+        "U": "U",
+        "AU": "AU",
+        "OI": "OEU",
+        "OU": "OU",
+        "AE": "AE",
+        "AO": "AO",
+    }),
+
+    right_strokes=map_sophones({
+        "F": "-F",
+        "R": "-R",
+        "P": "-P",
+        "B": "-B",
+        "L": "-L",
+        "G": "-G",
+        "T": "-T",
+        "S": "-S",
+        "D": "-D",
+        "Z": "-Z",
+
+        "V": "-FB",
+        "N": "-PB",
+        "M": "-PL",
+        "K": "-BG",
+        "J": "-PBLG",
+        "CH": "-FP",
+        "SH": "-RB",
+        "TH": "*T",
+    }),
+)
 
 
 # use_left_alt_chords(manage_state, {

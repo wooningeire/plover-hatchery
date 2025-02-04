@@ -5,7 +5,7 @@ import plover.log
 
 from ..trie import NondeterministicTrie
 from ..sopheme import Sopheme
-from ..theory_defaults.amphitheory_2 import enumerator
+from ..theory_defaults.amphitheory_2 import add_entry
 from .build_lookup import create_lookup_for
 from .build_reverse_lookup import create_reverse_lookup_for
 from .get_sophemes import get_sopheme_sounds
@@ -36,7 +36,7 @@ def build_lookup_hatchery(file: TextIO):
             sophemes = tuple(Sopheme.parse_seq(line.strip()))
 
             try:
-                enumerator.execute(trie, get_sopheme_sounds(sophemes), Sopheme.get_translation(sophemes))
+                add_entry(trie, get_sopheme_sounds(sophemes), Sopheme.get_translation(sophemes))
             except Exception as e:
                 import traceback
                 print(f"failed to add {line.strip()}: {e} ({''.join(traceback.format_tb(e.__traceback__))})")
