@@ -1,7 +1,109 @@
 from ..pipes import *
 
+from ..sopheme import Sound
 
-map_sophones = sophone_mapper(default_sound_to_sophone_mapping)
+
+Sophone = define_sophones("""
+S T K P W H R
+Z J V D G F N Y B M L
+CH SH TH
+NG
+A E I O U
+AA EE II OO UU
+AU OU OI
+""")
+
+
+def default_sound_to_sophone_mapping(sound: Sound):
+    spelled = {
+        "a": "A",
+        "e": "E",
+        "i": "I",
+        "o": "O",
+        "u": "U",
+    }.get(sound.sopheme.chars)
+
+    return Sophone.__dict__[{
+        "p": ("P",),
+        "t": ("T", "D"),
+        "?": (),  # glottal stop
+        "t^": ("T", "R"),  # tapped R
+        "k": ("K",),
+        "x": ("K",),
+        "b": ("B",),
+        "d": ("D", "T"),
+        "g": ("G",),
+        "ch": ("CH",),
+        "jh": ("J",),
+        "s": ("S",),
+        "z": ("Z",),
+        "sh": ("SH",),
+        "zh": ("SH", "J"),
+        "f": ("F",),
+        "v": ("V",),
+        "th": ("TH",),
+        "dh": ("TH",),
+        "h": ("H",),
+        "m": ("M",),
+        "m!": ("M",),
+        "n": ("N",),
+        "n!": ("N",),
+        "ng": ("NG",),
+        "l": ("L",),
+        "ll": ("L",),
+        "lw": ("L",),
+        "l!": ("L",),
+        "r": ("R",),
+        "y": ("Y",),
+        "w": ("W",),
+        "hw": ("W",),
+        
+        "e": ("E", "EE", "AA"),
+        "ao": ("A", "AA", "O", "U"),
+        "a": ("A", "AA"),
+        "ah": ("A", "O"),
+        "oa": ("A", "O", "U"),
+        "aa": ("O", "A"),
+        "ar": ("A",),
+        "eh": ("A",),
+        "ou": ("OO", "O"),
+        "ouw": ("OO",),
+        "oou": ("OO",),
+        "o": ("O",),
+        "au": ("O", "A"),
+        "oo": ("O",),
+        "or": ("O",),
+        "our": ("O",),
+        "ii": ("EE",),
+        "iy": ("EE",),
+        "i": ("I", "EE", "E"),
+        "@r": (spelled,),
+        "@": (spelled,),
+        "uh": ("U",),
+        "u": ("U", "O", "OO"),
+        "uu": ("UU",),
+        "iu": ("UU",),
+        "ei": ("AA", "E"),
+        "ee": ("AA", "E", "A"),
+        "ai": ("II",),
+        "ae": ("II",),
+        "aer": ("II",),
+        "aai": ("II",),
+        "oi": ("OI",),
+        "oir": ("OI",),
+        "ow": ("OU",),
+        "owr": ("OU",),
+        "oow": ("OU",),
+        "ir": ("EE",),
+        "@@r": (spelled,),
+        "er": ("E", "U"),
+        "eir": ("E",),
+        "ur": ("U", "UU"),
+        "i@": (spelled,),
+    }[sound.keysymbol.base_symbol][0]]
+
+
+map_sophones = sophone_mapper(Sophone, default_sound_to_sophone_mapping)
 
 
 add_entry = consonants_vowels_enumeration(
@@ -64,8 +166,6 @@ add_entry = consonants_vowels_enumeration(
             "AU": "AU",
             "OI": "OEU",
             "OU": "OU",
-            "AE": "AE",
-            "AO": "AO",
         }),
 
         right_chords=map_sophones({
