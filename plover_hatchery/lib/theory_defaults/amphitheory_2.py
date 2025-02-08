@@ -177,9 +177,9 @@ add_entry = consonants_vowels_enumeration(
 
     initial_vowel_chord("@"),
 
-    # left_squish_elision(),
-    # right_squish_elision(),
-    # boundary_elision(),
+    left_squish_elision(),
+    right_squish_elision(),
+    boundary_elision(),
 
     # left_alt_chords(
     #     chords=map_sophones({

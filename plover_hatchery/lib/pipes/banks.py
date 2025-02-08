@@ -74,11 +74,8 @@ def banks(
     mid_chords: Callable[[Sound], Generator[Stroke, None, None]],
     right_chords: Callable[[Sound], Generator[Stroke, None, None]],
 ):
-    this_id = id(banks)
-
-
-    @define_plugin(this_id)
-    def initialize(base_hooks: ConsonantsVowelsEnumerationHooks, **_):
+    @define_plugin(banks)
+    def plugin(base_hooks: ConsonantsVowelsEnumerationHooks, **_):
         hooks = BanksHooks()
 
         def on_begin_hook():
@@ -122,7 +119,7 @@ def banks(
                 )
 
 
-        @base_hooks.on_begin.listen(this_id)
+        @base_hooks.on_begin.listen(banks)
         def _(trie: NondeterministicTrie[str, str], sounds: OutlineSounds, translation: str):
             left_src_nodes = (trie.ROOT,)
 
@@ -139,7 +136,7 @@ def banks(
             )
 
 
-        @base_hooks.on_consonant.listen(this_id)
+        @base_hooks.on_consonant.listen(banks)
         def _(state: BanksState, consonant: Sound, **_):
             left_node = join_on_strokes(state.trie, state.left_src_nodes, left_chords(consonant), state.translation)
             right_node = join_on_strokes(state.trie, state.right_src_nodes, right_chords(consonant), state.translation)
@@ -162,7 +159,7 @@ def banks(
             on_complete_consonant(state, consonant)
 
         
-        @base_hooks.on_vowel.listen(this_id)
+        @base_hooks.on_vowel.listen(banks)
         def _(state: BanksState, vowel: Sound, group_index: int, sound_index: int):
             mid_node = join(state.trie, state.mid_src_nodes, (stroke.rtfcre for stroke in mid_chords(vowel)), state.translation)
 
@@ -181,7 +178,7 @@ def banks(
                 on_complete_vowel(state, mid_node, new_stroke_node, group_index, sound_index)
 
 
-        @base_hooks.on_complete.listen(this_id)
+        @base_hooks.on_complete.listen(banks)
         def _(state: BanksState):
             for right_src_node in state.right_src_nodes:
                 state.trie.set_translation(right_src_node, state.translation)
@@ -189,4 +186,4 @@ def banks(
 
         return hooks
     
-    return initialize
+    return plugin

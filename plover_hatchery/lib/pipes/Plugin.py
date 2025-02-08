@@ -9,7 +9,7 @@ T = TypeVar("T")
 U = TypeVar("U")
 
 class GetPluginApi(Protocol):
-    def __call__(self, plugin_factory: "Callable[..., Plugin[T]]", /) -> "T": ...
+    def __call__(self, plugin_factory: "Callable[..., Plugin[T]]", /) -> T: ...
 
 class PluginInitializer(Protocol[T]):
     def __call__(self, *, get_plugin_api: GetPluginApi, base_hooks: "ConsonantsVowelsEnumerationHooks") -> T: ...
@@ -20,8 +20,8 @@ class Plugin(Generic[T]):
     initialize: PluginInitializer[T]
 
 
-def define_plugin(plugin_id: int):
+def define_plugin(plugin_factory: Callable[..., Plugin]):
     def create_plugin(initialize: PluginInitializer[T]) -> Plugin[T]:
-        return Plugin(plugin_id, initialize)
+        return Plugin(id(plugin_factory), initialize)
     
     return create_plugin

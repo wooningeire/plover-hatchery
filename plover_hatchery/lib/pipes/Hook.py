@@ -1,17 +1,19 @@
 from typing import TypeVar, Generic, Callable, Any, cast
 
+from .Plugin import Plugin
+
 
 T = TypeVar("T", bound=Callable)
 
 class HookObj(Generic[T]):
     """A collection of event listeners"""
-    
+
     def __init__(self):
         self.__handlers: dict[int, T] = {}
     
-    def listen(self, plugin_id: int):
+    def listen(self, plugin_factory: Callable[..., Plugin]):
         def add_handler(handler: T):
-            self.__handlers[plugin_id] = handler
+            self.__handlers[id(plugin_factory)] = handler
 
         return add_handler
 
