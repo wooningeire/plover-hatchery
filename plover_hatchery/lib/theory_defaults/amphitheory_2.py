@@ -181,15 +181,15 @@ add_entry = consonants_vowels_enumeration(
     right_squish_elision(),
     boundary_elision(),
 
-    # left_alt_chords(
-    #     chords=map_sophones({
-    #         "F": "W",
-    #         "V": "W",
-    #         "Z": "S*",
-    #     })
-    # ),
+    left_alt_chords(
+        chords=map_sophones({
+            "F": "W",
+            "V": "W",
+            "Z": "S*",
+        })
+    ),
 
-    # left_alt_squish_elision(),
+    left_alt_squish_elision(),
 
     # right_alt_chords(
     #     right_alt_squish_elision(),

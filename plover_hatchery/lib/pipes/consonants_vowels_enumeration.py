@@ -20,10 +20,10 @@ class OnComplete(Protocol[T]):
     def __call__(self, *, state: T) -> None: ...
 
 class ConsonantsVowelsEnumerationHooks(Generic[T]):
-    on_begin = Hook(OnBegin[T])
-    on_consonant = Hook(OnConsonant[T])
-    on_vowel = Hook(OnVowel[T])
-    on_complete = Hook(OnComplete[T])
+    begin = Hook(OnBegin[T])
+    consonant = Hook(OnConsonant[T])
+    vowel = Hook(OnVowel[T])
+    complete = Hook(OnComplete[T])
 
 
 def consonants_vowels_enumeration(
@@ -49,20 +49,20 @@ def consonants_vowels_enumeration(
 
     def on_begin(trie: NondeterministicTrie[str, str], sounds: OutlineSounds, translation: str):
         states: dict[int, Any] = {}
-        for handler in hooks.on_begin.handlers():
+        for handler in hooks.begin.handlers():
             states[plugin.id] = handler(trie=trie, sounds=sounds, translation=translation)
         return states
 
     def on_consonant(states: dict[int, Any], consonant: Sound, group_index: int, sound_index: int):
-        for handler in hooks.on_consonant.handlers():
+        for handler in hooks.consonant.handlers():
             handler(state=states.get(plugin.id), consonant=consonant, group_index=group_index, sound_index=sound_index)
 
     def on_vowel(states: dict[int, Any], vowel: Sound, group_index: int, sound_index: int):
-        for handler in hooks.on_vowel.handlers():
+        for handler in hooks.vowel.handlers():
             handler(state=states.get(plugin.id), vowel=vowel, group_index=group_index, sound_index=sound_index)
 
     def on_complete(states: dict[int, Any]):
-        for handler in hooks.on_complete.handlers():
+        for handler in hooks.complete.handlers():
             handler(state=states.get(plugin.id))
 
 

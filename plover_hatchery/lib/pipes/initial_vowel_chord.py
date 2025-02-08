@@ -12,7 +12,7 @@ def initial_vowel_chord(chord: str):
         banks_hooks = get_plugin_api(banks)
 
 
-        @banks_hooks.on_complete_vowel.listen(initial_vowel_chord)
+        @banks_hooks.complete_vowel.listen(initial_vowel_chord)
         def _(banks_state: BanksState, group_index: int, sound_index: int, new_stroke_node: int, **_):
             if group_index > 0 or sound_index > 0: return
 

@@ -62,10 +62,10 @@ class BanksHooks(Generic[T]):
             sound_index: int,
         ) -> None: ...
 
-    on_begin = Hook(OnBegin[T])
-    on_before_complete_consonant = Hook(OnBeforeCompleteConsonant[T])
-    on_complete_consonant = Hook(OnCompleteConsonant[T])
-    on_complete_vowel = Hook(OnCompleteVowel[T])
+    begin = Hook(OnBegin[T])
+    before_complete_consonant = Hook(OnBeforeCompleteConsonant[T])
+    complete_consonant = Hook(OnCompleteConsonant[T])
+    complete_vowel = Hook(OnCompleteVowel[T])
 
 
 def banks(
@@ -80,13 +80,13 @@ def banks(
 
         def on_begin_hook():
             states: dict[int, Any] = {}
-            for plugin_id, handler in hooks.on_begin.ids_handlers():
+            for plugin_id, handler in hooks.begin.ids_handlers():
                 states[plugin_id] = handler()
 
             return states
 
         def on_before_complete_consonant(banks_state: BanksState, consonant: Sound):
-            for plugin_id, handler in hooks.on_before_complete_consonant.ids_handlers():
+            for plugin_id, handler in hooks.before_complete_consonant.ids_handlers():
                 handler(
                     state=banks_state.plugin_states.get(plugin_id),
                     banks_state=banks_state,
@@ -94,7 +94,7 @@ def banks(
                 )
 
         def on_complete_consonant(banks_state: BanksState, consonant: Sound):
-            for plugin_id, handler in hooks.on_complete_consonant.ids_handlers():
+            for plugin_id, handler in hooks.complete_consonant.ids_handlers():
                 handler(
                     state=banks_state.plugin_states.get(plugin_id),
                     banks_state=banks_state,
@@ -108,7 +108,7 @@ def banks(
             group_index: int,
             sound_index: int,
         ):
-            for plugin_id, handler in hooks.on_complete_vowel.ids_handlers():
+            for plugin_id, handler in hooks.complete_vowel.ids_handlers():
                 handler(
                     state=banks_state.plugin_states.get(plugin_id),
                     banks_state=banks_state,
@@ -119,7 +119,7 @@ def banks(
                 )
 
 
-        @base_hooks.on_begin.listen(banks)
+        @base_hooks.begin.listen(banks)
         def _(trie: NondeterministicTrie[str, str], sounds: OutlineSounds, translation: str):
             left_src_nodes = (trie.ROOT,)
 
@@ -136,7 +136,7 @@ def banks(
             )
 
 
-        @base_hooks.on_consonant.listen(banks)
+        @base_hooks.consonant.listen(banks)
         def _(state: BanksState, consonant: Sound, **_):
             left_node = join_on_strokes(state.trie, state.left_src_nodes, left_chords(consonant), state.translation)
             right_node = join_on_strokes(state.trie, state.right_src_nodes, right_chords(consonant), state.translation)
@@ -159,7 +159,7 @@ def banks(
             on_complete_consonant(state, consonant)
 
         
-        @base_hooks.on_vowel.listen(banks)
+        @base_hooks.vowel.listen(banks)
         def _(state: BanksState, vowel: Sound, group_index: int, sound_index: int):
             mid_node = join(state.trie, state.mid_src_nodes, (stroke.rtfcre for stroke in mid_chords(vowel)), state.translation)
 
@@ -178,7 +178,7 @@ def banks(
                 on_complete_vowel(state, mid_node, new_stroke_node, group_index, sound_index)
 
 
-        @base_hooks.on_complete.listen(banks)
+        @base_hooks.complete.listen(banks)
         def _(state: BanksState):
             for right_src_node in state.right_src_nodes:
                 state.trie.set_translation(right_src_node, state.translation)
