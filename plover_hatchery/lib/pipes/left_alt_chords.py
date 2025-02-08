@@ -1,4 +1,4 @@
-from typing import Callable, Generator, Protocol, TypeVar
+from typing import Callable, Generator, Protocol
 from dataclasses import dataclass
 
 from plover.steno import Stroke
@@ -9,8 +9,6 @@ from .join import join_on_strokes
 from .Plugin import define_plugin, GetPluginApi
 from .Hook import Hook
 
-
-T = TypeVar("T")
 
 class LeftAltChordsHooks:
     class OnCompleteVowel(Protocol):
