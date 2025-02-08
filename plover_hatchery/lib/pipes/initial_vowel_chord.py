@@ -1,10 +1,16 @@
+from plover_hatchery.lib.pipes.Plugin import Plugin
+
+
+from typing import Any
+
+
 from plover.steno import Stroke
 
 from ..trie import TransitionCostInfo
 from .banks import BanksState, banks
 from .Plugin import define_plugin, GetPluginApi
 
-def initial_vowel_chord(chord: str):
+def initial_vowel_chord(chord: str) -> Plugin[None]:
     stroke = Stroke.from_steno(chord)
 
     @define_plugin(initial_vowel_chord)

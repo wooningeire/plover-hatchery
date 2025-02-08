@@ -27,18 +27,18 @@ class ConsonantsVowelsEnumerationHooks(Generic[T]):
 
 
 def consonants_vowels_enumeration(
-    *plugins: Plugin,
+    *plugins: Plugin[Any],
 ):
     hooks = ConsonantsVowelsEnumerationHooks()
 
     plugins_map: dict[int, Any] = {}
-    def get_plugin_api(plugin_factory: Callable[..., Plugin]):
+    def get_plugin_api(plugin_factory: Callable[..., Plugin[T]]) -> T:
         plugin_id = id(plugin_factory)
 
         if plugin_id not in plugins_map:
             raise ValueError("plugin not found")
         
-        return plugins_map[plugin_id]
+        return cast(T, plugins_map[plugin_id])
 
 
     for plugin in plugins:
@@ -49,21 +49,21 @@ def consonants_vowels_enumeration(
 
     def on_begin(trie: NondeterministicTrie[str, str], sounds: OutlineSounds, translation: str):
         states: dict[int, Any] = {}
-        for handler in hooks.begin.handlers():
-            states[plugin.id] = handler(trie=trie, sounds=sounds, translation=translation)
+        for plugin_id, handler in hooks.begin.ids_handlers():
+            states[plugin_id] = handler(trie=trie, sounds=sounds, translation=translation)
         return states
 
     def on_consonant(states: dict[int, Any], consonant: Sound, group_index: int, sound_index: int):
-        for handler in hooks.consonant.handlers():
-            handler(state=states.get(plugin.id), consonant=consonant, group_index=group_index, sound_index=sound_index)
+        for plugin_id, handler in hooks.consonant.ids_handlers():
+            handler(state=states.get(plugin_id), consonant=consonant, group_index=group_index, sound_index=sound_index)
 
     def on_vowel(states: dict[int, Any], vowel: Sound, group_index: int, sound_index: int):
-        for handler in hooks.vowel.handlers():
-            handler(state=states.get(plugin.id), vowel=vowel, group_index=group_index, sound_index=sound_index)
+        for plugin_id, handler in hooks.vowel.ids_handlers():
+            handler(state=states.get(plugin_id), vowel=vowel, group_index=group_index, sound_index=sound_index)
 
     def on_complete(states: dict[int, Any]):
-        for handler in hooks.complete.handlers():
-            handler(state=states.get(plugin.id))
+        for plugin_id, handler in hooks.complete.ids_handlers():
+            handler(state=states.get(plugin_id))
 
 
     def add_entry(trie: NondeterministicTrie[str, str], sounds: OutlineSounds, translation: str):
@@ -75,6 +75,7 @@ def consonants_vowels_enumeration(
 
             on_vowel(states, group.vowel, group_index, len(group.consonants))
 
+        group_index = len(sounds.nonfinals)
         for sound_index, consonant in enumerate(sounds.final_consonants):
             on_consonant(states, consonant, group_index, sound_index)
 

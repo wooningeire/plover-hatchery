@@ -1,3 +1,6 @@
+from plover_hatchery.lib.pipes.Plugin import Plugin
+
+
 from typing import Callable, Generator, TypeVar, Protocol, Generic, Any
 from dataclasses import dataclass
 import dataclasses
@@ -8,7 +11,6 @@ from ..sopheme import Sound
 from ..sophone.Sophone import Sophone
 from ..trie import NondeterministicTrie, TransitionCostInfo
 from ..config import TRIE_STROKE_BOUNDARY_KEY, TRIE_LINKER_KEY
-from ..theory_defaults.amphitheory import amphitheory
 from .state import EntryBuilderState, OutlineSounds, ConsonantVowelGroup
 from .join import join, join_on_strokes, tuplify
 from .consonants_vowels_enumeration import ConsonantsVowelsEnumerationHooks
@@ -39,42 +41,41 @@ class BanksState:
 
 
 T = TypeVar("T")
-U = TypeVar("U")
 
 @dataclass
-class BanksHooks(Generic[T]):
-    class Begin(Protocol[U]):
-        def __call__(self) -> U: ...
-    class BeforeCompleteConsonant(Protocol[U]):
+class BanksHooks:
+    class Begin(Protocol):
+        def __call__(self) -> Any: ...
+    class BeforeCompleteConsonant(Protocol):
         def __call__(self,
             *,
-            state: U,
+            state: Any,
             banks_state: BanksState,
             consonant: Sound,
             left_node: "int | None",
             right_node: "int | None",
         ) -> None: ...
-    class CompleteConsonant(Protocol[U]):
+    class CompleteConsonant(Protocol):
         def __call__(self,
             *,
-            state: U,
+            state: Any,
             banks_state: BanksState,
             consonant: Sound,
         ) -> None: ...
-    class BeforeCompleteVowel(Protocol[U]):
+    class BeforeCompleteVowel(Protocol):
         def __call__(self,
             *,
-            state: U,
+            state: Any,
             banks_state: BanksState,
             mid_node: int,
             new_stroke_node: int,
             group_index: int,
             sound_index: int,
         ) -> None: ...
-    class CompleteVowel(Protocol[U]):
+    class CompleteVowel(Protocol):
         def __call__(self,
             *,
-            state: U,
+            state: Any,
             banks_state: BanksState,
             mid_node: int,
             new_stroke_node: int,
@@ -82,11 +83,11 @@ class BanksHooks(Generic[T]):
             sound_index: int,
         ) -> None: ...
 
-    begin = Hook(Begin[T])
-    before_complete_consonant = Hook(BeforeCompleteConsonant[T])
-    complete_consonant = Hook(CompleteConsonant[T])
-    before_complete_vowel = Hook(BeforeCompleteVowel[T])
-    complete_vowel = Hook(CompleteVowel[T])
+    begin = Hook(Begin)
+    before_complete_consonant = Hook(BeforeCompleteConsonant)
+    complete_consonant = Hook(CompleteConsonant)
+    before_complete_vowel = Hook(BeforeCompleteVowel)
+    complete_vowel = Hook(CompleteVowel)
 
 
 def banks(
@@ -94,9 +95,9 @@ def banks(
     left_chords: Callable[[Sound], Generator[Stroke, None, None]],
     mid_chords: Callable[[Sound], Generator[Stroke, None, None]],
     right_chords: Callable[[Sound], Generator[Stroke, None, None]],
-):
+) -> Plugin[BanksHooks]:
     @define_plugin(banks)
-    def plugin(base_hooks: ConsonantsVowelsEnumerationHooks, **_):
+    def plugin(base_hooks: ConsonantsVowelsEnumerationHooks[BanksState], **_):
         hooks = BanksHooks()
 
         def on_begin_hook():

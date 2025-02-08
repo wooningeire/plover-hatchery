@@ -1,3 +1,6 @@
+from plover_hatchery.lib.pipes.Plugin import Plugin
+
+
 from typing import Callable, Any
 from dataclasses import dataclass, field
 from enum import Enum
@@ -19,7 +22,7 @@ class VowelClustersState:
     upcoming_clusters: dict[tuple[int, int], list[Cluster]] = field(default_factory=lambda: {})
 
 
-def vowel_clusters(Sophone: Enum, map_sophones: Callable[[Sound], Any], vowel_sophones: set, clusters: dict[str, str]):
+def vowel_clusters(Sophone: Enum, map_sophones: Callable[[Sound], Any], vowel_sophones: set[Any], clusters: dict[str, str]) -> Plugin[None]:
     def build_vowel_clusters_trie() -> ReadonlyTrie[Any, Stroke]:
         trie: Trie[Any, Stroke] = Trie()
         for phonemes, steno in clusters.items():

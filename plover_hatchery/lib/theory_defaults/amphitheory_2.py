@@ -205,22 +205,20 @@ add_entry = consonants_vowels_enumeration(
             "Z": "S*",
         })
     ),
-
     left_alt_squish_elision(),
 
-    # right_alt_chords(
-    #     right_alt_squish_elision(),
-    
-    #     chords=map_sophones({
-    #         "S": "-F",
-    #         "Z": "-F",
-    #         "V": "-F",
-    #         "TH": "-F",
-    #         "M": "-FR",
-    #         "J": "-FR",
-    #         "K": "*G",
-    #     })
-    # ),
+    right_alt_chords(
+        chords=map_sophones({
+            "S": "-F",
+            "Z": "-F",
+            "V": "-F",
+            "TH": "-F",
+            "M": "-FR",
+            "J": "-FR",
+            "K": "*G",
+        })
+    ),
+    right_alt_squish_elision(),
     
     consonant_clusters(Sophone, default_sound_to_sophone_mapping, {
         "D S": "STK",
@@ -271,61 +269,6 @@ add_entry = consonants_vowels_enumeration(
 
     # consonant_inversions(),
 )
-
-
-# use_left_alt_chords(manage_state, {
-#     "F": "W",
-#     "V": "W",
-#     "Z": "S*",
-# })
-
-
-# use_consonant_clusters(manage_state, {
-#     "D S": "STK",
-#     "D S T": "STK",
-#     "D S K": "STK",
-#     "K N": "K",
-#     "K M P": "KP",
-#     "K M B": "KPW",
-#     "L F": "-FL",
-#     "L V": "-FL",
-#     "G L": "-LG",
-#     "L J": "-LG",
-#     "K L": "*LG",
-#     "N J": "-PBG",
-#     "M J": "-PLG",
-#     "R F": "*FR",
-#     "R S": "*FR",
-#     "R M": "*FR",
-#     "R V": "-FRB",
-#     "L CH": "-LG",
-#     "R CH": "-FRPB",
-#     "N CH": "-FRPBLG",
-#     "L SH": "*RB",
-#     "R SH": "*RB",
-#     "N SH": "*RB",
-#     "M P": "*PL",
-#     "T L": "-LT",
-# })
-# use_vowel_clusters(manage_state, {
-#     ". N T": "SPW",
-#     ". N D": "SPW",
-#     ". M P": "KPW",
-#     ". M B": "KPW",
-#     ". N K": "SKPW",
-#     ". N G": "SKPW",
-#     ". N J": "SKPW",
-#     "E K S": "SKW",
-#     "E K S T": "STKW",
-#     "E K S K": "SKW",
-#     "E K S P": "SKPW",
-#     ". N": "TPH",
-#     ". N S": "STPH",
-#     ". N F": "TPW",
-#     ". N V": "TPW",
-#     ". M": "PH",
-# })
-
 
 
 # # _keys = use_keys("@STKPWHRAO*EUFRPBLGTSDZ")

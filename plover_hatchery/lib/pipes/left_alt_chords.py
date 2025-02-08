@@ -1,4 +1,7 @@
-from typing import Callable, Generator, Protocol
+from plover_hatchery.lib.pipes.Plugin import Plugin
+
+
+from typing import Any, Callable, Generator, Protocol, final
 from dataclasses import dataclass
 
 from plover.steno import Stroke
@@ -10,6 +13,7 @@ from .Plugin import define_plugin, GetPluginApi
 from .Hook import Hook
 
 
+@final
 class LeftAltChordsHooks:
     class OnCompleteVowel(Protocol):
         def __call__(self,
@@ -21,6 +25,7 @@ class LeftAltChordsHooks:
     complete_vowel = Hook(OnCompleteVowel)
 
 
+@final
 @dataclass
 class LeftAltChordsState:
     newest_left_alt_node: "int | None" = None
@@ -28,7 +33,7 @@ class LeftAltChordsState:
     """The latest node constructed by adding the alternate chord for a left consonant"""
 
 
-def left_alt_chords(chords: Callable[[Sound], Generator[Stroke, None, None]]):
+def left_alt_chords(chords: Callable[[Sound], Generator[Stroke, None, None]]) -> Plugin[LeftAltChordsHooks]:
     @define_plugin(left_alt_chords)
     def plugin(get_plugin_api: GetPluginApi, **_):
         hooks = LeftAltChordsHooks()
