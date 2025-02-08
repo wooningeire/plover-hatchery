@@ -1,4 +1,4 @@
-from .banks import BanksPlugin, BanksState
+from .banks import BanksHooks, BanksState
 
 
 def right_squish_elision():
@@ -7,6 +7,6 @@ def right_squish_elision():
         banks_state.right_src_nodes += (banks_state.last_right_node,)
 
 
-    return BanksPlugin(
+    return BanksHooks(
         on_complete_vowel=on_complete_vowel,
     )

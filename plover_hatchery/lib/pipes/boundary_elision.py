@@ -1,4 +1,4 @@
-from .banks import BanksPlugin, BanksState
+from .banks import BanksHooks, BanksState
 
 
 def boundary_elision():
@@ -6,6 +6,6 @@ def boundary_elision():
         banks_state.left_src_nodes += banks_state.mid_src_nodes
 
 
-    return BanksPlugin(
+    return BanksHooks(
         on_complete_vowel=on_complete_vowel,
     )

@@ -1,7 +1,7 @@
 from plover.steno import Stroke
 
 from ..trie import TransitionCostInfo
-from .banks import BanksPlugin, BanksState
+from .banks import BanksHooks, BanksState
 
 def initial_vowel_chord(initial_vowel_chord: str):
     stroke = Stroke.from_steno(initial_vowel_chord)
@@ -16,6 +16,6 @@ def initial_vowel_chord(initial_vowel_chord: str):
             TransitionCostInfo(0, banks_state.translation)
         )
 
-    return BanksPlugin(
+    return BanksHooks(
         on_complete_vowel=on_complete_vowel,
     )

@@ -7,7 +7,7 @@ from ..trie import TransitionCostInfo, NondeterministicTrie
 from ..sophone.Sophone import Sophone
 from ..sopheme import Sound
 from ..theory_defaults.amphitheory import amphitheory
-from .banks import BanksPlugin, BanksState
+from .banks import BanksHooks, BanksState
 from .join import join_on_strokes
 
 
@@ -86,7 +86,7 @@ def left_alt_chords(
             )
 
     
-    return BanksPlugin(
+    return BanksHooks(
         on_begin=on_begin,
         on_before_complete_consonant=on_before_complete_consonant,
         on_complete_consonant=on_complete_consonant,

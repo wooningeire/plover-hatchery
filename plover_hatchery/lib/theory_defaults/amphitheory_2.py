@@ -108,22 +108,6 @@ map_sophones = sophone_mapper(Sophone, default_sound_to_sophone_mapping)
 
 add_entry = consonants_vowels_enumeration(
     banks(
-        initial_vowel_chord("@"),
-
-        left_squish_elision(),
-        right_squish_elision(),
-        boundary_elision(),
-
-        left_alt_chords(
-            left_alt_squish_elision(),
-
-            chords=map_sophones({
-                "F": "W",
-                "V": "W",
-                "Z": "S*",
-            })
-        ),
-
         left_chords=map_sophones({
             "S": "S",
             "T": "T",
@@ -190,6 +174,85 @@ add_entry = consonants_vowels_enumeration(
             "TH": "*T",
         }),
     ),
+
+    # initial_vowel_chord("@"),
+
+    # left_squish_elision(),
+    # right_squish_elision(),
+    # boundary_elision(),
+
+    # left_alt_chords(
+    #     chords=map_sophones({
+    #         "F": "W",
+    #         "V": "W",
+    #         "Z": "S*",
+    #     })
+    # ),
+
+    # left_alt_squish_elision(),
+
+    # right_alt_chords(
+    #     right_alt_squish_elision(),
+    
+    #     chords=map_sophones({
+    #         "S": "-F",
+    #         "Z": "-F",
+    #         "V": "-F",
+    #         "TH": "-F",
+    #         "M": "-FR",
+    #         "J": "-FR",
+    #         "K": "*G",
+    #     })
+    # ),
+    
+    # consonant_clusters({
+    #     "D S": "STK",
+    #     "D S T": "STK",
+    #     "D S K": "STK",
+    #     "K N": "K",
+    #     "K M P": "KP",
+    #     "K M B": "KPW",
+    #     "L F": "-FL",
+    #     "L V": "-FL",
+    #     "G L": "-LG",
+    #     "L J": "-LG",
+    #     "K L": "*LG",
+    #     "N J": "-PBG",
+    #     "M J": "-PLG",
+    #     "R F": "*FR",
+    #     "R S": "*FR",
+    #     "R M": "*FR",
+    #     "R V": "-FRB",
+    #     "L CH": "-LG",
+    #     "R CH": "-FRPB",
+    #     "N CH": "-FRPBLG",
+    #     "L SH": "*RB",
+    #     "R SH": "*RB",
+    #     "N SH": "*RB",
+    #     "M P": "*PL",
+    #     "T L": "-LT",
+    #     "SH N": "-GS",
+    #     "K SH N": "-BGS",
+    # }),
+
+    # vowel_clusters({
+    #     ". N T": "SPW",
+    #     ". N D": "SPW",
+    #     ". M P": "KPW",
+    #     ". M B": "KPW",
+    #     ". N K": "SKPW",
+    #     ". N G": "SKPW",
+    #     ". N J": "SKPW",
+    #     "E K S": "SKW",
+    #     "E K S T": "STKW",
+    #     "E K S K": "SKW",
+    #     "E K S P": "SKPW",
+    #     ". N S": "STPH",
+    #     ". N F": "TPW",
+    #     ". N V": "TPW",
+    # }),
+
+    # consonant_inversions(),
 )
 
 
@@ -247,8 +310,6 @@ add_entry = consonants_vowels_enumeration(
 # })
 
 
-# use_initial_vowel_chord(manage_state, "@")
-
 
 # # _keys = use_keys("@STKPWHRAO*EUFRPBLGTSDZ")
 # # _key_banks = use_key_banks(_keys)(
@@ -258,46 +319,6 @@ add_entry = consonants_vowels_enumeration(
 # #     positionless="*"
 # # )
 
-# # _sophones = use_sophones("""
-# # S T K P W H R
-# # Z J V D G F N Y B M L
-# # CH SH TH
-# # NG
-# # A E I O U
-# # AA EE II OO UU
-# # AU OU OI
-# # """)
-
-
 
 # # cost = use_transition_costs()
 
-# # _left_chords = use_sophones.map.left_chords(
-# #     S = "S",
-# #     T = "T",
-# #     K = "K",
-# #     P = "P",
-# #     W = "W",
-# #     H = "H",
-# #     R = "R",
-
-# #     Z = "STKPW",
-# #     J = "SKWR",
-# #     V = "SR",
-# #     D = "TK",
-# #     G = "TKPW",
-# #     F = "TP",
-# #     N = "TPH",
-# #     Y = "KWR",
-# #     B = "PW",
-# #     M = "PH",
-# #     L = "HR",
-
-# #     SH = "SH",
-# #     TH = "TH",
-# #     CH = "KH",
-
-# #     NG = "TPH",
-# # )
-
-# # use_sophones

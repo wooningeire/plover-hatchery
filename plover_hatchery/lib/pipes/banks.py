@@ -10,7 +10,9 @@ from ..config import TRIE_STROKE_BOUNDARY_KEY, TRIE_LINKER_KEY
 from ..theory_defaults.amphitheory import amphitheory
 from .state import EntryBuilderState, OutlineSounds, ConsonantVowelGroup
 from .join import join, join_on_strokes, tuplify
-from .consonants_vowels_enumeration import ConsonantsVowelsEnumerationPlugin
+from .consonants_vowels_enumeration import ConsonantsVowelsEnumerationHooks
+from .Hook import Hook, HookAttr
+from .Plugin import Plugin, GetPlugin
 
 @dataclass
 class BanksState:
@@ -18,7 +20,7 @@ class BanksState:
     sounds: OutlineSounds
     translation: str
 
-    plugin_states: tuple[Any, ...]
+    plugin_states: dict[int, Any]
 
     left_src_nodes: tuple[int, ...]
     mid_src_nodes: tuple[int, ...]
@@ -32,7 +34,7 @@ T = TypeVar("T")
 U = TypeVar("U")
 
 @dataclass
-class BanksPlugin(Generic[T]):
+class BanksHooks(Generic[T]):
     class OnBegin(Protocol[U]):
         def __call__(self) -> U: ...
     class OnBeforeCompleteConsonant(Protocol[U]):
@@ -60,119 +62,131 @@ class BanksPlugin(Generic[T]):
             sound_index: int,
         ) -> None: ...
 
-    on_begin: "OnBegin[T] | None" = None
-    on_before_complete_consonant: "OnBeforeCompleteConsonant[T] | None" = None
-    on_complete_consonant: "OnCompleteConsonant[T] | None" = None
-    on_complete_vowel: "OnCompleteVowel[T] | None" = None
+    on_begin = HookAttr(OnBegin[T])
+    on_before_complete_consonant = HookAttr(OnBeforeCompleteConsonant[T])
+    on_complete_consonant = HookAttr(OnCompleteConsonant[T])
+    on_complete_vowel = HookAttr(OnCompleteVowel[T])
 
 
 def banks(
-    *plugins: BanksPlugin,
+    *,
     left_chords: Callable[[Sound], Generator[Stroke, None, None]],
     mid_chords: Callable[[Sound], Generator[Stroke, None, None]],
     right_chords: Callable[[Sound], Generator[Stroke, None, None]],
 ):
-    def on_begin_hook():
-        return tuple(plugin.on_begin() if plugin.on_begin is not None else None for plugin in plugins)
-    
+    this_id = id(banks)
 
-    def on_before_complete_consonant(banks_state: BanksState, consonant: Sound):
-        for plugin, state in zip(plugins, banks_state.plugin_states):
-            if plugin.on_before_complete_consonant is None: continue
-            plugin.on_before_complete_consonant(state=state, banks_state=banks_state, consonant=consonant)
-    
 
-    def on_complete_consonant(banks_state: BanksState, consonant: Sound):
-        for plugin, state in zip(plugins, banks_state.plugin_states):
-            if plugin.on_complete_consonant is None: continue
-            plugin.on_complete_consonant(state=state, banks_state=banks_state, consonant=consonant)
-    
+    @Plugin.define
+    def initialize(base_hooks: ConsonantsVowelsEnumerationHooks, **_):
+        hooks = BanksHooks()
 
-    def on_complete_vowel(
-        banks_state: BanksState,
-        mid_node: int,
-        new_stroke_node: int,
-        group_index: int,
-        sound_index: int,
-    ):
-        for plugin, state in zip(plugins, banks_state.plugin_states):
-            if plugin.on_complete_vowel is None: continue
-            plugin.on_complete_vowel(
-                state=state,
-                banks_state=banks_state,
-                mid_node=mid_node,
-                new_stroke_node=new_stroke_node,
-                group_index=group_index,
-                sound_index=sound_index,
+        def on_begin_hook():
+            states: dict[int, Any] = {}
+            for plugin_id, handler in hooks.on_begin.ids_handlers():
+                states[plugin_id] = handler()
+
+            return states
+
+        def on_before_complete_consonant(banks_state: BanksState, consonant: Sound):
+            for plugin_id, handler in hooks.on_before_complete_consonant.ids_handlers():
+                handler(
+                    state=banks_state.plugin_states.get(plugin_id),
+                    banks_state=banks_state,
+                    consonant=consonant
+                )
+
+        def on_complete_consonant(banks_state: BanksState, consonant: Sound):
+            for plugin_id, handler in hooks.on_complete_consonant.ids_handlers():
+                handler(
+                    state=banks_state.plugin_states.get(plugin_id),
+                    banks_state=banks_state,
+                    consonant=consonant
+                )
+
+        def on_complete_vowel(
+            banks_state: BanksState,
+            mid_node: int,
+            new_stroke_node: int,
+            group_index: int,
+            sound_index: int,
+        ):
+            for plugin_id, handler in hooks.on_complete_vowel.ids_handlers():
+                handler(
+                    state=banks_state.plugin_states.get(plugin_id),
+                    banks_state=banks_state,
+                    mid_node=mid_node,
+                    new_stroke_node=new_stroke_node,
+                    group_index=group_index,
+                    sound_index=sound_index,
+                )
+
+
+        @base_hooks.on_begin.listen(this_id)
+        def _(trie: NondeterministicTrie[str, str], sounds: OutlineSounds, translation: str):
+            left_src_nodes = (trie.ROOT,)
+
+            return BanksState(
+                trie,
+                sounds,
+                translation,
+
+                left_src_nodes=left_src_nodes,
+                mid_src_nodes=left_src_nodes,
+                right_src_nodes=(),
+
+                plugin_states=on_begin_hook(),
             )
 
 
+        @base_hooks.on_consonant.listen(this_id)
+        def _(state: BanksState, consonant: Sound, **_):
+            left_node = join_on_strokes(state.trie, state.left_src_nodes, left_chords(consonant), state.translation)
+            right_node = join_on_strokes(state.trie, state.right_src_nodes, right_chords(consonant), state.translation)
+
+            if left_node is not None and right_node is not None:
+                state.trie.link(right_node, left_node, TRIE_STROKE_BOUNDARY_KEY, TransitionCostInfo(0, state.translation))
 
 
-    def on_begin(trie: NondeterministicTrie[str, str], sounds: OutlineSounds, translation: str):
-        left_src_nodes = (trie.ROOT,)
-
-        return BanksState(
-            trie,
-            sounds,
-            translation,
-
-            left_src_nodes=left_src_nodes,
-            mid_src_nodes=left_src_nodes,
-            right_src_nodes=(),
-
-            plugin_states=on_begin_hook(),
-        )
+            on_before_complete_consonant(state, consonant)
 
 
-    def on_consonant(state: BanksState, consonant: Sound, **_):
-        left_node = join_on_strokes(state.trie, state.left_src_nodes, left_chords(consonant), state.translation)
-        right_node = join_on_strokes(state.trie, state.right_src_nodes, right_chords(consonant), state.translation)
+            state.left_src_nodes = tuplify(left_node)
+            state.mid_src_nodes = state.left_src_nodes
+            state.right_src_nodes = tuplify(right_node)
 
-        if left_node is not None and right_node is not None:
-            state.trie.link(right_node, left_node, TRIE_STROKE_BOUNDARY_KEY, TransitionCostInfo(0, state.translation))
-
-
-        on_before_complete_consonant(state, consonant)
+            state.last_left_node = left_node
+            state.last_right_node = right_node
 
 
-        state.left_src_nodes = tuplify(left_node)
-        state.mid_src_nodes = state.left_src_nodes
-        state.right_src_nodes = tuplify(right_node)
+            on_complete_consonant(state, consonant)
 
-        state.last_left_node = left_node
-        state.last_right_node = right_node
+        
+        @base_hooks.on_vowel.listen(this_id)
+        def _(state: BanksState, vowel: Sound, group_index: int, sound_index: int):
+            mid_node = join(state.trie, state.mid_src_nodes, (stroke.rtfcre for stroke in mid_chords(vowel)), state.translation)
 
 
-        on_complete_consonant(state, consonant)
+            if mid_node is not None:
+                new_stroke_node = state.trie.get_first_dst_node_else_create(mid_node, TRIE_STROKE_BOUNDARY_KEY, TransitionCostInfo(0, state.translation))
+            else:
+                new_stroke_node = None
 
+
+            state.left_src_nodes = tuplify(new_stroke_node)
+            state.mid_src_nodes = state.left_src_nodes
+            state.right_src_nodes += tuplify(mid_node)
+
+            if mid_node is not None and new_stroke_node is not None:
+                on_complete_vowel(state, mid_node, new_stroke_node, group_index, sound_index)
+
+
+        @base_hooks.on_complete.listen(this_id)
+        def _(state: BanksState):
+            for right_src_node in state.right_src_nodes:
+                state.trie.set_translation(right_src_node, state.translation)
+
+
+        return hooks
     
-    def on_vowel(state: BanksState, vowel: Sound, group_index: int, sound_index: int):
-        mid_node = join(state.trie, state.mid_src_nodes, (stroke.rtfcre for stroke in mid_chords(vowel)), state.translation)
-
-
-        if mid_node is not None:
-            new_stroke_node = state.trie.get_first_dst_node_else_create(mid_node, TRIE_STROKE_BOUNDARY_KEY, TransitionCostInfo(0, state.translation))
-        else:
-            new_stroke_node = None
-
-
-        state.left_src_nodes = tuplify(new_stroke_node)
-        state.mid_src_nodes = state.left_src_nodes
-        state.right_src_nodes += tuplify(mid_node)
-
-        if mid_node is not None and new_stroke_node is not None:
-            on_complete_vowel(state, mid_node, new_stroke_node, group_index, sound_index)
-
-
-    def on_complete(state: BanksState):
-        for right_src_node in state.right_src_nodes:
-            state.trie.set_translation(right_src_node, state.translation)
-
-
-    return ConsonantsVowelsEnumerationPlugin(
-        on_begin=on_begin,
-        on_consonant=on_consonant,
-        on_vowel=on_vowel,
-        on_complete=on_complete,
-    )
+    return initialize
