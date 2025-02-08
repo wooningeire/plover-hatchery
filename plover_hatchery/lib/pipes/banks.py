@@ -11,8 +11,8 @@ from ..theory_defaults.amphitheory import amphitheory
 from .state import EntryBuilderState, OutlineSounds, ConsonantVowelGroup
 from .join import join, join_on_strokes, tuplify
 from .consonants_vowels_enumeration import ConsonantsVowelsEnumerationHooks
-from .Hook import Hook, HookAttr
-from .Plugin import Plugin, GetPlugin
+from .Hook import Hook
+from .Plugin import Plugin, define_plugin
 
 @dataclass
 class BanksState:
@@ -62,10 +62,10 @@ class BanksHooks(Generic[T]):
             sound_index: int,
         ) -> None: ...
 
-    on_begin = HookAttr(OnBegin[T])
-    on_before_complete_consonant = HookAttr(OnBeforeCompleteConsonant[T])
-    on_complete_consonant = HookAttr(OnCompleteConsonant[T])
-    on_complete_vowel = HookAttr(OnCompleteVowel[T])
+    on_begin = Hook(OnBegin[T])
+    on_before_complete_consonant = Hook(OnBeforeCompleteConsonant[T])
+    on_complete_consonant = Hook(OnCompleteConsonant[T])
+    on_complete_vowel = Hook(OnCompleteVowel[T])
 
 
 def banks(
@@ -77,7 +77,7 @@ def banks(
     this_id = id(banks)
 
 
-    @Plugin.define
+    @define_plugin(this_id)
     def initialize(base_hooks: ConsonantsVowelsEnumerationHooks, **_):
         hooks = BanksHooks()
 

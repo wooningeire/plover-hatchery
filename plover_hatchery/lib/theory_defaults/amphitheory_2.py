@@ -175,7 +175,7 @@ add_entry = consonants_vowels_enumeration(
         }),
     ),
 
-    # initial_vowel_chord("@"),
+    initial_vowel_chord("@"),
 
     # left_squish_elision(),
     # right_squish_elision(),

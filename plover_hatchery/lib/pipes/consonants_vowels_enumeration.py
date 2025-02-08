@@ -1,10 +1,10 @@
-from typing import cast, TypeVar, Generic, Any, Protocol
+from typing import cast, TypeVar, Generic, Any, Protocol, Callable
 from dataclasses import dataclass
 
 from ..trie import  NondeterministicTrie
 from ..sopheme import Sound
 from .state import OutlineSounds
-from .Hook import Hook, HookAttr
+from .Hook import Hook
 from .Plugin import Plugin
 
 
@@ -20,10 +20,10 @@ class OnComplete(Protocol[T]):
     def __call__(self, *, state: T) -> None: ...
 
 class ConsonantsVowelsEnumerationHooks(Generic[T]):
-    on_begin = HookAttr(OnBegin[T])
-    on_consonant = HookAttr(OnConsonant[T])
-    on_vowel = HookAttr(OnVowel[T])
-    on_complete = HookAttr(OnComplete[T])
+    on_begin = Hook(OnBegin[T])
+    on_consonant = Hook(OnConsonant[T])
+    on_vowel = Hook(OnVowel[T])
+    on_complete = Hook(OnComplete[T])
 
 
 def consonants_vowels_enumeration(
@@ -31,18 +31,20 @@ def consonants_vowels_enumeration(
 ):
     hooks = ConsonantsVowelsEnumerationHooks()
 
-    plugins_map: dict[int, Any] = {
-        id(consonants_vowels_enumeration): hooks
-    }
-    def get_plugin(plugin: Plugin[T]):
-        return cast(T, plugins_map.get(plugin.id))
+    plugins_map: dict[int, Any] = {}
+    def get_plugin_api(plugin_factory: Callable[..., Plugin]):
+        plugin_id = id(plugin_factory)
+
+        if plugin_id not in plugins_map:
+            raise ValueError("plugin not found")
+        
+        return plugins_map[plugin_id]
+
 
     for plugin in plugins:
-        if plugin.initialize is None: continue
-
         if plugin.id in plugins_map: raise ValueError("duplicate plugin")
 
-        plugins_map[plugin.id] = plugin.initialize(get_plugin=get_plugin, base_hooks=hooks)
+        plugins_map[plugin.id] = plugin.initialize(get_plugin_api=get_plugin_api, base_hooks=hooks)
 
 
     def on_begin(trie: NondeterministicTrie[str, str], sounds: OutlineSounds, translation: str):
