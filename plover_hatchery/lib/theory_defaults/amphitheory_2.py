@@ -192,6 +192,8 @@ add_entry = consonants_vowels_enumeration(
         }),
     ),
 
+    linker_chord("^"),
+
     initial_vowel_chord("@"),
 
     left_squish_elision(),
@@ -246,6 +248,7 @@ add_entry = consonants_vowels_enumeration(
         "N SH": "*RB",
         "M P": "*PL",
         "T L": "-LT",
+        "S T": "*S",
         "SH N": "-GS",
         "K SH N": "-BGS",
     }),

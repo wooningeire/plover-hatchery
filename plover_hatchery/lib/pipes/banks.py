@@ -11,7 +11,7 @@ from ..sopheme import Sound
 from ..sophone.Sophone import Sophone
 from ..trie import NondeterministicTrie, TransitionCostInfo
 from ..config import TRIE_STROKE_BOUNDARY_KEY, TRIE_LINKER_KEY
-from .state import EntryBuilderState, OutlineSounds, ConsonantVowelGroup
+from .state import OutlineSounds, ConsonantVowelGroup
 from .join import join, join_on_strokes, tuplify
 from .consonants_vowels_enumeration import ConsonantsVowelsEnumerationHooks
 from .Hook import Hook
@@ -67,8 +67,8 @@ class BanksHooks:
             *,
             state: Any,
             banks_state: BanksState,
-            mid_node: int,
-            new_stroke_node: int,
+            mid_node: "int | None",
+            new_stroke_node: "int | None",
             group_index: int,
             sound_index: int,
         ) -> None: ...
@@ -77,8 +77,8 @@ class BanksHooks:
             *,
             state: Any,
             banks_state: BanksState,
-            mid_node: int,
-            new_stroke_node: int,
+            mid_node: "int | None",
+            new_stroke_node: "int | None",
             group_index: int,
             sound_index: int,
         ) -> None: ...
@@ -127,8 +127,8 @@ def banks(
 
         def on_before_complete_vowel(
             banks_state: BanksState,
-            mid_node: int,
-            new_stroke_node: int,
+            mid_node: "int | None",
+            new_stroke_node: "int | None",
             group_index: int,
             sound_index: int,
         ):
@@ -144,8 +144,8 @@ def banks(
 
         def on_complete_vowel(
             banks_state: BanksState,
-            mid_node: int,
-            new_stroke_node: int,
+            mid_node: "int | None",
+            new_stroke_node: "int | None",
             group_index: int,
             sound_index: int,
         ):
@@ -189,9 +189,6 @@ def banks(
             left_node = join_on_strokes(state.trie, state.left_src_nodes, left_chords(consonant), state.translation)
             right_node = join_on_strokes(state.trie, state.right_src_nodes, right_chords(consonant), state.translation)
 
-            if left_node is not None and right_node is not None:
-                state.trie.link(right_node, left_node, TRIE_STROKE_BOUNDARY_KEY, TransitionCostInfo(0, state.translation))
-
 
             on_before_complete_consonant(state, consonant, left_node, right_node)
 
@@ -213,7 +210,7 @@ def banks(
             state.sound_index = sound_index
 
 
-            mid_node = join(state.trie, state.mid_src_nodes, (stroke.rtfcre for stroke in mid_chords(vowel)), state.translation)
+            mid_node = join_on_strokes(state.trie, state.mid_src_nodes, mid_chords(vowel), state.translation)
 
 
             if mid_node is not None:
@@ -222,15 +219,15 @@ def banks(
                 new_stroke_node = None
 
 
-            if mid_node is not None and new_stroke_node is not None:
-                on_before_complete_vowel(state, mid_node, new_stroke_node, group_index, sound_index)
+            on_before_complete_vowel(state, mid_node, new_stroke_node, group_index, sound_index)
+
 
             state.left_src_nodes = tuplify(new_stroke_node)
             state.mid_src_nodes = state.left_src_nodes
             state.right_src_nodes += tuplify(mid_node)
 
-            if mid_node is not None and new_stroke_node is not None:
-                on_complete_vowel(state, mid_node, new_stroke_node, group_index, sound_index)
+
+            on_complete_vowel(state, mid_node, new_stroke_node, group_index, sound_index)
 
 
         @base_hooks.complete.listen(banks)

@@ -7,10 +7,10 @@ from ..sophone.Sophone import Sophone
 
 @TheoryService.theory
 class amphitheory(TheorySpec, ABC):
-    ALL_KEYS = Stroke.from_steno("@STKPWHRAO*EUFRPBLGTSDZ")
+    ALL_KEYS = Stroke.from_steno("@^STKPWHRAO*EUFRPBLGTSDZ")
 
 
-    LEFT_BANK_CONSONANTS_SUBSTROKE = Stroke.from_steno("@STKPWHR")
+    LEFT_BANK_CONSONANTS_SUBSTROKE = Stroke.from_steno("@^STKPWHR")
     VOWELS_SUBSTROKE = Stroke.from_steno("AOEU")
     RIGHT_BANK_CONSONANTS_SUBSTROKE = Stroke.from_steno("-FRPBLGTSDZ")
     ASTERISK_SUBSTROKE = Stroke.from_steno("*")

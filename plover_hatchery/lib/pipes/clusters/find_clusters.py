@@ -5,7 +5,7 @@ from typing import Any, Callable, Iterable
 
 from plover.steno import Stroke
 
-from ..state import EntryBuilderState, OutlineSounds
+from ..state import OutlineSounds
 from ..banks import BanksState
 
 from ...trie import NondeterministicTrie, TransitionCostInfo, ReadonlyTrie

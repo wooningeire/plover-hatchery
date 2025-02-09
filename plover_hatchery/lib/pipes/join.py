@@ -24,7 +24,6 @@ def join_chain(trie: NondeterministicTrie[str, str], src_nodes: Iterable[int], k
 
     return node
 
-
 def join(trie: NondeterministicTrie[str, str], src_nodes: Iterable[int], keys: Iterable[str], translation: str):
     return join_chain(trie, src_nodes, ((key,) for key in keys), translation)
 

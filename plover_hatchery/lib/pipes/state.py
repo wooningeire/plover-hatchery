@@ -1,11 +1,10 @@
+from tokenize import group
 from typing import NamedTuple
 from dataclasses import dataclass, field
 import dataclasses
 
 from ..trie import NondeterministicTrie
 from ..sopheme.Sound import Sound
-
-from ..pipes import Elider
 
 class ConsonantVowelGroup(NamedTuple):
     consonants: tuple[Sound, ...]
@@ -27,7 +26,7 @@ class OutlineSounds:
     def __getitem__(self, key: tuple[int, int]):
         group_index, phoneme_index = key
 
-        if group_index == len(self.nonfinals):
+        if self.is_last_group(group_index):
             return self.final_consonants[phoneme_index]
         if phoneme_index == len(self.nonfinals[group_index].consonants):
             return self.nonfinals[group_index].vowel
@@ -95,77 +94,18 @@ class OutlineSounds:
         
         return self.get_consonant(*last_index)
 
-@dataclass
-class EntryBuilderState:
-    """Convenience struct for making entry state easier to pass into helper functions
-
-    Two types of elision:
-     - squish (placing vowel between two consonant chords on the same side)
-     - boundary (placing vowel on the transition from right to left consonant chords)
-    """
-
-    trie: NondeterministicTrie[str, str]
-    phonemes: OutlineSounds
-    translation: str
+    def is_last_group(self, group_index: int):
+        return group_index == len(self.nonfinals)
     
-    left_consonant_src_nodes: tuple[int, ...] = ()
-    """The node from which the next left consonant chord will be attached"""
-    right_consonant_src_nodes: tuple[int, ...] = ()
-    """The node from which the next right consonant chord will be attached"""
-    last_left_alt_consonant_nodes: tuple[int, ...] = ()
-    """The latest node constructed by adding the alternate chord for a left consonant"""
-    last_right_alt_consonant_nodes: tuple[int, ...] = ()
-    """The latest node constructed by adding the alternate chord for a right consonant"""
+    def next_sound(self, group_index: int, sound_index: int):
+        next_index = self.increment_index(group_index, sound_index)
+        if next_index is None:
+            return None
 
+        return self[next_index]
 
-    prev_left_consonant_nodes: tuple[int, ...] = ()
-    """The node constructed by adding the previous left consonant; can be empty if the previous phoneme was a vowel"""
+    def is_vowel(self, group_index: int, sound_index: int):
+        if self.is_last_group(group_index):
+            return False
 
-
-    left_squish_elision: Elider = field(default_factory=Elider)
-    """Elide vowels by placing a left consonant after a right consonant"""
-    # """The latest node which the previous vowel set was attached to"""
-    right_squish_elision: Elider = field(default_factory=Elider)
-    """Elide vowels by placing a right consonant after a right consonant"""
-    # """The latest node which the stroke boundary between a right consonant and a left consonant was attached to"""
-    boundary_elision: Elider = field(default_factory=Elider)
-    """Elide vowels by placing a left consonant after a right consonant"""
-    # """The latest node constructed by adding the stroke bunnedry between a right consonant and left consonant"""
-
-    def clone(self):
-        clone = dataclasses.replace(self)
-        clone.left_squish_elision = self.left_squish_elision.clone()
-        clone.boundary_elision = self.boundary_elision.clone()
-        return clone
-
-
-    group_index: int = -1
-    phoneme_index: int = -1
-
-    @property
-    def is_first_consonant_set(self):
-        return self.group_index == 0
-    
-    @property
-    def is_first_consonant(self):
-        return self.phoneme_index == 0
-    
-    @property
-    def consonant(self):
-        return self.phonemes.get_consonant(self.group_index, self.phoneme_index)
-    
-    @property
-    def next_consonant(self):
-        return self.phonemes.get_consonant_after(self.group_index, self.phoneme_index)
-    
-    @property
-    def last_consonant(self):
-        return self.phonemes.get_consonant_before(self.group_index, self.phoneme_index)
-
-    @property
-    def n_previous_syllable_consonants(self):
-        return len(self.phonemes.get_consonants(self.group_index - 1)) if self.group_index > 0 else 0
-
-    @property
-    def can_elide_prev_vowel_left(self):
-        return not self.is_first_consonant_set and self.is_first_consonant and self.n_previous_syllable_consonants > 0
+        return sound_index == len(self.nonfinals[group_index].consonants)

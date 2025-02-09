@@ -19,8 +19,8 @@ def initial_vowel_chord(chord: str) -> Plugin[None]:
 
 
         @banks_hooks.complete_vowel.listen(initial_vowel_chord)
-        def _(banks_state: BanksState, group_index: int, sound_index: int, new_stroke_node: int, **_):
-            if group_index > 0 or sound_index > 0: return
+        def _(banks_state: BanksState, group_index: int, sound_index: int, new_stroke_node: "int | None", **_):
+            if group_index > 0 or sound_index > 0 or new_stroke_node is None: return
 
             banks_state.trie.link_chain(
                 banks_state.trie.ROOT,

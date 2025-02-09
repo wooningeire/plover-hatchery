@@ -69,9 +69,16 @@ def create_lookup_for(trie:  NondeterministicTrie[str, str]):
             if len(vowels) > 0:
                 # plover.log.debug(current_nodes)
                 # plover.log.debug(vowels.rtfcre)
-                current_nodes = trie.get_dst_nodes(current_nodes, vowels.rtfcre)
-                if len(current_nodes) == 0:
-                    return None
+                if len(asterisk) > 0:
+                    for key in vowels.keys():
+                        current_nodes = trie.get_dst_nodes(current_nodes, key)
+                        # plover.log.debug(f"\t{key}\t {current_nodes}")
+                        current_nodes |= trie.get_dst_nodes_chain(current_nodes, asterisk.keys())
+                        # plover.log.debug(f"\t{asterisk.rtfcre}\t {current_nodes}")
+                        if len(current_nodes) == 0:
+                            return None
+                else:
+                    current_nodes = trie.get_dst_nodes_chain(current_nodes, vowels.keys())
 
             if len(right_bank_consonants) > 0:
                 # plover.log.debug(current_nodes)
