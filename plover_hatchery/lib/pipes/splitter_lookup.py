@@ -6,7 +6,7 @@ from plover_hatchery.lib.config import TRIE_STROKE_BOUNDARY_KEY
 from plover_hatchery.lib.pipes.Plugin import GetPluginApi, Plugin, define_plugin
 from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
 from plover_hatchery.lib.pipes.declare_banks import declare_banks
-from plover_hatchery.lib.trie import NondeterministicTrie, Transition
+from plover_hatchery.lib.trie import NondeterministicTrie, Transition, TrieIndex, TrieIndexLookupResult
 
 
 def splitter_lookup(*, cycler: "str | None"=None, prohibit_strokes: Iterable[str]=()) -> Plugin[None]:
@@ -20,13 +20,11 @@ def splitter_lookup(*, cycler: "str | None"=None, prohibit_strokes: Iterable[str
 
 
         @base_hooks.lookup.listen(splitter_lookup)
-        def _(trie: NondeterministicTrie[str, str], stroke_stenos: tuple[str, ...], **_) -> "str | None":
+        def _(tries: TrieIndex, stroke_stenos: tuple[str, ...], **_) -> "str | None":
             # plover.log.debug("")
             # plover.log.debug("new lookup")
 
-            current_nodes = {
-                trie.ROOT: (),
-            }
+            lookup = tries.create_lookup()
             n_variation = 0
 
             asterisk = Stroke.from_integer(0)
@@ -55,9 +53,7 @@ def splitter_lookup(*, cycler: "str | None"=None, prohibit_strokes: Iterable[str
                 if i > 0:
                     # plover.log.debug(current_nodes)
                     # plover.log.debug(TRIE_STROKE_BOUNDARY_KEY)
-                    current_nodes = trie.get_dst_nodes(current_nodes, TRIE_STROKE_BOUNDARY_KEY)
-                    if len(current_nodes) == 0:
-                        return None
+                    lookup.traverse(TRIE_STROKE_BOUNDARY_KEY)
 
                 left_bank_consonants, vowels, right_bank_consonants, asterisk = banks_info.split_stroke_parts(stroke)
 
@@ -66,59 +62,46 @@ def splitter_lookup(*, cycler: "str | None"=None, prohibit_strokes: Iterable[str
                     # plover.log.debug(left_bank_consonants.keys())
                     if len(asterisk) > 0:
                         for key in left_bank_consonants.keys():
-                            current_nodes = trie.get_dst_nodes(current_nodes, key)
+                            lookup.traverse(key, asterisk.keys())
                             # plover.log.debug(f"\t{key}\t {current_nodes}")
-                            current_nodes |= trie.get_dst_nodes_chain(current_nodes, asterisk.keys())
                             # plover.log.debug(f"\t{asterisk.rtfcre}\t {current_nodes}")
-                            if len(current_nodes) == 0:
-                                return None
+
                     # elif left_bank_consonants == amphitheory.spec.LINKER_CHORD:
                     #     current_nodes = trie.get_dst_nodes_chain(current_nodes, left_bank_consonants.keys()) | trie.get_dst_nodes(current_nodes, TRIE_LINKER_KEY)
                     else:
-                        current_nodes = trie.get_dst_nodes_chain(current_nodes, left_bank_consonants.keys())
-
-                    if len(current_nodes) == 0:
-                        return None
+                        lookup.traverse(left_bank_consonants.keys())
 
                 if len(vowels) > 0:
                     # plover.log.debug(current_nodes)
                     # plover.log.debug(vowels.rtfcre)
                     if len(asterisk) > 0:
                         for key in vowels.keys():
-                            current_nodes = trie.get_dst_nodes(current_nodes, key)
+                            lookup.traverse(key, asterisk.keys())
                             # plover.log.debug(f"\t{key}\t {current_nodes}")
-                            current_nodes |= trie.get_dst_nodes_chain(current_nodes, asterisk.keys())
                             # plover.log.debug(f"\t{asterisk.rtfcre}\t {current_nodes}")
-                            if len(current_nodes) == 0:
-                                return None
                     else:
-                        current_nodes = trie.get_dst_nodes_chain(current_nodes, vowels.keys())
+                        current_nodes = lookup.traverse(vowels.keys())
 
                 if len(right_bank_consonants) > 0:
                     # plover.log.debug(current_nodes)
                     # plover.log.debug(right_bank_consonants.keys())
                     if len(asterisk) > 0:
                         for key in right_bank_consonants.keys():
-                            current_nodes |= trie.get_dst_nodes_chain(current_nodes, asterisk.keys())
+                            lookup.traverse(asterisk.keys(), key)
                             # plover.log.debug(f"\t{asterisk.rtfcre}\t {current_nodes}")
-                            current_nodes = trie.get_dst_nodes(current_nodes, key)
                             # plover.log.debug(f"\t{key}\t {current_nodes}")
-                            if len(current_nodes) == 0:
-                                return None
                     else:
-                        current_nodes = trie.get_dst_nodes_chain(current_nodes, right_bank_consonants.keys())
-                        
-                    if len(current_nodes) == 0:
-                        return None
+                        lookup.traverse(right_bank_consonants.keys())
                     
-            translation_choices = sorted(trie.get_translations_and_costs(current_nodes).items(), key=lambda cost_info: cost_info[1])
+            translation_choices = sorted(lookup.get_translations().items(), key=lambda cost_info: cost_info[1].cost)
             if len(translation_choices) == 0: return None
 
             first_choice = translation_choices[0]
             if len(asterisk) == 0:
                 return nth_variation(translation_choices, n_variation)
             else:
-                for transition in reversed(first_choice[1][1]):
+                trie = first_choice[1].trie
+                for transition in reversed(first_choice[1].transitions):
                     if trie.transition_has_key(transition, TRIE_STROKE_BOUNDARY_KEY): break
                     if not trie.transition_has_key(transition, banks_info.positionless.rtfcre): continue
 
@@ -127,7 +110,7 @@ def splitter_lookup(*, cycler: "str | None"=None, prohibit_strokes: Iterable[str
             return nth_variation(translation_choices, n_variation + 1) if len(translation_choices) > 1 else None
 
 
-        def nth_variation(choices: list[tuple[str, tuple[float, tuple[Transition, ...]]]], n_variation: int):
+        def nth_variation(choices: list[tuple[str, TrieIndexLookupResult]], n_variation: int):
             # index = n_variation % (len(choices) + 1)
             # return choices[index][0] if index != len(choices) else None
             return choices[n_variation % len(choices)][0]

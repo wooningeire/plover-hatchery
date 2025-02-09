@@ -5,6 +5,7 @@ from plover.steno import Stroke
 import plover.log
 
 from plover_hatchery.lib.pipes.state import OutlineSounds
+from plover_hatchery.lib.trie import TrieIndex
 
 from ..trie import NondeterministicTrie
 from ..sopheme import Sopheme
@@ -28,7 +29,7 @@ def build_lookup_json(mappings: dict[str, str]):
 
 def get_lookup_builder_hatchery(theory: Theory):
     def build_lookup_hatchery(entries: Iterable[str]):
-        trie: NondeterministicTrie[str, str] = NondeterministicTrie()
+        index = TrieIndex()
 
         n_entries = 0
         n_passed_parses = 0
@@ -43,7 +44,7 @@ def get_lookup_builder_hatchery(theory: Theory):
                 n_passed_parses += 1
 
                 try:
-                    theory.add_entry(trie, sophemes, Sopheme.get_translation(sophemes))
+                    theory.add_entry(index, sophemes, Sopheme.get_translation(sophemes))
                     n_passed_additions += 1
                 except Exception as e:
                     # import traceback
@@ -67,10 +68,10 @@ Hatched {n_entries} entries
 """)
 
         def lookup(stroke_stenos: tuple[str, ...]):
-            return theory.lookup(trie, stroke_stenos)
+            return theory.lookup(index, stroke_stenos)
 
         def reverse_lookup(translation: str):
-            return theory.reverse_lookup(trie, translation)
+            return theory.reverse_lookup(index, translation)
 
         return lookup, reverse_lookup
     

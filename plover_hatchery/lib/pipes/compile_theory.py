@@ -1,10 +1,10 @@
 from collections.abc import Iterable
-from typing import cast, TypeVar, Generic, Any, Protocol, Callable, final
-from dataclasses import dataclass
+from typing import cast, TypeVar, Any, Protocol, Callable, final
 
 from plover.steno import Stroke
 
 from plover_hatchery.lib.sopheme import Sopheme
+from plover_hatchery.lib.trie import TrieIndex
 
 from ..trie import  NondeterministicTrie
 from ..sopheme import Sound
@@ -20,11 +20,11 @@ T = TypeVar("T")
 @final
 class TheoryHooks:
     class OnAddEntry(Protocol):
-        def __call__(self, *, trie: NondeterministicTrie[str, str], sophemes: Iterable[Sopheme], translation: str) -> None: ...
+        def __call__(self, *, tries: TrieIndex, sophemes: Iterable[Sopheme], translation: str) -> None: ...
     class OnLookup(Protocol):
-        def __call__(self, *, trie: NondeterministicTrie[str, str], stroke_stenos: tuple[str, ...]) -> "str | None": ...
+        def __call__(self, *, tries: TrieIndex, stroke_stenos: tuple[str, ...]) -> "str | None": ...
     class OnReverseLookup(Protocol):
-        def __call__(self, *, trie: NondeterministicTrie[str, str], translation: str) -> Iterable[tuple[str, ...]]: ...
+        def __call__(self, *, tries: TrieIndex, translation: str) -> Iterable[tuple[str, ...]]: ...
 
     add_entry = Hook(OnAddEntry)
     lookup = Hook(OnLookup)
@@ -53,25 +53,25 @@ def compile_theory(
 
 
 
-    def add_entry(trie: NondeterministicTrie[str, str], sophemes: Iterable[Sopheme], translation: str):
+    def add_entry(tries: TrieIndex, sophemes: Iterable[Sopheme], translation: str):
         for handler in hooks.add_entry.handlers():
-            handler(trie=trie, sophemes=sophemes, translation=translation)
+            handler(tries=tries, sophemes=sophemes, translation=translation)
 
 
-    def lookup(trie: NondeterministicTrie[str, str], stroke_stenos: tuple[str, ...]) -> "str | None":
+    def lookup(tries: TrieIndex, stroke_stenos: tuple[str, ...]) -> "str | None":
         for handler in hooks.lookup.handlers():
-            result = handler(trie=trie, stroke_stenos=stroke_stenos)
+            result = handler(tries=tries, stroke_stenos=stroke_stenos)
             if result is not None:
                 return result
         
         return None
 
 
-    def reverse_lookup(trie: NondeterministicTrie[str, str], translation: str) -> list[tuple[str, ...]]:
+    def reverse_lookup(tries: TrieIndex, translation: str) -> list[tuple[str, ...]]:
         results: list[tuple[str, ...]] = []
 
         for handler in hooks.reverse_lookup.handlers():
-            results.extend(handler(trie=trie, translation=translation))
+            results.extend(handler(tries=tries, translation=translation))
         
         return results
 

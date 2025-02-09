@@ -2,7 +2,9 @@ from collections.abc import Callable, Iterable
 
 from plover.steno import Stroke
 
-from ..trie import NondeterministicTrie
+from plover_hatchery.lib.trie import TrieIndex
+
+from ..trie import NondeterministicTrie, TrieIndexReverseLookupState
 from ..config import TRIE_STROKE_BOUNDARY_KEY
 
 from .Plugin import Plugin, GetPluginApi, define_plugin
@@ -16,19 +18,18 @@ def path_traversal_reverse_lookup() -> Plugin[None]:
         banks_info = get_plugin_api(declare_banks)
 
 
-        reverse_lookups: dict[int, Callable[[str], Iterable[tuple[str, ...]]]] = {}
+        state: "TrieIndexReverseLookupState | None" = None
 
 
         @base_hooks.reverse_lookup.listen(path_traversal_reverse_lookup)
-        def _(trie: NondeterministicTrie[str, str], translation: str) -> Iterable[tuple[str, ...]]:
-            if id(trie) in reverse_lookups:
-                reverse_lookup = reverse_lookups[id(trie)]
-            else:
-                reverse_lookup = trie.build_reverse_lookup()
-                reverse_lookups[id(trie)] = reverse_lookup
+        def _(tries: TrieIndex, translation: str, **_) -> Iterable[tuple[str, ...]]:
+            nonlocal state
 
+            if state is None:
+                state = tries.create_reverse_lookup()
             
-            for seq in reverse_lookup(translation):
+            
+            for seq in state.reverse_lookup(translation):
                 outline: list[str] = []
                 latest_stroke: Stroke = Stroke.from_integer(0)
                 invalid = False

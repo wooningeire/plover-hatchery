@@ -3,6 +3,7 @@ from enum import Enum
 from collections.abc import Iterable
 
 from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
+from plover_hatchery.lib.trie import TrieIndex
 
 from ..trie import  NondeterministicTrie
 from ..sopheme import Sound, Sopheme
@@ -108,7 +109,10 @@ def consonants_vowels_enumeration(vowel_diphthong_transition: Callable[[Sound], 
 
 
         @base_hooks.add_entry.listen(consonants_vowels_enumeration)
-        def _(trie: NondeterministicTrie[str, str], sophemes: Iterable[Sopheme], translation: str):
+        def _(tries: TrieIndex, sophemes: Iterable[Sopheme], translation: str):
+            trie: NondeterministicTrie[str, str] = NondeterministicTrie()
+
+
             sounds = get_sopheme_sounds(sophemes)
 
             states = on_begin(trie, sounds, translation)
@@ -124,6 +128,9 @@ def consonants_vowels_enumeration(vowel_diphthong_transition: Callable[[Sound], 
                 on_consonant(states, consonant, group_index, sound_index)
 
             on_complete(states)
+
+
+            tries.add(trie)
 
         
         return hooks

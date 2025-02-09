@@ -1,1 +1,2 @@
 from .Trie import Transition, TransitionCostInfo, TransitionCostKey, Trie, NondeterministicTrie, ReadonlyTrie
+from .TrieIndex import TrieIndex, TrieIndexLookupResult, TrieIndexLookupState, TrieIndexReverseLookupState
