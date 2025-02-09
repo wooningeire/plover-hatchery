@@ -24,4 +24,4 @@ from .Theory import Theory
 from .compile_theory import compile_theory
 
 from .define_sophones import define_sophones
-from .sophone_mapper import sophone_mapper
+from .sophone_mapper import sophone_to_strokes_mapper, sophone_to_sopheme_mapper

@@ -1,4 +1,5 @@
 
+from collections.abc import Iterable
 from plover.steno import Stroke
 
 from plover_hatchery.lib.config import TRIE_STROKE_BOUNDARY_KEY
@@ -8,7 +9,11 @@ from plover_hatchery.lib.pipes.declare_banks import declare_banks
 from plover_hatchery.lib.trie import NondeterministicTrie, Transition
 
 
-def splitter_lookup() -> Plugin[None]:
+def splitter_lookup(*, cycler: "str | None"=None, prohibit_strokes: Iterable[str]=()) -> Plugin[None]:
+    cycler_stroke = Stroke.from_steno(cycler) if cycler is not None else None
+    prohibited_strokes = tuple(Stroke.from_steno(steno) for steno in prohibit_strokes)
+
+
     @define_plugin(splitter_lookup)
     def plugin(get_plugin_api: GetPluginApi, base_hooks: TheoryHooks, **_) -> None:
         banks_info = get_plugin_api(declare_banks)
@@ -31,18 +36,18 @@ def splitter_lookup() -> Plugin[None]:
                 if len(stroke) == 0:
                     return None
                 
-                # if stroke == amphitheory.spec.CYCLER_STROKE:
-                #     n_variation += 1
+                if cycler_stroke is not None and stroke == cycler_stroke:
+                    n_variation += 1
+                    continue
+                # if stroke == CYCLER_STROKE_BACKWARD:
+                #     n_variation -= 1
                 #     continue
-                # # if stroke == CYCLER_STROKE_BACKWARD:
-                # #     n_variation -= 1
-                # #     continue
                 
-                # if stroke not in amphitheory.spec.ALL_KEYS:
-                #     return None
+                if stroke not in banks_info.all:
+                    return None
                 
-                # if stroke in amphitheory.spec.PROHIBITED_STROKES:
-                #     return None
+                if stroke in prohibited_strokes:
+                    return None
 
                 if n_variation > 0:
                     return None
@@ -126,7 +131,7 @@ def splitter_lookup() -> Plugin[None]:
             # index = n_variation % (len(choices) + 1)
             # return choices[index][0] if index != len(choices) else None
             return choices[n_variation % len(choices)][0]
-            
+
 
         return None
 

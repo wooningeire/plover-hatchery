@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Iterable
+from typing import Any, Generator, Iterable
 
 from .Keysymbol import Keysymbol
 
@@ -22,7 +22,7 @@ class Sopheme:
         return " ".join(str(sopheme) for sopheme in sophemes)
     
     @staticmethod
-    def parse_seq(sophemes_str: str):
+    def parse_seq(sophemes_str: str) -> "Generator[Sopheme, None, None]":
         from .parse import parse_sopheme_sequence
         return parse_sopheme_sequence(sophemes_str)
 

@@ -4,6 +4,8 @@ from dataclasses import dataclass
 
 from plover.steno import Stroke
 
+from plover_hatchery.lib.sopheme import Sopheme
+
 from ..trie import  NondeterministicTrie
 from ..sopheme import Sound
 from .state import OutlineSounds
@@ -18,7 +20,7 @@ T = TypeVar("T")
 @final
 class TheoryHooks:
     class OnAddEntry(Protocol):
-        def __call__(self, *, trie: NondeterministicTrie[str, str], sounds: OutlineSounds, translation: str) -> None: ...
+        def __call__(self, *, trie: NondeterministicTrie[str, str], sophemes: Iterable[Sopheme], translation: str) -> None: ...
     class OnLookup(Protocol):
         def __call__(self, *, trie: NondeterministicTrie[str, str], stroke_stenos: tuple[str, ...]) -> "str | None": ...
     class OnReverseLookup(Protocol):
@@ -51,9 +53,9 @@ def compile_theory(
 
 
 
-    def add_entry(trie: NondeterministicTrie[str, str], sounds: OutlineSounds, translation: str):
+    def add_entry(trie: NondeterministicTrie[str, str], sophemes: Iterable[Sopheme], translation: str):
         for handler in hooks.add_entry.handlers():
-            handler(trie=trie, sounds=sounds, translation=translation)
+            handler(trie=trie, sophemes=sophemes, translation=translation)
 
 
     def lookup(trie: NondeterministicTrie[str, str], stroke_stenos: tuple[str, ...]) -> "str | None":
@@ -79,5 +81,4 @@ def compile_theory(
         lookup=lookup,
         reverse_lookup=reverse_lookup,
     )
-
 

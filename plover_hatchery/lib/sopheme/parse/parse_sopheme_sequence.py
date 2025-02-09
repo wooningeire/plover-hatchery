@@ -1,4 +1,6 @@
 from enum import Enum, auto
+from typing import Any, Generator
+from plover_hatchery.lib.sopheme.Sopheme import Sopheme
 
 from ..Sopheme import Sopheme
 from ..Keysymbol import Keysymbol
@@ -193,6 +195,10 @@ class _Parser:
             if token.value == "!":
                 self.__state = _ParserState.DONE_KEYSYMBOL_STRESS_MARKER
 
+            elif token.value == "?":
+                self.__state = _ParserState.DONE_KEYSYMBOL_OPTIONAL_MARKER
+                self.__current_keysymbol_optional = True
+
             elif token.value == ")":
                 self.__complete_keysymbol()
                 self.__complete_keysymbol_group()
@@ -216,7 +222,7 @@ class _Parser:
         else:
             raise TypeError()
         
-    def __consume_done_keysymbol_stress_value(self, token: Token):
+    def __consume_done_keysymbol_stress_value(self, token: Token) -> Generator[Sopheme, None, None]:
         if token.type is TokenType.SYMBOL:
             if token.value == "?":
                 self.__state = _ParserState.DONE_KEYSYMBOL_OPTIONAL_MARKER
@@ -232,7 +238,7 @@ class _Parser:
         else:
             raise TypeError()
     
-    def __consume_done_keysymbol_optional_marker(self, token: Token):
+    def __consume_done_keysymbol_optional_marker(self, token: Token) -> Generator[Sopheme, None, None]:
         if token.type is TokenType.SYMBOL:
             if token.value == ")":
                 self.__complete_keysymbol()
@@ -284,7 +290,7 @@ class _Parser:
 
 
 
-def parse_sopheme_sequence(seq: str):
+def parse_sopheme_sequence(seq: str) -> Generator[Sopheme, None, None]:
     parser = _Parser()
 
     for token in lex_sopheme_sequence(seq):

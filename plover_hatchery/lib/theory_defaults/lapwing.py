@@ -120,7 +120,8 @@ def default_sound_to_sophone_mapping(sound: Sound):
     }[sound.keysymbol.base_symbol][0]]
 
 
-map_sophones = sophone_mapper(Sophone, default_sound_to_sophone_mapping)
+map_sophones_to_strokes = sophone_to_strokes_mapper(Sophone, default_sound_to_sophone_mapping)
+map_sophones_to_sophemes = sophone_to_sopheme_mapper(Sophone, default_sound_to_sophone_mapping)
 
 
 theory = compile_theory(
@@ -131,10 +132,22 @@ theory = compile_theory(
         positionless="*",
     ),
 
-    consonants_vowels_enumeration(),
+    consonants_vowels_enumeration(
+        vowel_diphthong_transition=map_sophones_to_sophemes({
+            "E": ".y?",
+            "OO": ".w?",
+            "OU": ".w?",
+            "I": ".y?",
+            "EE": ".y?",
+            "UU": ".w?",
+            "AA": ".y?",
+            "OI": ".y?",
+            "II": ".y?",
+        }),
+    ),
 
     banks(
-        left_chords=map_sophones({
+        left_chords=map_sophones_to_strokes({
             "S": "S",
             "T": "T",
             "K": "K",
@@ -162,7 +175,7 @@ theory = compile_theory(
             "NG": "TPH",
         }),
 
-        mid_chords=map_sophones({
+        mid_chords=map_sophones_to_strokes({
             "AA": "AEU",
             "A": "A",
             "EE": "AOE",
@@ -178,7 +191,7 @@ theory = compile_theory(
             "OU": "OU",
         }),
 
-        right_chords=map_sophones({
+        right_chords=map_sophones_to_strokes({
             "F": "-F",
             "R": "-R",
             "P": "-P",
@@ -208,7 +221,7 @@ theory = compile_theory(
     boundary_elision(),
 
     left_alt_chords(
-        chords=map_sophones({
+        chords=map_sophones_to_strokes({
             "V": "W",
             "Z": "S*",
         })
@@ -216,7 +229,7 @@ theory = compile_theory(
     left_alt_squish_elision(),
 
     right_alt_chords(
-        chords=map_sophones({
+        chords=map_sophones_to_strokes({
             "S": "-F",
             "Z": "-F",
             "V": "-F",
@@ -224,68 +237,73 @@ theory = compile_theory(
         })
     ),
     right_alt_squish_elision(),
+    
+    consonant_clusters(
+        Sophone,
+        default_sound_to_sophone_mapping,
+        {
+            "D S": "STK",
+            "D S T": "STK",
+            "D S K": "STK",
+            "K N": "K",
+            "K M P": "KP",
+            "K M B": "KPW",
+            "L F": "-FL",
+            "L V": "-FL",
+            "G L": "-LG",
+            "L J": "-LG",
+            "K L": "*LG",
+            "N J": "-PBG",
+            "M J": "-PLG",
+            "R F": "*FR",
+            "R S": "*FR",
+            "R M": "*FR",
+            "R V": "-FRB",
+            "L CH": "-LG",
+            "R CH": "-FRPB",
+            "N CH": "-FRPBLG",
+            "L SH": "*RB",
+            "R SH": "*RB",
+            "N SH": "*RB",
+            "M P": "*PL",
+            "T L": "-LT",
+            "S T": "*S",
+            "SH N": "-GS",
+            "K SH N": "-BGS",
+        },
+        base_cost=2,
+    ),
 
-    splitter_lookup(),
+    vowel_clusters(
+        Sophone,
+        default_sound_to_sophone_mapping,
+        vowel_sophones,
+        {
+            ". N T": "SPW",
+            ". N D": "SPW",
+            ". M P": "KPW",
+            ". M B": "KPW",
+            ". N K": "SKPW",
+            ". N G": "SKPW",
+            ". N J": "SKPW",
+            "E K S": "SKW",
+            "E K S T": "STKW",
+            "E K S K": "SKW",
+            "E K S P": "SKPW",
+            ". N S": "STPH",
+            ". N F": "TPW",
+            ". N V": "TPW",
+        },
+        base_cost=2,
+    ),
+
+
+    splitter_lookup(
+        cycler="#TPHEGT",
+        prohibit_strokes=(
+            "AEU",
+        ),
+    ),
 
     path_traversal_reverse_lookup(),
-    
-    # consonant_clusters(
-    #     Sophone,
-    #     default_sound_to_sophone_mapping,
-    #     {
-    #         "D S": "STK",
-    #         "D S T": "STK",
-    #         "D S K": "STK",
-    #         "K N": "K",
-    #         "K M P": "KP",
-    #         "K M B": "KPW",
-    #         "L F": "-FL",
-    #         "L V": "-FL",
-    #         "G L": "-LG",
-    #         "L J": "-LG",
-    #         "K L": "*LG",
-    #         "N J": "-PBG",
-    #         "M J": "-PLG",
-    #         "R F": "*FR",
-    #         "R S": "*FR",
-    #         "R M": "*FR",
-    #         "R V": "-FRB",
-    #         "L CH": "-LG",
-    #         "R CH": "-FRPB",
-    #         "N CH": "-FRPBLG",
-    #         "L SH": "*RB",
-    #         "R SH": "*RB",
-    #         "N SH": "*RB",
-    #         "M P": "*PL",
-    #         "T L": "-LT",
-    #         "S T": "*S",
-    #         "SH N": "-GS",
-    #         "K SH N": "-BGS",
-    #     },
-    #     base_cost=2,
-    # ),
-
-    # vowel_clusters(
-    #     Sophone,
-    #     default_sound_to_sophone_mapping,
-    #     vowel_sophones,
-    #     {
-    #         ". N T": "SPW",
-    #         ". N D": "SPW",
-    #         ". M P": "KPW",
-    #         ". M B": "KPW",
-    #         ". N K": "SKPW",
-    #         ". N G": "SKPW",
-    #         ". N J": "SKPW",
-    #         "E K S": "SKW",
-    #         "E K S T": "STKW",
-    #         "E K S K": "SKW",
-    #         "E K S P": "SKPW",
-    #         ". N S": "STPH",
-    #         ". N F": "TPW",
-    #         ". N V": "TPW",
-    #     },
-    #     base_cost=2,
-    # ),
-
 )

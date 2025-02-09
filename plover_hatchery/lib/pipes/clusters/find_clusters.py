@@ -64,11 +64,13 @@ def get_clusters_from_node(
     clusters_trie: ReadonlyTrie[Any, Stroke],
 
     state: BanksState,
+
+    left_bank: Stroke,
 ):
     stroke = clusters_trie.get_translation(node)
     if stroke is None: return None
 
-    if len(stroke & amphitheory.spec.LEFT_BANK_CONSONANTS_SUBSTROKE) > 0:
+    if len(stroke & left_bank) > 0:
         return current_index, _ClusterLeft(stroke, state.clone())
     else:
         return current_index, _ClusterRight(stroke, state.clone())

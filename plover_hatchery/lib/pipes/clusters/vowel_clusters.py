@@ -7,6 +7,8 @@ from enum import Enum
 
 from plover.steno import Stroke
 
+from plover_hatchery.lib.pipes.declare_banks import declare_banks
+
 from ...trie import Trie, ReadonlyTrie
 from ...sopheme import Sound
 
@@ -41,40 +43,41 @@ def vowel_clusters(Sophone: Enum, map_sophones: Callable[[Sound], Any], vowel_so
     vowel_clusters_trie = build_vowel_clusters_trie()
 
 
-    def find_vowel_clusters(
-        sounds: OutlineSounds,
-        start_group_index: int,
-        start_phoneme_index: int,
-
-        state: BanksState,
-    ):
-        current_nodes = {vowel_clusters_trie.ROOT}
-        current_index = (start_group_index, start_phoneme_index)
-        while current_nodes is not None and current_index is not None:
-            sound = sounds[current_index]
-            current_nodes = {
-                node
-                for current_node in current_nodes
-                for node in (vowel_clusters_trie.get_dst_node(current_node, map_sophones(sound)),)
-                        + ((vowel_clusters_trie.get_dst_node(current_node, Sophone.ANY_VOWEL),) if map_sophones(sound) in vowel_sophones else ())
-                if node is not None
-            }
-
-            if len(current_nodes) == 0: return
-
-            for current_node in current_nodes:
-                if (result := get_clusters_from_node(current_node, current_index, vowel_clusters_trie, state)) is None:
-                    continue
-
-                yield result
-
-            current_index = sounds.increment_index(*current_index)
-
-
 
     @define_plugin(vowel_clusters)
     def plugin(get_plugin_api: GetPluginApi, **_):
+        banks_info = get_plugin_api(declare_banks)
         banks_hooks = get_plugin_api(banks)
+
+
+        def find_vowel_clusters(
+            sounds: OutlineSounds,
+            start_group_index: int,
+            start_phoneme_index: int,
+
+            state: BanksState,
+        ):
+            current_nodes = {vowel_clusters_trie.ROOT}
+            current_index = (start_group_index, start_phoneme_index)
+            while current_nodes is not None and current_index is not None:
+                sound = sounds[current_index]
+                current_nodes = {
+                    node
+                    for current_node in current_nodes
+                    for node in (vowel_clusters_trie.get_dst_node(current_node, map_sophones(sound)),)
+                            + ((vowel_clusters_trie.get_dst_node(current_node, Sophone.ANY_VOWEL),) if map_sophones(sound) in vowel_sophones else ())
+                    if node is not None
+                }
+
+                if len(current_nodes) == 0: return
+
+                for current_node in current_nodes:
+                    if (result := get_clusters_from_node(current_node, current_index, vowel_clusters_trie, state, banks_info.left)) is None:
+                        continue
+
+                    yield result
+
+                current_index = sounds.increment_index(*current_index)
 
 
         @banks_hooks.begin.listen(vowel_clusters)

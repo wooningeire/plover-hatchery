@@ -8,7 +8,6 @@ from plover_hatchery.lib.pipes.state import OutlineSounds
 
 from ..trie import NondeterministicTrie
 from ..sopheme import Sopheme
-from .get_sophemes import get_sopheme_sounds
 from ..pipes import Theory
 
 
@@ -44,7 +43,7 @@ def get_lookup_builder_hatchery(theory: Theory):
                 n_passed_parses += 1
 
                 try:
-                    theory.add_entry(trie, get_sopheme_sounds(sophemes), Sopheme.get_translation(sophemes))
+                    theory.add_entry(trie, sophemes, Sopheme.get_translation(sophemes))
                     n_passed_additions += 1
                 except Exception as e:
                     # import traceback
