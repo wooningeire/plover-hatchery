@@ -1,17 +1,14 @@
-from plover_hatchery.lib.pipes.Plugin import Plugin
-
-
-from typing import Callable, Generator, TypeVar, Protocol, Generic, Any
+from collections.abc import Iterable
+from typing import Callable, TypeVar, Protocol, Any
 from dataclasses import dataclass
 import dataclasses
 
 from plover.steno import Stroke
 
 from ..sopheme import Sound
-from ..sophone.Sophone import Sophone
 from ..trie import NondeterministicTrie, TransitionCostInfo
-from ..config import TRIE_STROKE_BOUNDARY_KEY, TRIE_LINKER_KEY
-from .state import OutlineSounds, ConsonantVowelGroup
+from ..config import TRIE_STROKE_BOUNDARY_KEY
+from .state import OutlineSounds
 from .join import NodeSrc, join_on_strokes, tuplify
 from .consonants_vowels_enumeration import consonants_vowels_enumeration
 from .Hook import Hook
@@ -92,9 +89,9 @@ class BanksHooks:
 
 def banks(
     *,
-    left_chords: Callable[[Sound], Generator[Stroke, None, None]],
-    mid_chords: Callable[[Sound], Generator[Stroke, None, None]],
-    right_chords: Callable[[Sound], Generator[Stroke, None, None]],
+    left_chords: Callable[[Sound], Iterable[Stroke]],
+    mid_chords: Callable[[Sound], Iterable[Stroke]],
+    right_chords: Callable[[Sound], Iterable[Stroke]],
 ) -> Plugin[BanksHooks]:
     @define_plugin(banks)
     def plugin(get_plugin_api: GetPluginApi, **_):
