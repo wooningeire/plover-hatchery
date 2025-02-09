@@ -4,7 +4,17 @@ from typing import Generic, TypeVar, Iterable
 from plover.steno import Stroke
 
 from ..sophone.Sophone import Sophone
-from ..theory_defaults.lapwing import lapwing
+
+LEFT_BANK_CONSONANTS_SUBSTROKE = Stroke.from_steno("STKPWHR")
+VOWELS_SUBSTROKE = Stroke.from_steno("AOEU")
+RIGHT_BANK_CONSONANTS_SUBSTROKE = Stroke.from_steno("-FRPBLGTSDZ")
+ASTERISK_SUBSTROKE = Stroke.from_steno("*")
+def can_add_stroke_on(src_stroke: Stroke, addon_stroke: Stroke):
+    return (
+        len(src_stroke - ASTERISK_SUBSTROKE) == 0
+        or len(addon_stroke - ASTERISK_SUBSTROKE) == 0
+        or Stroke.from_keys(((src_stroke - ASTERISK_SUBSTROKE).keys()[-1],)) < Stroke.from_keys(((addon_stroke - ASTERISK_SUBSTROKE).keys()[0],))
+    )
 
 @dataclass(frozen=True)
 class AsteriskableKey:
@@ -22,7 +32,7 @@ class AsteriskableKey:
         return tuple(
             AsteriskableKey(key, has_asterisk)
             for stroke, has_asterisk in (
-                (stroke - lapwing.spec.ASTERISK_SUBSTROKE, lapwing.spec.ASTERISK_SUBSTROKE in stroke)
+                (stroke - ASTERISK_SUBSTROKE, ASTERISK_SUBSTROKE in stroke)
                 for stroke in strokes
             )
             for key in stroke.keys() 
@@ -48,9 +58,9 @@ class AnnotatedChord(Generic[T]):
         for key, asterisk_match in zip(keys, asterisk_matches):
             key_stroke = Stroke.from_keys((key,))
             if asterisk_match:
-                key_stroke += lapwing.spec.ASTERISK_SUBSTROKE
+                key_stroke += ASTERISK_SUBSTROKE
 
-            if lapwing.can_add_stroke_on(current_stroke, key_stroke):
+            if can_add_stroke_on(current_stroke, key_stroke):
                 current_stroke += key_stroke
             else:
                 strokes.append(current_stroke)

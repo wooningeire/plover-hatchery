@@ -18,7 +18,10 @@ class HatcheryDictionary(StenoDictionary):
         self.__maybe_reverse_lookup: "Callable[[str], list[tuple[str, ...]]] | None" = None
 
     def _load(self, filepath: str):
-        from .lib.lookup import build_lookup_hatchery
+        from .lib.lookup import get_lookup_builder_hatchery
+        from .lib.theory_defaults.amphitheory import theory
+
+        build_lookup_hatchery = get_lookup_builder_hatchery(theory)
 
         with open(filepath, "r", encoding="utf-8") as file:
             self.__maybe_lookup, self.__maybe_reverse_lookup = build_lookup_hatchery(file)

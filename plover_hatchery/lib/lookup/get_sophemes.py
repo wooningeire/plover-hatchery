@@ -4,7 +4,6 @@ from plover.steno import Stroke
 
 from ..sophone.Sophone import vowel_phonemes
 from ..sopheme import Sopheme, Keysymbol, Sound
-from ..theory_defaults.amphitheory import amphitheory
 from ..pipes.state import ConsonantVowelGroup, OutlineSounds
 
 # def get_outline_phonemes(outline: Iterable[Stroke]):
@@ -44,14 +43,14 @@ class _OutlineSoundsBuilder:
         return len(self.__consonant_vowel_groups) > 0 and len(self.__current_group_consonants) == 0
 
 
-    def __append_diphthong_transition(self):
-        if not self.__last_sound_was_vowel: return
+    # def __append_diphthong_transition(self):
+    #     if not self.__last_sound_was_vowel: return
         
-        prev_vowel = self.__consonant_vowel_groups[-1].vowel
-        diphthong_transition_sopheme = amphitheory.spec.vowel_diphthong_transition(prev_vowel)
-        if diphthong_transition_sopheme is None: return
+    #     prev_vowel = self.__consonant_vowel_groups[-1].vowel
+    #     diphthong_transition_sopheme = amphitheory.spec.vowel_diphthong_transition(prev_vowel)
+    #     if diphthong_transition_sopheme is None: return
 
-        self.__current_group_consonants.append(Sound(diphthong_transition_sopheme.keysymbols[0], diphthong_transition_sopheme))
+    #     self.__current_group_consonants.append(Sound(diphthong_transition_sopheme.keysymbols[0], diphthong_transition_sopheme))
 
 
     def add_consonant(self, consonant: Sound):
@@ -59,7 +58,7 @@ class _OutlineSoundsBuilder:
     
 
     def add_vowel(self, vowel: Sound):
-        self.__append_diphthong_transition()
+        # self.__append_diphthong_transition()
 
         self.__consonant_vowel_groups.append(ConsonantVowelGroup(tuple(self.__current_group_consonants), vowel))
         self.__current_group_consonants = []

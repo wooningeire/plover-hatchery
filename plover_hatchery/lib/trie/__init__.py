@@ -1,5 +1,6 @@
 from collections import defaultdict
-from typing import Generic, Iterable, Optional, TypeVar, NamedTuple
+from collections.abc import Generator
+from typing import Any, Generator, Generic, Iterable, Optional, TypeVar, NamedTuple
 from dataclasses import dataclass
 
 S = TypeVar("S")
@@ -340,7 +341,7 @@ class NondeterministicTrie(Generic[K, V]):
 
         key_ids_to_keys = self.__key_ids_to_keys()
 
-        def dfs(node: int, key_ids_reversed: tuple[int, ...], visited_nodes: set[int], translation: V):
+        def dfs(node: int, key_ids_reversed: tuple[int, ...], visited_nodes: set[int], translation: V) -> Generator[tuple[K, ...], None, None]:
             if node == self.ROOT:
                 yield tuple(key_ids_to_keys[key_id] for key_id in reversed(key_ids_reversed))
                 return
@@ -354,7 +355,7 @@ class NondeterministicTrie(Generic[K, V]):
 
                     yield from dfs(src_node, key_ids_reversed + (key_id,), visited_nodes | {src_node}, translation)
 
-        def get_sequences(translation: V):
+        def get_sequences(translation: V) -> Generator[tuple[K, ...], None, None]:
             if translation not in reverse_translations: return
             
             for node in reverse_translations[translation]:

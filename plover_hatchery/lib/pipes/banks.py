@@ -13,9 +13,9 @@ from ..trie import NondeterministicTrie, TransitionCostInfo
 from ..config import TRIE_STROKE_BOUNDARY_KEY, TRIE_LINKER_KEY
 from .state import OutlineSounds, ConsonantVowelGroup
 from .join import NodeSrc, join_on_strokes, tuplify
-from .consonants_vowels_enumeration import ConsonantsVowelsEnumerationHooks
+from .consonants_vowels_enumeration import consonants_vowels_enumeration
 from .Hook import Hook
-from .Plugin import Plugin, define_plugin
+from .Plugin import GetPluginApi, Plugin, define_plugin
 
 @dataclass
 class BanksState:
@@ -97,7 +97,7 @@ def banks(
     right_chords: Callable[[Sound], Generator[Stroke, None, None]],
 ) -> Plugin[BanksHooks]:
     @define_plugin(banks)
-    def plugin(base_hooks: ConsonantsVowelsEnumerationHooks[BanksState], **_):
+    def plugin(get_plugin_api: GetPluginApi, **_):
         hooks = BanksHooks()
 
         def on_begin_hook():
@@ -160,7 +160,10 @@ def banks(
                 )
 
 
-        @base_hooks.begin.listen(banks)
+        consonants_vowels_enumeration_hooks = get_plugin_api(consonants_vowels_enumeration)
+
+
+        @consonants_vowels_enumeration_hooks.begin.listen(banks)
         def _(trie: NondeterministicTrie[str, str], sounds: OutlineSounds, translation: str):
             left_src_nodes = (NodeSrc(trie.ROOT, 0),)
 
@@ -180,7 +183,7 @@ def banks(
             )
 
 
-        @base_hooks.consonant.listen(banks)
+        @consonants_vowels_enumeration_hooks.consonant.listen(banks)
         def _(state: BanksState, consonant: Sound, group_index: int, sound_index: int, **_):
             state.group_index = group_index
             state.sound_index = sound_index
@@ -204,7 +207,7 @@ def banks(
             on_complete_consonant(state, consonant)
 
         
-        @base_hooks.vowel.listen(banks)
+        @consonants_vowels_enumeration_hooks.vowel.listen(banks)
         def _(state: BanksState, vowel: Sound, group_index: int, sound_index: int):
             state.group_index = group_index
             state.sound_index = sound_index
@@ -230,7 +233,7 @@ def banks(
             on_complete_vowel(state, mid_node, new_stroke_node, group_index, sound_index)
 
 
-        @base_hooks.complete.listen(banks)
+        @consonants_vowels_enumeration_hooks.complete.listen(banks)
         def _(state: BanksState):
             for right_src in state.right_srcs:
                 state.trie.set_translation(right_src.node, state.translation)

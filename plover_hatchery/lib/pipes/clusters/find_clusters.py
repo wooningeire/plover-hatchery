@@ -9,7 +9,6 @@ from ..state import OutlineSounds
 from ..banks import BanksState
 
 from ...trie import NondeterministicTrie, TransitionCostInfo, ReadonlyTrie
-from ...theory_defaults.amphitheory import amphitheory
 
 
 
