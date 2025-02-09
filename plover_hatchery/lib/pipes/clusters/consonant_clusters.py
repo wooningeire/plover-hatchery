@@ -22,7 +22,7 @@ class ConsonantClustersState:
     upcoming_clusters: dict[tuple[int, int], list[Cluster]] = field(default_factory=lambda: {})
 
 
-def consonant_clusters(Sophone: Enum, map_sophones: Callable[[Sound], Any], clusters: dict[str, str]) -> Plugin[None]:
+def consonant_clusters(Sophone: Enum, map_sophones: Callable[[Sound], Any], clusters: dict[str, str], *, base_cost: int) -> Plugin[None]:
     def build_consonant_clusters_trie() -> ReadonlyTrie[Any, Stroke]:
         trie: Trie[Any, Stroke] = Trie()
         for phonemes, steno in clusters.items():
@@ -77,6 +77,7 @@ def consonant_clusters(Sophone: Enum, map_sophones: Callable[[Sound], Any], clus
                 left_node,
                 right_node,
                 banks_state,
+                base_cost,
             )
 
 
@@ -84,9 +85,10 @@ def consonant_clusters(Sophone: Enum, map_sophones: Callable[[Sound], Any], clus
         def _(state: ConsonantClustersState, banks_state: BanksState, **_):
             check_found_clusters(
                 state.upcoming_clusters,
-                banks_state.left_src_nodes[0],
-                banks_state.right_src_nodes[0] if len(banks_state.right_src_nodes) > 0 else None,
+                banks_state.left_srcs[0].node,
+                banks_state.right_srcs[0].node if len(banks_state.right_srcs) > 0 else None,
                 banks_state,
+                base_cost,
             )
 
         

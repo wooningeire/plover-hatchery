@@ -22,7 +22,7 @@ class VowelClustersState:
     upcoming_clusters: dict[tuple[int, int], list[Cluster]] = field(default_factory=lambda: {})
 
 
-def vowel_clusters(Sophone: Enum, map_sophones: Callable[[Sound], Any], vowel_sophones: set[Any], clusters: dict[str, str]) -> Plugin[None]:
+def vowel_clusters(Sophone: Enum, map_sophones: Callable[[Sound], Any], vowel_sophones: set[Any], clusters: dict[str, str], base_cost: int) -> Plugin[None]:
     def build_vowel_clusters_trie() -> ReadonlyTrie[Any, Stroke]:
         trie: Trie[Any, Stroke] = Trie()
         for phonemes, steno in clusters.items():
@@ -89,6 +89,7 @@ def vowel_clusters(Sophone: Enum, map_sophones: Callable[[Sound], Any], vowel_so
                 left_node,
                 right_node,
                 banks_state,
+                base_cost,
             )
         
         
@@ -98,9 +99,10 @@ def vowel_clusters(Sophone: Enum, map_sophones: Callable[[Sound], Any], vowel_so
 
             check_found_clusters(
                 state.upcoming_clusters,
-                banks_state.left_src_nodes[0],
-                banks_state.right_src_nodes[0] if len(banks_state.right_src_nodes) > 0 else None,
+                banks_state.left_srcs[0],
+                banks_state.right_srcs[0] if len(banks_state.right_srcs) > 0 else None,
                 banks_state,
+                base_cost,
             )
 
 

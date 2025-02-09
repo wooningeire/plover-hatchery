@@ -8,7 +8,7 @@ from plover.steno import Stroke
 
 from ..sopheme import Sound
 from .banks import banks, BanksState
-from .join import join_on_strokes
+from .join import NodeSrc, join_on_strokes
 from .Plugin import define_plugin, GetPluginApi
 from .Hook import Hook
 
@@ -56,7 +56,7 @@ def left_alt_chords(chords: Callable[[Sound], Generator[Stroke, None, None]]) ->
 
             
 
-            left_alt_node = join_on_strokes(banks_state.trie, banks_state.left_src_nodes, chords(consonant), banks_state.translation)
+            left_alt_node = join_on_strokes(banks_state.trie, banks_state.left_srcs, chords(consonant), banks_state.translation)
             # if len(state.left_elision_boundary_src_nodes) > 0:
             #     state.trie.link_chain(state.left_elision_boundary_src_nodes[0], left_alt_consonant_node, left_alt_stroke_keys, TransitionCostInfo(0, state.translation))
 
@@ -82,7 +82,7 @@ def left_alt_chords(chords: Callable[[Sound], Generator[Stroke, None, None]]) ->
             if state.newest_left_alt_node is None: return
             state.last_left_alt_node = state.newest_left_alt_node
 
-            banks_state.left_src_nodes += (state.last_left_alt_node,)
+            banks_state.left_srcs += (NodeSrc(state.last_left_alt_node, 3),)
 
         
         @banks_hooks.complete_vowel.listen(left_alt_chords)

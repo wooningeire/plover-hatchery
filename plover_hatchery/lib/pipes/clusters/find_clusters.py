@@ -20,18 +20,18 @@ class Cluster(ABC):
     initial_state: BanksState
 
     @abstractmethod
-    def apply(self, trie: NondeterministicTrie[str, str], translation: str, current_left: "int | None", current_right: "int | None"):
+    def apply(self, trie: NondeterministicTrie[str, str], translation: str, current_left: "int | None", current_right: "int | None", cost: int):
         ...
 
 @dataclass(frozen=True)
 class _ClusterLeft(Cluster):
-    def apply(self, trie: NondeterministicTrie[str, str], translation: str, current_left: "int | None", current_right: "int | None"):
+    def apply(self, trie: NondeterministicTrie[str, str], translation: str, current_left: "int | None", current_right: "int | None", cost: int):
         if current_left is None: return
 
         state = self.initial_state
 
-        if len(state.left_src_nodes) > 0:
-            trie.link_chain(state.left_src_nodes[0], current_left, self.stroke.keys(), TransitionCostInfo(amphitheory.spec.TransitionCosts.CLUSTER, translation))
+        if len(state.left_srcs) > 0:
+            trie.link_chain(state.left_srcs[0].node, current_left, self.stroke.keys(), TransitionCostInfo(cost, translation))
 
         # if state.can_elide_prev_vowel_left:
         #     state.left_squish_elision.execute(state.trie, state.translation, current_left, self.stroke, amphitheory.spec.TransitionCosts.CLUSTER)
@@ -39,13 +39,13 @@ class _ClusterLeft(Cluster):
 
 @dataclass(frozen=True)
 class _ClusterRight(Cluster):
-    def apply(self, trie: NondeterministicTrie[str, str], translation: str, current_left: "int | None", current_right: "int | None"):
+    def apply(self, trie: NondeterministicTrie[str, str], translation: str, current_left: "int | None", current_right: "int | None", cost: int):
         if current_right is None: return
 
         state = self.initial_state
 
-        if len(self.initial_state.right_src_nodes) > 0:
-            trie.link_chain(self.initial_state.right_src_nodes[0], current_right, self.stroke.keys(), TransitionCostInfo(amphitheory.spec.TransitionCosts.CLUSTER, translation))
+        if len(self.initial_state.right_srcs) > 0:
+            trie.link_chain(self.initial_state.right_srcs[0].node, current_right, self.stroke.keys(), TransitionCostInfo(cost, translation))
 
         # if self.initial_state.is_first_consonant:
         #     state.left_squish_elision.execute(state.trie, state.translation, current_right, self.stroke, amphitheory.spec.TransitionCosts.CLUSTER)
@@ -95,8 +95,9 @@ def check_found_clusters(
     right_consonant_node: "int | None",
     
     state: BanksState,
+    cost: int,
 ):
     if (state.group_index, state.sound_index) not in upcoming_clusters: return
     
     for cluster in upcoming_clusters[state.group_index, state.sound_index]:
-        cluster.apply(state.trie, state.translation, left_consonant_node, right_consonant_node)
+        cluster.apply(state.trie, state.translation, left_consonant_node, right_consonant_node, cost)
