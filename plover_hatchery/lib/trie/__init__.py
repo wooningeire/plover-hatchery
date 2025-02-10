@@ -1,1 +1,3 @@
-from .Trie import Transition, TransitionCostInfo, TransitionCostKey, Trie, NondeterministicTrie, ReadonlyTrie
+from .Transition import Transition, TransitionCostInfo, TransitionCostKey
+from .Trie import Trie, NondeterministicTrie, ReadonlyTrie
+from .LookupResult import LookupResult

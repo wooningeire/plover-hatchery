@@ -16,9 +16,9 @@ from .Plugin import GetPluginApi, Plugin, define_plugin
 
 @dataclass
 class BanksState:
-    trie: NondeterministicTrie[str, str]
+    trie: NondeterministicTrie[str, int]
     sounds: OutlineSounds
-    translation: str
+    entry_id: int
 
     plugin_states: dict[int, Any]
 
@@ -163,13 +163,13 @@ def banks(
 
 
         @consonants_vowels_enumeration_hooks.begin.listen(banks)
-        def _(trie: NondeterministicTrie[str, str], sounds: OutlineSounds, translation: str):
+        def _(trie: NondeterministicTrie[str, int], sounds: OutlineSounds, entry_id: int):
             left_src_nodes = (NodeSrc(trie.ROOT, 0),)
 
             return BanksState(
                 trie,
                 sounds,
-                translation,
+                entry_id,
 
                 group_index=0,
                 sound_index=0,
@@ -189,8 +189,8 @@ def banks(
             state.sound_index = sound_index
 
 
-            left_node = join_on_strokes(state.trie, state.left_srcs, left_chords(consonant), state.translation)
-            right_node = join_on_strokes(state.trie, state.right_srcs, right_chords(consonant), state.translation)
+            left_node = join_on_strokes(state.trie, state.left_srcs, left_chords(consonant), state.entry_id)
+            right_node = join_on_strokes(state.trie, state.right_srcs, right_chords(consonant), state.entry_id)
 
 
             on_before_complete_consonant(state, consonant, left_node, right_node)
@@ -214,11 +214,11 @@ def banks(
             state.sound_index = sound_index
 
 
-            mid_node = join_on_strokes(state.trie, state.mid_srcs, mid_chords(vowel), state.translation)
+            mid_node = join_on_strokes(state.trie, state.mid_srcs, mid_chords(vowel), state.entry_id)
 
 
             if mid_node is not None:
-                new_stroke_node = state.trie.create_node(mid_node, TRIE_STROKE_BOUNDARY_KEY, TransitionCostInfo(0, state.translation))
+                new_stroke_node = state.trie.get_first_dst_node_else_create(mid_node, TRIE_STROKE_BOUNDARY_KEY, TransitionCostInfo(0, state.entry_id))
             else:
                 new_stroke_node = None
 
@@ -238,7 +238,7 @@ def banks(
         @consonants_vowels_enumeration_hooks.complete.listen(banks)
         def _(state: BanksState):
             for right_src in state.right_srcs:
-                state.trie.set_translation(right_src.node, state.translation)
+                state.trie.set_translation(right_src.node, state.entry_id)
 
 
         return hooks

@@ -6,7 +6,7 @@ from plover_hatchery.lib.config import TRIE_STROKE_BOUNDARY_KEY
 from plover_hatchery.lib.pipes.Plugin import GetPluginApi, Plugin, define_plugin
 from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
 from plover_hatchery.lib.pipes.declare_banks import declare_banks
-from plover_hatchery.lib.trie import NondeterministicTrie, Transition
+from plover_hatchery.lib.trie import LookupResult, NondeterministicTrie, Transition
 
 
 def splitter_lookup(*, cycler: "str | None"=None, prohibit_strokes: Iterable[str]=()) -> Plugin[None]:
@@ -20,7 +20,7 @@ def splitter_lookup(*, cycler: "str | None"=None, prohibit_strokes: Iterable[str
 
 
         @base_hooks.lookup.listen(splitter_lookup)
-        def _(trie: NondeterministicTrie[str, str], stroke_stenos: tuple[str, ...], **_) -> "str | None":
+        def _(trie: NondeterministicTrie[str, int], stroke_stenos: tuple[str, ...], translations: list[str], **_) -> "str | None":
             # plover.log.debug("")
             # plover.log.debug("new lookup")
 
@@ -111,26 +111,26 @@ def splitter_lookup(*, cycler: "str | None"=None, prohibit_strokes: Iterable[str
                     if len(current_nodes) == 0:
                         return None
                     
-            translation_choices = sorted(trie.get_translations_and_costs(current_nodes).items(), key=lambda cost_info: cost_info[1])
+            translation_choices = sorted(trie.get_translations_and_costs(current_nodes), key=lambda result: result.cost)
             if len(translation_choices) == 0: return None
 
             first_choice = translation_choices[0]
             if len(asterisk) == 0:
-                return nth_variation(translation_choices, n_variation)
+                return nth_variation(translation_choices, n_variation, translations)
             else:
-                for transition in reversed(first_choice[1][1]):
+                for transition in reversed(first_choice.transitions):
                     if trie.transition_has_key(transition, TRIE_STROKE_BOUNDARY_KEY): break
                     if not trie.transition_has_key(transition, banks_info.positionless.rtfcre): continue
 
-                    return nth_variation(translation_choices, n_variation)
+                    return nth_variation(translation_choices, n_variation, translations)
 
-            return nth_variation(translation_choices, n_variation + 1) if len(translation_choices) > 1 else None
+            return nth_variation(translation_choices, n_variation + 1, translations) if len(translation_choices) > 1 else None
 
 
-        def nth_variation(choices: list[tuple[str, tuple[float, tuple[Transition, ...]]]], n_variation: int):
+        def nth_variation(choices: list[LookupResult[int]], n_variation: int, translations: list[str]):
             # index = n_variation % (len(choices) + 1)
             # return choices[index][0] if index != len(choices) else None
-            return choices[n_variation % len(choices)][0]
+            return translations[choices[n_variation % len(choices)].translation]
 
 
         return None

@@ -1,3 +1,4 @@
+from collections import defaultdict
 from collections.abc import Callable, Iterable
 from typing import TextIO
 
@@ -13,7 +14,7 @@ from ..pipes import Theory
 
 
 def build_lookup_json(mappings: dict[str, str]):
-    trie: NondeterministicTrie[str, str] = NondeterministicTrie()
+    trie: NondeterministicTrie[str, int] = NondeterministicTrie()
 
     # for outline_steno, translation in mappings.items():
     #     phonemes = get_outline_phonemes(Stroke.from_steno(steno) for steno in outline_steno.split("/"))
@@ -28,11 +29,14 @@ def build_lookup_json(mappings: dict[str, str]):
 
 def get_lookup_builder_hatchery(theory: Theory):
     def build_lookup_hatchery(entries: Iterable[str]):
-        trie: NondeterministicTrie[str, str] = NondeterministicTrie()
+        trie: NondeterministicTrie[str, int] = NondeterministicTrie()
 
         n_entries = 0
         n_passed_parses = 0
         n_passed_additions = 0
+
+        translations: list[str] = []
+        reverse_translations: dict[str, list[int]] = defaultdict(lambda: [])
 
         for i, line in enumerate(entries):
             if i % 1000 == 0:
@@ -43,7 +47,14 @@ def get_lookup_builder_hatchery(theory: Theory):
                 n_passed_parses += 1
 
                 try:
-                    theory.add_entry(trie, sophemes, Sopheme.get_translation(sophemes))
+                    entry_id = len(translations)
+
+                    theory.add_entry(trie, sophemes, entry_id)
+
+                    translation = Sopheme.get_translation(sophemes)
+                    translations.append(translation)
+                    reverse_translations[translation].append(entry_id)
+
                     n_passed_additions += 1
                 except Exception as e:
                     # import traceback
@@ -67,10 +78,10 @@ Hatched {n_entries} entries
 """)
 
         def lookup(stroke_stenos: tuple[str, ...]):
-            return theory.lookup(trie, stroke_stenos)
+            return theory.lookup(trie, stroke_stenos, translations)
 
         def reverse_lookup(translation: str):
-            return theory.reverse_lookup(trie, translation)
+            return theory.reverse_lookup(trie, translation, reverse_translations)
 
         return lookup, reverse_lookup
     

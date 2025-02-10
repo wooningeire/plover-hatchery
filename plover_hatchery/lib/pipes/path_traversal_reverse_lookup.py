@@ -16,11 +16,11 @@ def path_traversal_reverse_lookup() -> Plugin[None]:
         banks_info = get_plugin_api(declare_banks)
 
 
-        reverse_lookups: dict[int, Callable[[str], Iterable[tuple[str, ...]]]] = {}
+        reverse_lookups: dict[int, Callable[[int], Iterable[tuple[str, ...]]]] = {}
 
 
         @base_hooks.reverse_lookup.listen(path_traversal_reverse_lookup)
-        def _(trie: NondeterministicTrie[str, str], translation: str) -> Iterable[tuple[str, ...]]:
+        def _(trie: NondeterministicTrie[str, int], translation: str, reverse_translations: dict[str, list[int]], **_) -> Iterable[tuple[str, ...]]:
             if id(trie) in reverse_lookups:
                 reverse_lookup = reverse_lookups[id(trie)]
             else:
@@ -28,30 +28,31 @@ def path_traversal_reverse_lookup() -> Plugin[None]:
                 reverse_lookups[id(trie)] = reverse_lookup
 
             
-            for seq in reverse_lookup(translation):
-                outline: list[str] = []
-                latest_stroke: Stroke = Stroke.from_integer(0)
-                invalid = False
-                for key in seq:
-                    if key == TRIE_STROKE_BOUNDARY_KEY:
+            for entry_id in reverse_translations[translation]:
+                for seq in reverse_lookup(entry_id):
+                    outline: list[str] = []
+                    latest_stroke: Stroke = Stroke.from_integer(0)
+                    invalid = False
+                    for key in seq:
+                        if key == TRIE_STROKE_BOUNDARY_KEY:
+                            outline.append(latest_stroke.rtfcre)
+                            latest_stroke = Stroke.from_integer(0)
+                            continue
+
+                        # if key == TRIE_LINKER_KEY:
+                        #     key_stroke = amphitheory.spec.LINKER_CHORD
+                        # else: 
+                        key_stroke = Stroke.from_steno(key)
+
+                        if banks_info.can_add_stroke_on(latest_stroke, key_stroke):
+                            latest_stroke += key_stroke
+                        else:
+                            invalid = True
+                            break
+
+                    if not invalid:
                         outline.append(latest_stroke.rtfcre)
-                        latest_stroke = Stroke.from_integer(0)
-                        continue
-
-                    # if key == TRIE_LINKER_KEY:
-                    #     key_stroke = amphitheory.spec.LINKER_CHORD
-                    # else: 
-                    key_stroke = Stroke.from_steno(key)
-
-                    if banks_info.can_add_stroke_on(latest_stroke, key_stroke):
-                        latest_stroke += key_stroke
-                    else:
-                        invalid = True
-                        break
-
-                if not invalid:
-                    outline.append(latest_stroke.rtfcre)
-                    yield tuple(outline)
+                        yield tuple(outline)
 
 
         return None

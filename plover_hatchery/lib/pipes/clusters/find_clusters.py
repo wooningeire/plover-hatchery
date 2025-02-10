@@ -19,12 +19,12 @@ class Cluster(ABC):
     initial_state: BanksState
 
     @abstractmethod
-    def apply(self, trie: NondeterministicTrie[str, str], translation: str, current_left: "int | None", current_right: "int | None", cost: int):
+    def apply(self, trie: NondeterministicTrie[str, int], translation: str, current_left: "int | None", current_right: "int | None", cost: int):
         ...
 
 @dataclass(frozen=True)
 class _ClusterLeft(Cluster):
-    def apply(self, trie: NondeterministicTrie[str, str], translation: str, current_left: "int | None", current_right: "int | None", cost: int):
+    def apply(self, trie: NondeterministicTrie[str, int], translation: str, current_left: "int | None", current_right: "int | None", cost: int):
         if current_left is None: return
 
         state = self.initial_state
@@ -38,7 +38,7 @@ class _ClusterLeft(Cluster):
 
 @dataclass(frozen=True)
 class _ClusterRight(Cluster):
-    def apply(self, trie: NondeterministicTrie[str, str], translation: str, current_left: "int | None", current_right: "int | None", cost: int):
+    def apply(self, trie: NondeterministicTrie[str, int], translation: str, current_left: "int | None", current_right: "int | None", cost: int):
         if current_right is None: return
 
         state = self.initial_state
@@ -101,4 +101,4 @@ def check_found_clusters(
     if (state.group_index, state.sound_index) not in upcoming_clusters: return
     
     for cluster in upcoming_clusters[state.group_index, state.sound_index]:
-        cluster.apply(state.trie, state.translation, left_consonant_node, right_consonant_node, cost)
+        cluster.apply(state.trie, state.entry_id, left_consonant_node, right_consonant_node, cost)

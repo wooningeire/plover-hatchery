@@ -26,7 +26,7 @@ def initial_vowel_chord(chord: str) -> Plugin[None]:
                 banks_state.trie.ROOT,
                 new_stroke_node,
                 stroke.keys(),
-                TransitionCostInfo(0, banks_state.translation)
+                TransitionCostInfo(0, banks_state.entry_id)
             )
 
         return None

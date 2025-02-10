@@ -13,7 +13,7 @@ class NodeSrc:
     cost: int = 0
 
 
-def join_chain(trie: NondeterministicTrie[str, str], src_nodes: Iterable[NodeSrc], key_sets: Iterable[tuple[str, ...]], translation: str):
+def join_chain(trie: NondeterministicTrie[str, int], src_nodes: Iterable[NodeSrc], key_sets: Iterable[tuple[str, ...]], entry_id: int):
     """Join all src_nodes along any stroke path"""
 
     products = product(src_nodes, key_sets)
@@ -22,21 +22,21 @@ def join_chain(trie: NondeterministicTrie[str, str], src_nodes: Iterable[NodeSrc
         first_src_node, first_keys = next(products)
     except StopIteration:
         return None
-    node = trie.create_node_chain(first_src_node.node, first_keys, TransitionCostInfo(first_src_node.cost, translation))
+    node = trie.get_first_dst_node_else_create_chain(first_src_node.node, first_keys, TransitionCostInfo(first_src_node.cost, entry_id))
 
     
     for src_node, keys in products:
-        trie.link_chain(src_node.node, node, keys, TransitionCostInfo(src_node.cost, translation))
+        trie.link_chain(src_node.node, node, keys, TransitionCostInfo(src_node.cost, entry_id))
 
 
     return node
 
-def join(trie: NondeterministicTrie[str, str], src_nodes: Iterable[NodeSrc], keys: Iterable[str], translation: str):
-    return join_chain(trie, src_nodes, ((key,) for key in keys), translation)
+def join(trie: NondeterministicTrie[str, int], src_nodes: Iterable[NodeSrc], keys: Iterable[str], entry_id: int):
+    return join_chain(trie, src_nodes, ((key,) for key in keys), entry_id)
 
 
-def join_on_strokes(trie: NondeterministicTrie[str, str], src_nodes: Iterable[NodeSrc], strokes: Iterable[Stroke], translation: str):
-    return join_chain(trie, src_nodes, (stroke.keys() for stroke in strokes), translation)
+def join_on_strokes(trie: NondeterministicTrie[str, int], src_nodes: Iterable[NodeSrc], strokes: Iterable[Stroke], entry_id: int):
+    return join_chain(trie, src_nodes, (stroke.keys() for stroke in strokes), entry_id)
 
 
 def tuplify(node: "int | None"):

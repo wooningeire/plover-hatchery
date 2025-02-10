@@ -17,7 +17,7 @@ T = TypeVar("T")
 @final
 class ConsonantsVowelsEnumerationHooks:
     class OnBegin(Protocol):
-        def __call__(self, *, trie: NondeterministicTrie[str, str], sounds: OutlineSounds, translation: str) -> Any: ...
+        def __call__(self, *, trie: NondeterministicTrie[str, int], sounds: OutlineSounds, entry_id: int) -> Any: ...
     class OnConsonant(Protocol):
         def __call__(self, *, state: Any, consonant: Sound, group_index: int, sound_index: int) -> None: ...
     class OnVowel(Protocol):
@@ -88,10 +88,10 @@ def consonants_vowels_enumeration(vowel_diphthong_transition: Callable[[Sound], 
         hooks = ConsonantsVowelsEnumerationHooks()
 
 
-        def on_begin(trie: NondeterministicTrie[str, str], sounds: OutlineSounds, translation: str):
+        def on_begin(trie: NondeterministicTrie[str, int], sounds: OutlineSounds, entry_id: int):
             states: dict[int, Any] = {}
             for plugin_id, handler in hooks.begin.ids_handlers():
-                states[plugin_id] = handler(trie=trie, sounds=sounds, translation=translation)
+                states[plugin_id] = handler(trie=trie, sounds=sounds, entry_id=entry_id)
             return states
 
         def on_consonant(states: dict[int, Any], consonant: Sound, group_index: int, sound_index: int):
@@ -108,10 +108,10 @@ def consonants_vowels_enumeration(vowel_diphthong_transition: Callable[[Sound], 
 
 
         @base_hooks.add_entry.listen(consonants_vowels_enumeration)
-        def _(trie: NondeterministicTrie[str, str], sophemes: Iterable[Sopheme], translation: str):
+        def _(trie: NondeterministicTrie[str, int], sophemes: Iterable[Sopheme], entry_id: int):
             sounds = get_sopheme_sounds(sophemes)
 
-            states = on_begin(trie, sounds, translation)
+            states = on_begin(trie, sounds, entry_id)
 
             for group_index, group in enumerate(sounds.nonfinals):
                 for sound_index, consonant in enumerate(group.consonants):

@@ -56,7 +56,7 @@ def left_alt_chords(chords: Callable[[Sound], Generator[Stroke, None, None]]) ->
 
             
 
-            left_alt_node = join_on_strokes(banks_state.trie, banks_state.left_srcs, chords(consonant), banks_state.translation)
+            left_alt_node = join_on_strokes(banks_state.trie, banks_state.left_srcs, chords(consonant), banks_state.entry_id)
             # if len(state.left_elision_boundary_src_nodes) > 0:
             #     state.trie.link_chain(state.left_elision_boundary_src_nodes[0], left_alt_consonant_node, left_alt_stroke_keys, TransitionCostInfo(0, state.translation))
 
