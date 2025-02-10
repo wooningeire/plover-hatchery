@@ -19,7 +19,7 @@ class HatcheryDictionary(StenoDictionary):
 
     def _load(self, filepath: str):
         from .lib.lookup import get_lookup_builder_hatchery
-        from .lib.theory_defaults.amphitheory import theory
+        from .lib.theory_presets.amphitheory import theory
 
         build_lookup_hatchery = get_lookup_builder_hatchery(theory)
 

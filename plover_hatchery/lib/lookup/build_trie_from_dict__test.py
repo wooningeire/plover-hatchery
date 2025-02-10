@@ -1,6 +1,6 @@
 def test__build_lookup_hatchery__single_syllable():
     from .build_trie_from_dict import get_lookup_builder_hatchery
-    from ..theory_defaults.lapwing import theory
+    from ..theory_presets.lapwing import theory
 
     build_lookup_hatchery = get_lookup_builder_hatchery(theory)
 
@@ -13,7 +13,7 @@ def test__build_lookup_hatchery__single_syllable():
 
 def test__build_lookup_hatchery__prefix_string():
     from .build_trie_from_dict import get_lookup_builder_hatchery
-    from ..theory_defaults.lapwing import theory
+    from ..theory_presets.lapwing import theory
 
     build_lookup_hatchery = get_lookup_builder_hatchery(theory)
 
@@ -30,7 +30,7 @@ def test__build_lookup_hatchery__prefix_string():
 
 def test__build_lookup_hatchery__reverse_lookup():
     from .build_trie_from_dict import get_lookup_builder_hatchery
-    from ..theory_defaults.lapwing import theory
+    from ..theory_presets.lapwing import theory
 
     build_lookup_hatchery = get_lookup_builder_hatchery(theory)
 
@@ -52,7 +52,7 @@ def test__build_lookup_hatchery__reverse_lookup():
 
 def test__build_lookup_hatchery__sample__investigate():
     from .build_trie_from_dict import get_lookup_builder_hatchery
-    from ..theory_defaults.lapwing import theory
+    from ..theory_presets.lapwing import theory
 
     build_lookup_hatchery = get_lookup_builder_hatchery(theory)
 
@@ -71,7 +71,7 @@ def test__build_lookup_hatchery__sample__investigate():
 
 def test__build_lookup_hatchery__sample__information():
     from .build_trie_from_dict import get_lookup_builder_hatchery
-    from ..theory_defaults.lapwing import theory
+    from ..theory_presets.lapwing import theory
 
     build_lookup_hatchery = get_lookup_builder_hatchery(theory)
 
