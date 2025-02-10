@@ -179,11 +179,11 @@ theory = compile_theory(
 
         mid_chords=lambda sound: itertools.chain(
             map_unstressed_vowels({
-                "a": "A",
-                "e": "E",
-                "i": "EU",
-                "o": "O",
-                "u": "U",
+                "a": ("A", "AEU"),
+                "e": ("E", "AOE"),
+                "i": ("EU", "AOEU"),
+                "o": ("O", "OE"),
+                "u": ("U", "AOU"),
             })(sound),
             map_sophones_to_strokes({
                 "AA": "AEU",
