@@ -55,9 +55,9 @@ def right_alt_chords(chords: Callable[[Sound], Generator[Stroke, None, None]]) -
         
         @banks_hooks.complete_consonant.listen(right_alt_chords)
         def _(state: RightAltChordsState, banks_state: BanksState, **_):
-            if state.newest_right_alt_node is None: return
             state.last_right_alt_node = state.newest_right_alt_node
 
+            if state.last_right_alt_node is None: return
             banks_state.right_srcs += (NodeSrc(state.last_right_alt_node, 3),)
 
         

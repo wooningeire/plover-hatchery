@@ -24,7 +24,7 @@ def linker_chord(chord: str) -> Plugin[None]:
             if next_index is None: return
 
             if sounds.is_vowel(*next_index):
-                new_stroke_node = banks_state.trie.get_first_dst_node_else_create(right_node, TRIE_STROKE_BOUNDARY_KEY, TransitionCostInfo(0, banks_state.translation))
+                new_stroke_node = banks_state.trie.create_node(right_node, TRIE_STROKE_BOUNDARY_KEY, TransitionCostInfo(0, banks_state.translation))
                 banks_state.trie.link_chain(new_stroke_node, left_node, stroke.keys(), TransitionCostInfo(0, banks_state.translation))
             else:
                 banks_state.trie.link(right_node, left_node, TRIE_STROKE_BOUNDARY_KEY, TransitionCostInfo(0, banks_state.translation))

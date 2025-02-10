@@ -79,9 +79,9 @@ def left_alt_chords(chords: Callable[[Sound], Generator[Stroke, None, None]]) ->
         
         @banks_hooks.complete_consonant.listen(left_alt_chords)
         def _(state: LeftAltChordsState, banks_state: BanksState, **_):
-            if state.newest_left_alt_node is None: return
             state.last_left_alt_node = state.newest_left_alt_node
 
+            if state.last_left_alt_node is None: return
             banks_state.left_srcs += (NodeSrc(state.last_left_alt_node, 3),)
 
         

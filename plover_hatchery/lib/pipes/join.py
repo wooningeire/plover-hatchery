@@ -22,7 +22,7 @@ def join_chain(trie: NondeterministicTrie[str, str], src_nodes: Iterable[NodeSrc
         first_src_node, first_keys = next(products)
     except StopIteration:
         return None
-    node = trie.get_first_dst_node_else_create_chain(first_src_node.node, first_keys, TransitionCostInfo(first_src_node.cost, translation))
+    node = trie.create_node_chain(first_src_node.node, first_keys, TransitionCostInfo(first_src_node.cost, translation))
 
     
     for src_node, keys in products:

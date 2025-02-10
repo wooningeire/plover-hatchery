@@ -29,6 +29,8 @@ class BanksState:
     mid_srcs: tuple[NodeSrc, ...]
     right_srcs: tuple[NodeSrc, ...]
 
+    # translation_candidates: tuple[NodeSrc, ...]
+
     last_left_node: "int | None" = None
     last_right_node: "int | None" = None
 
@@ -175,6 +177,7 @@ def banks(
                 left_srcs=left_src_nodes,
                 mid_srcs=left_src_nodes,
                 right_srcs=(),
+                # translation_candidates=(),
 
                 plugin_states=on_begin_hook(),
             )
@@ -196,6 +199,7 @@ def banks(
             state.left_srcs = tuplify(left_node)
             state.mid_srcs = state.left_srcs
             state.right_srcs = tuplify(right_node)
+            # state.translation_candidates = state.right_srcs
 
             state.last_left_node = left_node
             state.last_right_node = right_node
@@ -214,7 +218,7 @@ def banks(
 
 
             if mid_node is not None:
-                new_stroke_node = state.trie.get_first_dst_node_else_create(mid_node, TRIE_STROKE_BOUNDARY_KEY, TransitionCostInfo(0, state.translation))
+                new_stroke_node = state.trie.create_node(mid_node, TRIE_STROKE_BOUNDARY_KEY, TransitionCostInfo(0, state.translation))
             else:
                 new_stroke_node = None
 
@@ -224,7 +228,8 @@ def banks(
 
             state.left_srcs = tuplify(new_stroke_node)
             state.mid_srcs = state.left_srcs
-            state.right_srcs += tuplify(mid_node)
+            state.right_srcs = tuplify(mid_node)
+            # state.translation_candidates = state.right_srcs
 
 
             on_complete_vowel(state, mid_node, new_stroke_node, group_index, sound_index)

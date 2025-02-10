@@ -48,4 +48,22 @@ def test__build_lookup_hatchery__reverse_lookup():
             ("KREUFT", "KWRAEUL"),
         )
     )
-    
+
+
+def test__build_lookup_hatchery__oops():
+    from .build_trie_from_dict import get_lookup_builder_hatchery
+    from ..theory_defaults.lapwing import theory
+
+    build_lookup_hatchery = get_lookup_builder_hatchery(theory)
+
+    lookup, reverse_lookup = build_lookup_hatchery((
+        "i.i n.n v.v e.e!1 s.s t.t i.I2 g.g a.ee t.t e.",
+    ))
+
+    outlines = reverse_lookup("investigate")
+
+    assert lookup(("EUPB", "SREFT", "TKPWAEUT")) == "investigate"
+    assert lookup(("EUPB", "SREFT")) is None
+
+    assert ("EUPB", "SREFT", "TKPWAEUT") in outlines
+    assert ("EUPB", "SREFT") not in outlines
