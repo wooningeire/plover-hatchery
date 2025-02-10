@@ -8,13 +8,9 @@ from .consonants_vowels_enumeration import consonants_vowels_enumeration, Conson
 from .declare_banks import declare_banks
 from .banks import banks, BanksApi, BanksState
 from .initial_vowel_chord import initial_vowel_chord
-from .left_squish_elision import left_squish_elision
-from .right_squish_elision import right_squish_elision
-from .boundary_elision import boundary_elision
+from .optional_vowels import optional_vowels
 from .left_alt_chords import left_alt_chords, LeftAltChordsHooks, LeftAltChordsState
-from .left_alt_squish_elision import left_alt_squish_elision
 from .right_alt_chords import right_alt_chords
-from .right_alt_squish_elision import right_alt_squish_elision
 from .clusters import consonant_clusters, vowel_clusters
 from .linker_chord import linker_chord
 from .splitter_lookup import splitter_lookup

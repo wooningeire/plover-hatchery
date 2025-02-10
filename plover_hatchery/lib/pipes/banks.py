@@ -66,6 +66,16 @@ class BanksApi:
             banks_state: BanksState,
             consonant: Sound,
         ) -> None: ...
+    class BeginVowel(Protocol):
+        def __call__(self,
+            *,
+            state: Any,
+            banks_state: BanksState,
+            group_index: int,
+            sound_index: int,
+            vowel: Sound,
+            set_vowel: Callable[[Sound], None],
+        ) -> None: ...
     class BeforeCompleteVowel(Protocol):
         def __call__(self,
             *,
@@ -94,6 +104,7 @@ class BanksApi:
     begin = Hook(Begin)
     before_complete_consonant = Hook(BeforeCompleteConsonant)
     complete_consonant = Hook(CompleteConsonant)
+    begin_vowel = Hook(BeginVowel)
     before_complete_vowel = Hook(BeforeCompleteVowel)
     complete_vowel = Hook(CompleteVowel)
 
@@ -132,6 +143,24 @@ def banks(
                     banks_state=banks_state,
                     consonant=consonant,
                 )
+
+        def on_begin_vowel(
+            banks_state: BanksState,
+            group_index: int,
+            sound_index: int,
+            vowel: Sound,
+            set_vowel: Callable[[Sound], None],
+        ):
+            for plugin_id, handler in hooks.begin_vowel.ids_handlers():
+                handler(
+                    state=banks_state.plugin_states.get(plugin_id),
+                    banks_state=banks_state,
+                    group_index=group_index,
+                    sound_index=sound_index,
+                    vowel=vowel,
+                    set_vowel=set_vowel,
+                )
+                
 
         def on_before_complete_vowel(
             banks_state: BanksState,
@@ -236,6 +265,14 @@ def banks(
         def _(state: BanksState, vowel: Sound, group_index: int, sound_index: int):
             state.group_index = group_index
             state.sound_index = sound_index
+
+
+            def set_vowel(new_vowel: Sound):
+                nonlocal vowel
+                vowel = new_vowel
+
+
+            on_begin_vowel(state, group_index, sound_index, vowel, set_vowel)
 
 
             mid_node = join_on_strokes(state.trie, state.mid_srcs, mid_chords(vowel), state.entry_id)

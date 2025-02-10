@@ -229,9 +229,7 @@ theory = compile_theory(
 
     initial_vowel_chord("@"),
 
-    left_squish_elision(),
-    right_squish_elision(),
-    boundary_elision(),
+    optional_vowels(),
 
     left_alt_chords(
         chords=map_sophones_to_strokes({
@@ -240,7 +238,6 @@ theory = compile_theory(
             "Z": "S*",
         })
     ),
-    left_alt_squish_elision(),
 
     right_alt_chords(
         chords=map_sophones_to_strokes({
@@ -253,7 +250,6 @@ theory = compile_theory(
             "K": "*G",
         })
     ),
-    right_alt_squish_elision(),
     
     consonant_clusters(
         Sophone,
