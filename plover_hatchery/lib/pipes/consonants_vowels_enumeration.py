@@ -6,7 +6,7 @@ from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
 
 from ..trie import  NondeterministicTrie
 from ..sopheme import Sound, Sopheme
-from .state import OutlineSounds, ConsonantVowelGroup
+from .OutlineSounds import OutlineSounds, ConsonantVowelGroup
 from .Hook import Hook
 from .Plugin import Plugin, define_plugin
 from ..pipes.Theory import Theory

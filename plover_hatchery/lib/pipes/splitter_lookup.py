@@ -29,7 +29,7 @@ def splitter_lookup(*, cycler: "str | None"=None, prohibit_strokes: Iterable[str
             }
             n_variation = 0
 
-            asterisk = Stroke.from_integer(0)
+            positionless = Stroke.from_integer(0)
 
             for i, stroke_steno in enumerate(stroke_stenos):
                 stroke = Stroke.from_steno(stroke_steno)
@@ -59,63 +59,27 @@ def splitter_lookup(*, cycler: "str | None"=None, prohibit_strokes: Iterable[str
                     if len(current_nodes) == 0:
                         return None
 
-                left_bank_consonants, vowels, right_bank_consonants, asterisk = banks_info.split_stroke_parts(stroke)
+                left_bank_consonants, vowels, right_bank_consonants, positionless = banks_info.split_stroke_parts(stroke)
 
-                if len(left_bank_consonants) > 0:
-                    # plover.log.debug(current_nodes)
-                    # plover.log.debug(left_bank_consonants.keys())
-                    if len(asterisk) > 0:
-                        for key in left_bank_consonants.keys():
-                            current_nodes = trie.get_dst_nodes(current_nodes, key)
-                            # plover.log.debug(f"\t{key}\t {current_nodes}")
-                            current_nodes |= trie.get_dst_nodes_chain(current_nodes, asterisk.keys())
-                            # plover.log.debug(f"\t{asterisk.rtfcre}\t {current_nodes}")
-                            if len(current_nodes) == 0:
-                                return None
-                    # elif left_bank_consonants == amphitheory.spec.LINKER_CHORD:
-                    #     current_nodes = trie.get_dst_nodes_chain(current_nodes, left_bank_consonants.keys()) | trie.get_dst_nodes(current_nodes, TRIE_LINKER_KEY)
-                    else:
-                        current_nodes = trie.get_dst_nodes_chain(current_nodes, left_bank_consonants.keys())
+
+                for positionless_key in positionless.keys():
+                    current_nodes |= trie.get_dst_nodes_chain(current_nodes, positionless_key)
+
+
+                for key in (left_bank_consonants + vowels + right_bank_consonants).keys():
+                    current_nodes = trie.get_dst_nodes(current_nodes, key)
+                    for positionless_key in positionless.keys():
+                        current_nodes |= trie.get_dst_nodes_chain(current_nodes, positionless_key)
 
                     if len(current_nodes) == 0:
                         return None
 
-                if len(vowels) > 0:
-                    # plover.log.debug(current_nodes)
-                    # plover.log.debug(vowels.rtfcre)
-                    if len(asterisk) > 0:
-                        for key in vowels.keys():
-                            current_nodes = trie.get_dst_nodes(current_nodes, key)
-                            # plover.log.debug(f"\t{key}\t {current_nodes}")
-                            current_nodes |= trie.get_dst_nodes_chain(current_nodes, asterisk.keys())
-                            # plover.log.debug(f"\t{asterisk.rtfcre}\t {current_nodes}")
-                            if len(current_nodes) == 0:
-                                return None
-                    else:
-                        current_nodes = trie.get_dst_nodes_chain(current_nodes, vowels.keys())
-
-                if len(right_bank_consonants) > 0:
-                    # plover.log.debug(current_nodes)
-                    # plover.log.debug(right_bank_consonants.keys())
-                    if len(asterisk) > 0:
-                        for key in right_bank_consonants.keys():
-                            current_nodes |= trie.get_dst_nodes_chain(current_nodes, asterisk.keys())
-                            # plover.log.debug(f"\t{asterisk.rtfcre}\t {current_nodes}")
-                            current_nodes = trie.get_dst_nodes(current_nodes, key)
-                            # plover.log.debug(f"\t{key}\t {current_nodes}")
-                            if len(current_nodes) == 0:
-                                return None
-                    else:
-                        current_nodes = trie.get_dst_nodes_chain(current_nodes, right_bank_consonants.keys())
-                        
-                    if len(current_nodes) == 0:
-                        return None
                     
             translation_choices = sorted(trie.get_translations_and_costs(current_nodes), key=lambda result: result.cost)
             if len(translation_choices) == 0: return None
 
             first_choice = translation_choices[0]
-            if len(asterisk) == 0:
+            if len(positionless) == 0:
                 return nth_variation(translation_choices, n_variation, translations)
             else:
                 for transition in reversed(first_choice.transitions):

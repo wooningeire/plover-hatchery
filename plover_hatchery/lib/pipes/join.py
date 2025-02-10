@@ -22,7 +22,7 @@ def join_chain(trie: NondeterministicTrie[str, int], src_nodes: Iterable[NodeSrc
         first_src_node, first_keys = next(products)
     except StopIteration:
         return None
-    node = trie.get_first_dst_node_else_create_chain(first_src_node.node, first_keys, TransitionCostInfo(first_src_node.cost, entry_id))
+    node = trie.follow_chain(first_src_node.node, first_keys, TransitionCostInfo(first_src_node.cost, entry_id))
 
     
     for src_node, keys in products:
@@ -39,7 +39,7 @@ def join_on_strokes(trie: NondeterministicTrie[str, int], src_nodes: Iterable[No
     return join_chain(trie, src_nodes, (stroke.keys() for stroke in strokes), entry_id)
 
 
-def tuplify(node: "int | None"):
+def tuplify(node: "int | None", cost: int=0):
     if node is None:
         return ()
-    return (NodeSrc(node, 0),)
+    return (NodeSrc(node, cost),)

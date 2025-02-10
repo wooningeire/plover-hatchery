@@ -8,7 +8,7 @@ from plover_hatchery.lib.sopheme import Sopheme
 
 from ..trie import  NondeterministicTrie
 from ..sopheme import Sound
-from .state import OutlineSounds
+from .OutlineSounds import OutlineSounds
 from .Hook import Hook
 from .Plugin import Plugin
 from .Theory import Theory

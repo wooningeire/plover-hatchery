@@ -1,8 +1,6 @@
 from plover_hatchery.lib.pipes.Plugin import Plugin
 
 
-from typing import Any
-
 from plover_hatchery.lib.pipes.join import NodeSrc
 
 
@@ -18,8 +16,7 @@ def left_squish_elision() -> Plugin[None]:
 
         @banks_hooks.complete_vowel.listen(left_squish_elision)
         def _(banks_state: BanksState, **_):
-            if banks_state.last_left_node is None: return
-            banks_state.left_srcs += (NodeSrc(banks_state.last_left_node, 8),)
+            banks_state.left_srcs += tuple(NodeSrc(src.node, 8) for src in banks_state.last_left_nodes)
 
 
         return None

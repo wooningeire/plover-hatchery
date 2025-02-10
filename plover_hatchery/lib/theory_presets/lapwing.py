@@ -163,7 +163,7 @@ theory = compile_theory(
             "G": "TKPW",
             "F": "TP",
             "N": "TPH",
-            "Y": "KWR",
+            "Y": "KWH",
             "B": "PW",
             "M": "PH",
             "L": "HR",

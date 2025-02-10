@@ -13,7 +13,7 @@ from ...trie import Trie, ReadonlyTrie
 from ...sopheme import Sound
 
 from ..Plugin import define_plugin, GetPluginApi
-from ..state import OutlineSounds
+from ..OutlineSounds import OutlineSounds
 from ..banks import banks, BanksState
 
 from .find_clusters import Cluster, handle_clusters, get_clusters_from_node, check_found_clusters

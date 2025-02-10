@@ -9,7 +9,7 @@ from plover.steno import Stroke
 
 from ..sopheme import Sound
 from .banks import banks, BanksState
-from .join import NodeSrc, join_on_strokes
+from .join import NodeSrc, join_on_strokes, tuplify
 from .Plugin import define_plugin, GetPluginApi
 from .Hook import Hook
 
@@ -30,7 +30,7 @@ class RightAltChordsHooks:
 @dataclass
 class RightAltChordsState:
     newest_right_alt_node: "int | None" = None
-    last_right_alt_node: "int | None" = None
+    last_right_alt_nodes: tuple[NodeSrc, ...] = ()
     """The latest node constructed by adding the alternate chord for a left consonant"""
 
 
@@ -54,11 +54,17 @@ def right_alt_chords(chords: Callable[[Sound], Generator[Stroke, None, None]]) -
 
         
         @banks_hooks.complete_consonant.listen(right_alt_chords)
-        def _(state: RightAltChordsState, banks_state: BanksState, **_):
-            state.last_right_alt_node = state.newest_right_alt_node
+        def _(state: RightAltChordsState, banks_state: BanksState, consonant: Sound, **_):
+            new_last_right_alt_nodes = tuplify(state.newest_right_alt_node, 3)
 
-            if state.last_right_alt_node is None: return
-            banks_state.right_srcs += (NodeSrc(state.last_right_alt_node, 3),)
+            if not consonant.keysymbol.optional:
+                state.last_right_alt_nodes = new_last_right_alt_nodes
+
+            else:
+                state.last_right_alt_nodes += new_last_right_alt_nodes
+
+
+            banks_state.right_srcs += new_last_right_alt_nodes
 
         
         @banks_hooks.complete_vowel.listen(right_alt_chords)

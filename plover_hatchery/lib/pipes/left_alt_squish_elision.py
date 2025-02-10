@@ -13,8 +13,7 @@ def left_alt_squish_elision() -> Plugin[None]:
 
         @left_alt_chords_hooks.complete_vowel.listen(left_alt_squish_elision)
         def _(left_alt_chords_state: LeftAltChordsState, banks_state: BanksState, **_):
-            if left_alt_chords_state.last_left_alt_node is None: return
-            banks_state.left_srcs += (NodeSrc(left_alt_chords_state.last_left_alt_node, 8),)
+            banks_state.left_srcs += tuple(NodeSrc(src.node, 8) for src in left_alt_chords_state.last_left_alt_nodes)
 
 
         return None

@@ -140,7 +140,13 @@ class NondeterministicTrie(Generic[K, V]):
         """Mapping from each value's id to the value"""
         self.__transition_costs: dict[TransitionCostKey, float] = {}
 
-    def get_first_dst_node_else_create(self, src_node: int, key: K, cost_info: TransitionCostInfo[V]) -> int:
+
+    def follow(self, src_node: int, key: K, cost_info: TransitionCostInfo[V]) -> int:
+        """
+        Gets the destination node obtained by following the first existing transition associated with the given key
+        from the given source node, or creates it if it does not exist
+        """
+
         key_id = self.__get_key_id_else_create(key)
 
         self.__assign_cost(src_node, key_id, 0, cost_info)
@@ -154,16 +160,30 @@ class NondeterministicTrie(Generic[K, V]):
         return new_node_id
     
 
-    def get_first_dst_node_else_create_chain(self, src_node: int, keys: tuple[K, ...], cost_info: TransitionCostInfo[V]) -> int:
+    def follow_chain(self, src_node: int, keys: tuple[K, ...], cost_info: TransitionCostInfo[V]) -> int:
+        """
+        Gets the destination node obtained by following the first existing transitions associated with the given series of keys
+        from the given source node, or creates it (and any missing intermediate nodes) if it does not exist
+        """
+
         current_node = src_node
         for i, key in enumerate(keys):
             if i == len(keys) - 1:
-                current_node = self.get_first_dst_node_else_create(current_node, key, cost_info)
+                current_node = self.follow(current_node, key, cost_info)
             else:
-                current_node = self.get_first_dst_node_else_create(current_node, key, TransitionCostInfo(0, cost_info.value))
+                current_node = self.follow(current_node, key, TransitionCostInfo(0, cost_info.value))
         return current_node
 
+
     def get_dst_nodes(self, src_nodes: dict[int, tuple[Transition, ...]], key: K) -> dict[int, tuple[Transition, ...]]:
+        """
+        Gets the destination nodes obtained by following all existing transitions associated with the given key from the given set of
+        source nodes
+
+        :param src_nodes: A dictionary mapping source node IDs to the sequences of Transitions followed to get to those nodes
+        :returns: A dictionary mapping destination IDs to the updated sequences of Transitions followed to get to those nodes
+        """
+
         key_id = self.__keys.get(key)
         if key_id is None:
             return {}
@@ -174,8 +194,17 @@ class NondeterministicTrie(Generic[K, V]):
             for src_node, node_transitions in src_nodes.items()
             for transition_index, dst_node in enumerate(self.__nodes[src_node].get(key_id, []))
         }
+
     
     def get_dst_nodes_chain(self, src_nodes: dict[int, tuple[Transition, ...]], keys: tuple[K, ...]) -> dict[int, tuple[Transition, ...]]:
+        """
+        Gets the destination nodes obtained by following all existing transitions associated with the given series of keys from the given set of
+        source nodes
+
+        :param src_nodes: A dictionary mapping source node IDs to the sequences of Transitions followed to get to those nodes
+        :returns: A dictionary mapping destination IDs to the updated sequences of Transitions followed to get to those nodes
+        """
+
         current_nodes = src_nodes
         for key in keys:
             current_nodes = self.get_dst_nodes(current_nodes, key)
@@ -183,7 +212,12 @@ class NondeterministicTrie(Generic[K, V]):
                 return current_nodes
         return current_nodes
     
+
     def link(self, src_node: int, dst_node: int, key: K, cost_info: TransitionCostInfo[V]):
+        """
+        Creates a transition from a given source node and key to an already-existing destination node
+        """
+
         key_id = self.__get_key_id_else_create(key)
         
         if key_id in self.__nodes[src_node]: # and dst_node not in self.__nodes[src_node][key]
@@ -197,11 +231,16 @@ class NondeterministicTrie(Generic[K, V]):
 
     
     def link_chain(self, src_node: int, dst_node: int, keys: tuple[K, ...], cost_info: TransitionCostInfo[V]):
+        """
+        Follows all but the final transition from a given source node and series of keys, and then creates the final transition
+        to the given already-existing destination node
+        """
         current_node = src_node
         for key in keys[:-1]:
-            current_node = self.get_first_dst_node_else_create(current_node, key, TransitionCostInfo(0, cost_info.value))
+            current_node = self.follow(current_node, key, TransitionCostInfo(0, cost_info.value))
 
         self.link(current_node, dst_node, keys[-1], cost_info)
+    
     
     def set_translation(self, node: int, translation: V):
         translation_id = self.__get_value_id_else_create(translation)

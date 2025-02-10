@@ -13,8 +13,7 @@ def right_squish_elision() -> Plugin[None]:
 
         @banks_hooks.complete_vowel.listen(right_squish_elision)
         def _(banks_state: BanksState, **_):
-            if banks_state.last_right_node is None: return
-            banks_state.right_srcs += (NodeSrc(banks_state.last_right_node, 8),)
+            banks_state.right_srcs += tuple(NodeSrc(src.node, 8) for src in banks_state.last_right_nodes)
 
 
         return None

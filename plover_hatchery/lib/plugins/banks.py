@@ -1,5 +1,5 @@
 from collections.abc import Iterable
-from typing import Callable, TypeVar, Protocol, Any, final
+from typing import Callable, TypeVar, Protocol, Any
 from dataclasses import dataclass
 import dataclasses
 
@@ -8,14 +8,12 @@ from plover.steno import Stroke
 from ..sopheme import Sound
 from ..trie import NondeterministicTrie, TransitionCostInfo
 from ..config import TRIE_STROKE_BOUNDARY_KEY
-from .OutlineSounds import OutlineSounds
+from .state import OutlineSounds
 from .join import NodeSrc, join_on_strokes, tuplify
 from .consonants_vowels_enumeration import consonants_vowels_enumeration
 from .Hook import Hook
 from .Plugin import GetPluginApi, Plugin, define_plugin
 
-
-@final
 @dataclass
 class BanksState:
     trie: NondeterministicTrie[str, int]
@@ -33,10 +31,8 @@ class BanksState:
 
     # translation_candidates: tuple[NodeSrc, ...]
 
-    last_left_nodes: tuple[NodeSrc, ...] = ()
-    """Collection of left nodes since which only vowels, optional sounds, or silent sounds have occurred."""
-    last_right_nodes: tuple[NodeSrc, ...] = ()
-    """Collection of right nodes since which only vowels, optional sounds, or silent sounds have occurred."""
+    last_left_node: "int | None" = None
+    last_right_node: "int | None" = None
 
 
     def clone(self):
@@ -45,9 +41,8 @@ class BanksState:
 
 T = TypeVar("T")
 
-@final
 @dataclass
-class BanksApi:
+class BanksHooks:
     class Begin(Protocol):
         def __call__(self) -> Any: ...
     class BeforeCompleteConsonant(Protocol):
@@ -87,10 +82,6 @@ class BanksApi:
             sound_index: int,
         ) -> None: ...
 
-    left_chords: Callable[[Sound], Iterable[Stroke]]
-    mid_chords: Callable[[Sound], Iterable[Stroke]]
-    right_chords: Callable[[Sound], Iterable[Stroke]]
-
     begin = Hook(Begin)
     before_complete_consonant = Hook(BeforeCompleteConsonant)
     complete_consonant = Hook(CompleteConsonant)
@@ -103,10 +94,10 @@ def banks(
     left_chords: Callable[[Sound], Iterable[Stroke]],
     mid_chords: Callable[[Sound], Iterable[Stroke]],
     right_chords: Callable[[Sound], Iterable[Stroke]],
-) -> Plugin[BanksApi]:
+) -> Plugin[BanksHooks]:
     @define_plugin(banks)
     def plugin(get_plugin_api: GetPluginApi, **_):
-        hooks = BanksApi(left_chords, mid_chords, right_chords)
+        hooks = BanksHooks()
 
         def on_begin_hook():
             states: dict[int, Any] = {}
@@ -186,6 +177,7 @@ def banks(
                 left_srcs=left_src_nodes,
                 mid_srcs=left_src_nodes,
                 right_srcs=(),
+                # translation_candidates=(),
 
                 plugin_states=on_begin_hook(),
             )
@@ -204,29 +196,13 @@ def banks(
             on_before_complete_consonant(state, consonant, left_node, right_node)
 
 
-            new_left_srcs = tuplify(left_node)
-            new_mid_srcs = new_left_srcs
-            new_right_srcs = tuplify(right_node)
+            state.left_srcs = tuplify(left_node)
+            state.mid_srcs = state.left_srcs
+            state.right_srcs = tuplify(right_node)
+            # state.translation_candidates = state.right_srcs
 
-            new_last_left_nodes = tuplify(left_node)
-            new_last_right_nodes = tuplify(right_node)
-
-
-            if not consonant.keysymbol.optional:
-                state.left_srcs = new_left_srcs
-                state.mid_srcs = new_mid_srcs
-                state.right_srcs = new_right_srcs
-
-                state.last_left_nodes = new_last_left_nodes
-                state.last_right_nodes = new_last_right_nodes
-
-            else:
-                state.left_srcs += new_left_srcs
-                state.mid_srcs += new_mid_srcs
-                state.right_srcs += new_right_srcs
-
-                state.last_left_nodes += new_last_left_nodes
-                state.last_right_nodes += new_last_right_nodes
+            state.last_left_node = left_node
+            state.last_right_node = right_node
 
 
             on_complete_consonant(state, consonant)
@@ -239,7 +215,7 @@ def banks(
 
 
             mid_node = join_on_strokes(state.trie, state.mid_srcs, mid_chords(vowel), state.entry_id)
-            
+
 
             if mid_node is not None:
                 new_stroke_node = state.trie.follow(mid_node, TRIE_STROKE_BOUNDARY_KEY, TransitionCostInfo(0, state.entry_id))
@@ -250,20 +226,10 @@ def banks(
             on_before_complete_vowel(state, mid_node, new_stroke_node, group_index, sound_index)
 
 
-            new_left_srcs = tuplify(new_stroke_node)
-            new_mid_srcs = new_left_srcs
-            new_right_srcs = tuplify(mid_node)
-
-
-            if not vowel.keysymbol.optional:
-                state.left_srcs = new_left_srcs
-                state.mid_srcs = new_mid_srcs
-                state.right_srcs = new_right_srcs
-
-            else:
-                state.left_srcs += new_left_srcs
-                state.mid_srcs += new_mid_srcs
-                state.right_srcs += new_right_srcs
+            state.left_srcs = tuplify(new_stroke_node)
+            state.mid_srcs = state.left_srcs
+            state.right_srcs = tuplify(mid_node)
+            # state.translation_candidates = state.right_srcs
 
 
             on_complete_vowel(state, mid_node, new_stroke_node, group_index, sound_index)

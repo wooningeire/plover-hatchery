@@ -9,7 +9,7 @@ from plover.steno import Stroke
 
 from plover_hatchery.lib.pipes.declare_banks import declare_banks
 
-from ..state import OutlineSounds
+from ..OutlineSounds import OutlineSounds
 from ..Plugin import define_plugin, GetPluginApi
 from ..banks import banks, BanksState
 
