@@ -50,7 +50,7 @@ def test__build_lookup_hatchery__reverse_lookup():
     )
 
 
-def test__build_lookup_hatchery__oops():
+def test__build_lookup_hatchery__sample__investigate():
     from .build_trie_from_dict import get_lookup_builder_hatchery
     from ..theory_defaults.lapwing import theory
 
@@ -67,3 +67,24 @@ def test__build_lookup_hatchery__oops():
 
     assert ("EUPB", "SREFT", "TKPWAEUT") in outlines
     assert ("EUPB", "SREFT") not in outlines
+
+
+def test__build_lookup_hatchery__sample__information():
+    from .build_trie_from_dict import get_lookup_builder_hatchery
+    from ..theory_defaults.lapwing import theory
+
+    build_lookup_hatchery = get_lookup_builder_hatchery(theory)
+
+    lookup, reverse_lookup = build_lookup_hatchery((
+        "i.i!2 n.n f.f o.@r r.r m.m a.ee!1 ti.sh o. n.n",
+    ))
+
+    outlines = reverse_lookup("information")
+
+    print(outlines)
+
+    assert lookup(("TPWORPLGS",)) == "information"
+
+    assert ("TPWORPLGS",) in outlines
+
+   

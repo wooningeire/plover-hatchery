@@ -19,18 +19,18 @@ class Cluster(ABC):
     initial_state: BanksState
 
     @abstractmethod
-    def apply(self, trie: NondeterministicTrie[str, int], translation: str, current_left: "int | None", current_right: "int | None", cost: int):
+    def apply(self, trie: NondeterministicTrie[str, int], entry_id: int, current_left: "int | None", current_right: "int | None", cost: int):
         ...
 
 @dataclass(frozen=True)
 class _ClusterLeft(Cluster):
-    def apply(self, trie: NondeterministicTrie[str, int], translation: str, current_left: "int | None", current_right: "int | None", cost: int):
+    def apply(self, trie: NondeterministicTrie[str, int], entry_id: int, current_left: "int | None", current_right: "int | None", cost: int):
         if current_left is None: return
 
         state = self.initial_state
 
-        if len(state.left_srcs) > 0:
-            trie.link_chain(state.left_srcs[0].node, current_left, self.stroke.keys(), TransitionCostInfo(cost, translation))
+        for left_src in state.left_srcs:
+            trie.link_chain(left_src.node, current_left, self.stroke.keys(), TransitionCostInfo(cost, entry_id))
 
         # if state.can_elide_prev_vowel_left:
         #     state.left_squish_elision.execute(state.trie, state.translation, current_left, self.stroke, amphitheory.spec.TransitionCosts.CLUSTER)
@@ -38,13 +38,13 @@ class _ClusterLeft(Cluster):
 
 @dataclass(frozen=True)
 class _ClusterRight(Cluster):
-    def apply(self, trie: NondeterministicTrie[str, int], translation: str, current_left: "int | None", current_right: "int | None", cost: int):
+    def apply(self, trie: NondeterministicTrie[str, int], entry_id: int, current_left: "int | None", current_right: "int | None", cost: int):
         if current_right is None: return
 
         state = self.initial_state
 
-        if len(self.initial_state.right_srcs) > 0:
-            trie.link_chain(self.initial_state.right_srcs[0].node, current_right, self.stroke.keys(), TransitionCostInfo(cost, translation))
+        for right_src in state.right_srcs:
+            trie.link_chain(right_src.node, current_right, self.stroke.keys(), TransitionCostInfo(cost, entry_id))
 
         # if self.initial_state.is_first_consonant:
         #     state.left_squish_elision.execute(state.trie, state.translation, current_right, self.stroke, amphitheory.spec.TransitionCosts.CLUSTER)
