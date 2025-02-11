@@ -9,8 +9,10 @@ from plover_hatchery.lib.pipes.declare_banks import declare_banks
 from plover_hatchery.lib.trie import LookupResult, NondeterministicTrie, Transition
 
 
-def splitter_lookup(*, cycler: "str | None"=None, prohibit_strokes: Iterable[str]=()) -> Plugin[None]:
-    cycler_stroke = Stroke.from_steno(cycler) if cycler is not None else None
+def splitter_lookup(*, cycle_on: "str | None"=None, prohibit_strokes: Iterable[str]=(), debug_on: "str | None"="") -> Plugin[None]:
+    cycler_stroke = Stroke.from_steno(cycle_on) if cycle_on is not None else None
+    debug_stroke = Stroke.from_steno(debug_on) if debug_on is not None else None
+
     prohibited_strokes = tuple(Stroke.from_steno(steno) for steno in prohibit_strokes)
 
 
@@ -37,7 +39,7 @@ def splitter_lookup(*, cycler: "str | None"=None, prohibit_strokes: Iterable[str
                 if len(stroke) == 0:
                     return None
 
-                if stroke.rtfcre == "@*":
+                if debug_stroke is not None and i == len(stroke_stenos) - 1 and stroke == debug_stroke:
                     debug = True
                     break
                 
@@ -113,11 +115,17 @@ def splitter_lookup(*, cycler: "str | None"=None, prohibit_strokes: Iterable[str
 
 
 def _join_all_translations(trie: NondeterministicTrie[str, int], results: Iterable[LookupResult[int]], translations: list[str]):
-    return "\n".join(f"""{translations[result.translation]} [#{result.translation}] ({result.cost})
-    {_summarize_transitions(trie, result.transitions, result.translation)}""" for result in results)
+    return "\n".join(_summarize_result(trie, result, translations) for result in results)
+
+def _summarize_result(trie: NondeterministicTrie[str, int], result: LookupResult[int], translations: list[str]):
+    return f"""{translations[result.translation]} [#{result.translation}] ({result.cost})
+    {_summarize_transitions(trie, result.transitions, result.translation)}"""
 
 def _summarize_transitions(trie: NondeterministicTrie[str, int], transitions: Iterable[Transition], entry_id: int):
-    return f"{''.join(_summarize_transition(trie, transition, entry_id) for transition in transitions)}→"
+    try:
+        return f"{''.join(_summarize_transition(trie, transition, entry_id) for transition in transitions)}→"
+    except KeyError as e:
+        return f"bad transitions: {str(e)}"
 
 def _summarize_transition(trie: NondeterministicTrie[str, int], transition: Transition, entry_id: int):
     cost = trie.get_transition_cost(transition, entry_id)

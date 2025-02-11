@@ -295,7 +295,8 @@ theory = compile_theory(
 
 
     splitter_lookup(
-        cycler="#TPHEGT",
+        cycle_on="#TPHEGT",
+        debug_on="#TKPWUG",
         prohibit_strokes=(
             "AEU",
         ),

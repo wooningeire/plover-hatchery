@@ -77,6 +77,8 @@ Hatched {n_entries} entries
     ({n_failed_parses} ({n_failed_parses / n_entries:.3f}%) failed parsing)
 """)
 
+        # print(trie)
+
         def lookup(stroke_stenos: tuple[str, ...]):
             return theory.lookup(trie, stroke_stenos, translations)
 

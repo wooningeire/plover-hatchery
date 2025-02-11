@@ -311,7 +311,8 @@ theory = compile_theory(
     ),
 
     splitter_lookup(
-        cycler="@",
+        cycle_on="@",
+        debug_on="@*",
         prohibit_strokes=(
             "AEU",
         ),

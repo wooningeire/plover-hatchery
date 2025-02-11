@@ -222,15 +222,22 @@ class NondeterministicTrie(Generic[Key, Value]):
         """
 
         key_id = self.__get_key_id_else_create(key)
-        
-        if key_id in self.__nodes[src_node]: # and dst_node not in self.__nodes[src_node][key]
-            new_transition_index = len(self.__nodes[src_node][key_id])
-            self.__nodes[src_node][key_id].append(dst_node)
-        else:
-            new_transition_index = 0
-            self.__nodes[src_node][key_id] = [dst_node]
 
-        self.__assign_cost(src_node, key_id, new_transition_index, cost_info)
+        dst_dict = self.__nodes[src_node]
+        
+        if key_id in dst_dict:
+            dst_nodes = dst_dict[key_id]
+
+            if dst_node in dst_nodes: # Is there already a transition between these two nodes with this key? If so, use that
+                transition_index = dst_nodes.index(dst_node)
+            else: # Otherwise, create the link
+                transition_index = len(self.__nodes[src_node][key_id])
+                dst_dict[key_id].append(dst_node)
+        else: 
+            transition_index = 0
+            dst_dict[key_id] = [dst_node]
+
+        self.__assign_cost(src_node, key_id, transition_index, cost_info)
 
     
     def link_chain(self, src_node: int, dst_node: int, keys: tuple[Key, ...], cost_info: TransitionCostInfo[Value]):
@@ -254,34 +261,35 @@ class NondeterministicTrie(Generic[Key, Value]):
             self.__translations[node] = [translation_id]
         
     
-    def get_translations_and_costs_single(self, node: int, transitions: Iterable[Transition]) -> tuple[tuple[Value, float], ...]:
+    def get_translations_and_costs_single(self, node: int, transitions: Iterable[Transition]):
         if node not in self.__translations:
-            return ()
+            return
         
-        translation_cost_pairs: list[tuple[Value, float]] = []
-
         for translation_id in self.__translations[node]:
+            is_valid_path = True
             cumsum_cost = 0
             for transition in transitions:
                 key = TransitionCostKey(transition, translation_id)
                 if key not in self.__transition_costs:
-                    continue
+                    is_valid_path = False
+                    break
                 
                 cumsum_cost += self.__transition_costs[key]
 
-            translation_cost_pairs.append((self.__values_list[translation_id], cumsum_cost))
+            if not is_valid_path:
+                continue
 
-        return tuple(translation_cost_pairs)
+            yield (self.__values_list[translation_id], cumsum_cost)
 
 
     def get_translations_and_costs(self, nodes: dict[int, tuple[Transition, ...]]):
-        results: dict[Value, tuple[float, tuple[Transition, ...]]] = {}
+        min_cost_results: dict[Value, tuple[float, tuple[Transition, ...]]] = {}
         for node, transitions in nodes.items():
             for translation, cost in self.get_translations_and_costs_single(node, transitions):
-                if cost >= results.get(translation, (float("inf"), -1))[0]: continue
-                results[translation] = (cost, transitions)
+                if cost >= min_cost_results.get(translation, (float("inf"), -1))[0]: continue
+                min_cost_results[translation] = (cost, transitions)
 
-        for translation, (cost, transitions) in results.items():
+        for translation, (cost, transitions) in min_cost_results.items():
             yield LookupResult(translation, cost, transitions)
     
     def transition_has_key(self, transition: Transition, key: Key):
@@ -300,14 +308,14 @@ class NondeterministicTrie(Generic[Key, Value]):
 
         for i, transitions in enumerate(self.__nodes):
             value_ids = self.__translations.get(i)
-            lines.append(f"""{i}{f" : {tuple(self.__values_list[value_id] for value_id in value_ids)}" if value_ids is not None else ""}""")
+            lines.append(f"""Node {i}{f" : {tuple(self.__values_list[value_id] for value_id in value_ids)}" if value_ids is not None else ""}""")
             for key_id, dst_nodes in transitions.items():
-                lines.append(f"""\t{self.__key_ids_to_keys[key_id]}\t ->\t {",".join(str(node) for node in dst_nodes)}""")
+                lines.append(f"""  On {self.__key_ids_to_keys[key_id]} goto {",".join(str(node) for node in dst_nodes)}""")
                 for j, dst_node in enumerate(dst_nodes):
                     if Transition(i, key_id, j) not in transition_costs: continue
-                    lines.append(f"""\t\t{dst_node}:""")
+                    lines.append(f"""    {dst_node} valid for:""")
                     for value_id, cost in transition_costs[Transition(i, key_id, j)].items():
-                        lines.append(f"""\t\t\t{self.__values_list[value_id]}:\t {cost}""")
+                        lines.append(f"""      translation {self.__values_list[value_id]} (cost {cost})""")
 
         return "\n".join(lines)
     
@@ -405,7 +413,7 @@ class NondeterministicTrie(Generic[Key, Value]):
             self.__get_value_id_else_create(translation),
         )
         if cost_key not in self.__transition_costs:
-            raise KeyError(f"pairing of translation \"{translation}\" and transition is not associated with a cost")
+            raise KeyError(f"pairing of translation {translation} and transition {transition} (key: {self.__key_ids_to_keys[transition.key_id]}) is not associated with a cost")
     
         return self.__transition_costs[cost_key]
 

@@ -298,9 +298,9 @@ def banks(
                 state.right_srcs = new_right_srcs
 
             else:
-                state.left_srcs += (*NodeSrc.increment_costs(state.left_srcs, 8), *new_left_srcs)
-                state.mid_srcs += (*NodeSrc.increment_costs(state.mid_srcs, 8), *new_mid_srcs)
-                state.right_srcs += (*NodeSrc.increment_costs(state.right_srcs, 8), *new_right_srcs)
+                state.left_srcs = (*NodeSrc.increment_costs(state.left_srcs, 8), *new_left_srcs)
+                state.mid_srcs = (*NodeSrc.increment_costs(state.mid_srcs, 8), *new_mid_srcs)
+                state.right_srcs = (*NodeSrc.increment_costs(state.right_srcs, 8), *new_right_srcs)
 
 
             on_complete_vowel(state, mid_node, new_stroke_node, group_index, sound_index)
