@@ -59,7 +59,7 @@ def consonants_vowels_enumeration(vowel_diphthong_transition: Callable[[Sound], 
         
 
         def add_vowel(self, vowel: Sound):
-            # self.__append_diphthong_transition()
+            self.__append_diphthong_transition()
 
             self.__consonant_vowel_groups.append(ConsonantVowelGroup(tuple(self.__current_group_consonants), vowel))
             self.__current_group_consonants = []

@@ -9,18 +9,19 @@ from .LookupResult import LookupResult
 
 S = TypeVar("S")
 T = TypeVar("T")
-K = TypeVar("K")
-V = TypeVar("V")
+Key = TypeVar("Key")
+Value = TypeVar("Value")
+Annot = TypeVar("Annot")
 
-class Trie(Generic[K, V]):
+class Trie(Generic[Key, Value]):
     ROOT = 0
     
     def __init__(self):
         self.__nodes: list[dict[int, int]] = [{}]
-        self.__translations: dict[int, V] = {}
-        self.__keys: dict[K, int] = {}
+        self.__translations: dict[int, Value] = {}
+        self.__keys: dict[Key, int] = {}
 
-    def get_dst_node_else_create(self, src_node: int, key: K):
+    def get_dst_node_else_create(self, src_node: int, key: Key):
         key_id = self.__get_key_id(key)
 
         transitions = self.__nodes[src_node]
@@ -33,20 +34,20 @@ class Trie(Generic[K, V]):
 
         return new_node_id
 
-    def get_dst_node_else_create_chain(self, src_node: int, keys: tuple[K, ...]):
+    def get_dst_node_else_create_chain(self, src_node: int, keys: tuple[Key, ...]):
         current_node = src_node
         for key in keys:
             current_node = self.get_dst_node_else_create(current_node, key)
         return current_node
     
-    def get_dst_node(self, src_node: int, key: K):
+    def get_dst_node(self, src_node: int, key: Key):
         key_id = self.__keys.get(key)
         if key_id is None:
             return None
         
         return self.__nodes[src_node].get(key_id)
     
-    def get_dst_node_chain(self, src_node: int, keys: tuple[K, ...]):
+    def get_dst_node_chain(self, src_node: int, keys: tuple[Key, ...]):
         current_node = src_node
         for stroke in keys:
             current_node = self.get_dst_node(current_node, stroke)
@@ -54,7 +55,7 @@ class Trie(Generic[K, V]):
                 return None
         return current_node
     
-    def set_translation(self, node: int, translation: V):
+    def set_translation(self, node: int, translation: Value):
         self.__translations[node] = translation
     
     def get_translation(self, node: int):
@@ -63,7 +64,7 @@ class Trie(Generic[K, V]):
     def frozen(self):
         return ReadonlyTrie(self.__nodes, self.__translations, self.__keys)
     
-    def __get_key_id(self, key: K):
+    def __get_key_id(self, key: Key):
         if key in self.__keys:
             return self.__keys[key]
         
@@ -91,26 +92,26 @@ class Trie(Generic[K, V]):
         }
     
 
-class ReadonlyTrie(Generic[K, V]):
+class ReadonlyTrie(Generic[Key, Value]):
     ROOT = 0
 
-    def __init__(self, nodes: list[dict[int, int]], translations: dict[int, V], keys: dict[K, int], support_reverse=False):
+    def __init__(self, nodes: list[dict[int, int]], translations: dict[int, Value], keys: dict[Key, int], support_reverse=False):
         self.__nodes: dict[tuple[int, int], int] = {
             (src_node, key): dst_node
             for src_node, transitions in enumerate(nodes)
             for key, dst_node in transitions.items()
         }
-        self.__translations: dict[int, V] = translations
-        self.__keys: dict[K, int] = keys
+        self.__translations: dict[int, Value] = translations
+        self.__keys: dict[Key, int] = keys
     
-    def get_dst_node(self, src_node: int, key: K):
+    def get_dst_node(self, src_node: int, key: Key):
         key_id = self.__keys.get(key)
         if key_id is None:
             return None
         
         return self.__nodes.get((src_node, key_id))
     
-    def get_dst_node_chain(self, src_node: int, keys: tuple[K, ...]):
+    def get_dst_node_chain(self, src_node: int, keys: tuple[Key, ...]):
         current_node = src_node
         for stroke in keys:
             current_node = self.get_dst_node(current_node, stroke)
@@ -122,7 +123,7 @@ class ReadonlyTrie(Generic[K, V]):
         return self.__translations.get(node)
 
 
-class NondeterministicTrie(Generic[K, V]):
+class NondeterministicTrie(Generic[Key, Value]):
     """A trie that can be in multiple states at once."""
 
     ROOT = 0
@@ -132,16 +133,18 @@ class NondeterministicTrie(Generic[K, V]):
         """Mapping from each node's id to its lists of destination nodes, based on the keys' ids"""
         self.__translations: dict[int, list[int]] = {}
         """Mapping from each node's id to its list of translation ids"""
-        self.__keys: dict[K, int] = {}
+        self.__keys: dict[Key, int] = {}
         """Mapping from each key to its id"""
-        self.__values: dict[V, int] = {}
+        self.__values: dict[Value, int] = {}
         """Mapping from each value to its id"""
-        self.__values_list: list[V] = []
+        self.__values_list: list[Value] = []
         """Mapping from each value's id to the value"""
         self.__transition_costs: dict[TransitionCostKey, float] = {}
 
+        self.__key_ids_to_keys: list[Key] = []
 
-    def follow(self, src_node: int, key: K, cost_info: TransitionCostInfo[V]) -> int:
+
+    def follow(self, src_node: int, key: Key, cost_info: TransitionCostInfo[Value]) -> int:
         """
         Gets the destination node obtained by following the first existing transition associated with the given key
         from the given source node, or creates it if it does not exist
@@ -160,7 +163,7 @@ class NondeterministicTrie(Generic[K, V]):
         return new_node_id
     
 
-    def follow_chain(self, src_node: int, keys: tuple[K, ...], cost_info: TransitionCostInfo[V]) -> int:
+    def follow_chain(self, src_node: int, keys: tuple[Key, ...], cost_info: TransitionCostInfo[Value]) -> int:
         """
         Gets the destination node obtained by following the first existing transitions associated with the given series of keys
         from the given source node, or creates it (and any missing intermediate nodes) if it does not exist
@@ -175,7 +178,7 @@ class NondeterministicTrie(Generic[K, V]):
         return current_node
 
 
-    def get_dst_nodes(self, src_nodes: dict[int, tuple[Transition, ...]], key: K) -> dict[int, tuple[Transition, ...]]:
+    def get_dst_nodes(self, src_nodes: dict[int, tuple[Transition, ...]], key: Key) -> dict[int, tuple[Transition, ...]]:
         """
         Gets the destination nodes obtained by following all existing transitions associated with the given key from the given set of
         source nodes
@@ -196,7 +199,7 @@ class NondeterministicTrie(Generic[K, V]):
         }
 
     
-    def get_dst_nodes_chain(self, src_nodes: dict[int, tuple[Transition, ...]], keys: tuple[K, ...]) -> dict[int, tuple[Transition, ...]]:
+    def get_dst_nodes_chain(self, src_nodes: dict[int, tuple[Transition, ...]], keys: tuple[Key, ...]) -> dict[int, tuple[Transition, ...]]:
         """
         Gets the destination nodes obtained by following all existing transitions associated with the given series of keys from the given set of
         source nodes
@@ -213,7 +216,7 @@ class NondeterministicTrie(Generic[K, V]):
         return current_nodes
     
 
-    def link(self, src_node: int, dst_node: int, key: K, cost_info: TransitionCostInfo[V]):
+    def link(self, src_node: int, dst_node: int, key: Key, cost_info: TransitionCostInfo[Value]):
         """
         Creates a transition from a given source node and key to an already-existing destination node
         """
@@ -230,7 +233,7 @@ class NondeterministicTrie(Generic[K, V]):
         self.__assign_cost(src_node, key_id, new_transition_index, cost_info)
 
     
-    def link_chain(self, src_node: int, dst_node: int, keys: tuple[K, ...], cost_info: TransitionCostInfo[V]):
+    def link_chain(self, src_node: int, dst_node: int, keys: tuple[Key, ...], cost_info: TransitionCostInfo[Value]):
         """
         Follows all but the final transition from a given source node and series of keys, and then creates the final transition
         to the given already-existing destination node
@@ -241,8 +244,8 @@ class NondeterministicTrie(Generic[K, V]):
 
         self.link(current_node, dst_node, keys[-1], cost_info)
     
-    
-    def set_translation(self, node: int, translation: V):
+
+    def set_translation(self, node: int, translation: Value):
         translation_id = self.__get_value_id_else_create(translation)
 
         if node in self.__translations:
@@ -251,11 +254,11 @@ class NondeterministicTrie(Generic[K, V]):
             self.__translations[node] = [translation_id]
         
     
-    def get_translations_and_costs_single(self, node: int, transitions: Iterable[Transition]) -> tuple[tuple[V, float], ...]:
+    def get_translations_and_costs_single(self, node: int, transitions: Iterable[Transition]) -> tuple[tuple[Value, float], ...]:
         if node not in self.__translations:
             return ()
         
-        translation_cost_pairs: list[tuple[V, float]] = []
+        translation_cost_pairs: list[tuple[Value, float]] = []
 
         for translation_id in self.__translations[node]:
             cumsum_cost = 0
@@ -272,7 +275,7 @@ class NondeterministicTrie(Generic[K, V]):
 
 
     def get_translations_and_costs(self, nodes: dict[int, tuple[Transition, ...]]):
-        results: dict[V, tuple[float, tuple[Transition, ...]]] = {}
+        results: dict[Value, tuple[float, tuple[Transition, ...]]] = {}
         for node, transitions in nodes.items():
             for translation, cost in self.get_translations_and_costs_single(node, transitions):
                 if cost >= results.get(translation, (float("inf"), -1))[0]: continue
@@ -281,13 +284,11 @@ class NondeterministicTrie(Generic[K, V]):
         for translation, (cost, transitions) in results.items():
             yield LookupResult(translation, cost, transitions)
     
-    def transition_has_key(self, transition: Transition, key: K):
+    def transition_has_key(self, transition: Transition, key: Key):
         return self.__keys[key] == transition.key_id
     
     def __str__(self):
         lines: list[str] = []
-
-        key_ids_to_keys = self.__key_ids_to_keys()
 
         transition_costs: dict[Transition, dict[int, float]] = {}
         for (transition, value_id), cost in self.__transition_costs.items():
@@ -301,7 +302,7 @@ class NondeterministicTrie(Generic[K, V]):
             value_ids = self.__translations.get(i)
             lines.append(f"""{i}{f" : {tuple(self.__values_list[value_id] for value_id in value_ids)}" if value_ids is not None else ""}""")
             for key_id, dst_nodes in transitions.items():
-                lines.append(f"""\t{key_ids_to_keys[key_id]}\t ->\t {",".join(str(node) for node in dst_nodes)}""")
+                lines.append(f"""\t{self.__key_ids_to_keys[key_id]}\t ->\t {",".join(str(node) for node in dst_nodes)}""")
                 for j, dst_node in enumerate(dst_nodes):
                     if Transition(i, key_id, j) not in transition_costs: continue
                     lines.append(f"""\t\t{dst_node}:""")
@@ -331,15 +332,16 @@ class NondeterministicTrie(Generic[K, V]):
     # def frozen(self):
     #     return ReadonlyNondeterministicTrie(self.__nodes, self.__translations, self.__keys)
     
-    def __get_key_id_else_create(self, key: K):
+    def __get_key_id_else_create(self, key: Key):
         if key in self.__keys:
             return self.__keys[key]
         
         new_key_id = len(self.__keys)
         self.__keys[key] = new_key_id
+        self.__key_ids_to_keys.append(key)
         return new_key_id
     
-    def __get_value_id_else_create(self, value: V):
+    def __get_value_id_else_create(self, value: Value):
         if value in self.__values:
             return self.__values[value]
         
@@ -353,7 +355,7 @@ class NondeterministicTrie(Generic[K, V]):
         self.__nodes.append({})
         return new_node_id
     
-    def __assign_cost(self, src_node: int, key_id: int, new_transition_index: int, cost_info: "TransitionCostInfo[V] | None"):
+    def __assign_cost(self, src_node: int, key_id: int, new_transition_index: int, cost_info: "TransitionCostInfo[Value] | None"):
         if cost_info is None: return
         cost_key = TransitionCostKey(Transition(src_node, key_id, new_transition_index), self.__get_value_id_else_create(cost_info.value))
         self.__transition_costs[cost_key] = min(cost_info.cost, self.__transition_costs.get(cost_key, float("inf")))
@@ -365,34 +367,56 @@ class NondeterministicTrie(Generic[K, V]):
                 for i, dst_node in enumerate(dst_nodes):
                     reverse_nodes[dst_node][key_id].append((src_node, i))
 
-        reverse_translations: dict[V, list[int]] = defaultdict(list)
+        reverse_translations: dict[Value, list[int]] = defaultdict(list)
         for node, translation_ids in self.__translations.items():
             for translation_id in translation_ids:
                 reverse_translations[self.__values_list[translation_id]].append(node)
 
-        key_ids_to_keys = self.__key_ids_to_keys()
 
-        def dfs(node: int, key_ids_reversed: tuple[int, ...], visited_nodes: set[int], translation: V) -> Generator[tuple[K, ...], None, None]:
+        def dfs(node: int, key_ids_reversed: tuple[int, ...], visited_nodes: set[int], translation: Value) -> Generator[tuple[Key, ...], None, None]:
             if node == self.ROOT:
-                yield tuple(key_ids_to_keys[key_id] for key_id in reversed(key_ids_reversed))
+                yield tuple(self.__key_ids_to_keys[key_id] for key_id in reversed(key_ids_reversed))
                 return
             
             for key_id, src_nodes in reverse_nodes[node].items():
                 for src_node, transition_index in src_nodes:
                     if src_node in visited_nodes: continue
 
-                    cost_key = TransitionCostKey(Transition(src_node, key_id, transition_index), self.__get_value_id_else_create(translation))
+                    cost_key = TransitionCostKey(
+                        Transition(src_node, key_id, transition_index),
+                        self.__get_value_id_else_create(translation),
+                    )
                     if cost_key not in self.__transition_costs: continue
 
                     yield from dfs(src_node, key_ids_reversed + (key_id,), visited_nodes | {src_node}, translation)
 
-        def get_sequences(translation: V) -> Generator[tuple[K, ...], None, None]:
+        def get_sequences(translation: Value) -> Generator[tuple[Key, ...], None, None]:
             if translation not in reverse_translations: return
             
             for node in reverse_translations[translation]:
                 yield from dfs(node, (), {node}, translation)
         
         return get_sequences
+
+
+    def get_transition_cost(self, transition: Transition, translation: Value):
+        cost_key = TransitionCostKey(
+            transition,
+            self.__get_value_id_else_create(translation),
+        )
+        if cost_key not in self.__transition_costs:
+            raise KeyError(f"pairing of translation \"{translation}\" and transition is not associated with a cost")
+    
+        return self.__transition_costs[cost_key]
+
+
+    def get_transition_costs(self, transitions: Iterable[Transition], translation: Value):
+        for transition in transitions:
+            yield self.get_transition_cost(transition, translation)
+
+        
+    def get_key(self, key_id: int):
+        return self.__key_ids_to_keys[key_id]
 
     # def __transfer_node_and_descendants_if_necessary(
     #     self: "NondeterministicTrie[str, int]",
@@ -441,12 +465,6 @@ class NondeterministicTrie(Generic[K, V]):
     #             new_trie.link(new_node_id, new_node_mapping[dst_node], key_ids_to_keys[key_id])
 
     #     return new_node_id is not None
-
-    def __key_ids_to_keys(self):
-        return {
-            key_id: key
-            for key, key_id in self.__keys.items()
-        }
     
 
 # class ReadonlyNondeterministicTrie(Generic[K, V]):

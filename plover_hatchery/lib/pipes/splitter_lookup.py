@@ -28,6 +28,7 @@ def splitter_lookup(*, cycler: "str | None"=None, prohibit_strokes: Iterable[str
                 trie.ROOT: (),
             }
             n_variation = 0
+            debug = False
 
             positionless = Stroke.from_integer(0)
 
@@ -35,6 +36,10 @@ def splitter_lookup(*, cycler: "str | None"=None, prohibit_strokes: Iterable[str
                 stroke = Stroke.from_steno(stroke_steno)
                 if len(stroke) == 0:
                     return None
+
+                if stroke.rtfcre == "@*":
+                    debug = True
+                    break
                 
                 if cycler_stroke is not None and stroke == cycler_stroke:
                     n_variation += 1
@@ -78,6 +83,11 @@ def splitter_lookup(*, cycler: "str | None"=None, prohibit_strokes: Iterable[str
             translation_choices = sorted(trie.get_translations_and_costs(current_nodes), key=lambda result: result.cost)
             if len(translation_choices) == 0: return None
 
+            
+            if debug:
+                return _join_all_translations(trie, translation_choices, translations)
+
+
             first_choice = translation_choices[0]
             if len(positionless) == 0:
                 return nth_variation(translation_choices, n_variation, translations)
@@ -100,3 +110,17 @@ def splitter_lookup(*, cycler: "str | None"=None, prohibit_strokes: Iterable[str
         return None
 
     return plugin
+
+
+def _join_all_translations(trie: NondeterministicTrie[str, int], results: Iterable[LookupResult[int]], translations: list[str]):
+    return "\n".join(f"""{translations[result.translation]} [#{result.translation}] ({result.cost})
+    {_summarize_transitions(trie, result.transitions, result.translation)}""" for result in results)
+
+def _summarize_transitions(trie: NondeterministicTrie[str, int], transitions: Iterable[Transition], entry_id: int):
+    return f"{''.join(_summarize_transition(trie, transition, entry_id) for transition in transitions)}→"
+
+def _summarize_transition(trie: NondeterministicTrie[str, int], transition: Transition, entry_id: int):
+    cost = trie.get_transition_cost(transition, entry_id)
+
+    return f"—[{trie.get_key(transition.key_id)} ({cost})]"
+    

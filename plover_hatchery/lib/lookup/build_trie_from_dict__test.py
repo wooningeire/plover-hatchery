@@ -108,3 +108,20 @@ def test__build_lookup_hatchery__optional_sounds():
     assert ("TPEUG", "KWHUR") in outlines
     assert ("TPEUG", "KWRUR") in outlines
     assert ("TPEU", "TKPWUR") in outlines
+
+
+def test__build_lookup_hatchery__cycling():
+    from .build_trie_from_dict import get_lookup_builder_hatchery
+    from ..theory_presets.lapwing import theory
+
+    build_lookup_hatchery = get_lookup_builder_hatchery(theory)
+
+    lookup, reverse_lookup = build_lookup_hatchery((
+        # "c.k o.ou a.a!1 g.g .y? u.UU l.l a.ee t.t e.",
+        "t.t a.ee!1 p.p e. w.w o.@@r!3 r.r m.m",
+        "i.i n.n f.f o.or!1 r.r m.m",
+    ))
+
+
+    assert lookup(("TPWORPL",)) == "inform"
+    assert lookup(("TPWORPL", "#TPHEGT")) == "tapeworm"

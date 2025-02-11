@@ -1,6 +1,7 @@
 from collections.abc import Iterable
 from itertools import product
 from dataclasses import dataclass
+import dataclasses
 
 from plover.steno import Stroke
 
@@ -11,6 +12,12 @@ from ..trie import NondeterministicTrie, TransitionCostInfo
 class NodeSrc:
     node: int
     cost: int = 0
+
+
+    @staticmethod
+    def increment_costs(srcs: "Iterable[NodeSrc]", cost_change: int):
+        for src in srcs:
+            yield dataclasses.replace(src, cost=src.cost + cost_change)
 
 
 def join_chain(trie: NondeterministicTrie[str, int], src_nodes: Iterable[NodeSrc], key_sets: Iterable[tuple[str, ...]], entry_id: int):
