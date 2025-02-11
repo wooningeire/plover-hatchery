@@ -216,7 +216,13 @@ theory = compile_theory(
 
     linker_chord("KWR"),
 
-    optional_vowels(),
+    optional_middle_vowels(),
+    optional_middle_consonants(
+        ignore_consonant_if=lambda sound: default_sound_to_sophone_mapping(sound) in (Sophone.Y, Sophone.W),
+    ),
+    optional_unstressed_middle_consonants(
+        ignore_consonant_if=lambda sound: default_sound_to_sophone_mapping(sound) in (Sophone.R, Sophone.N, Sophone.L),
+    ),
 
     left_alt_chords(
         chords=map_sophones_to_strokes({

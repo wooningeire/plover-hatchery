@@ -8,7 +8,9 @@ from .consonants_vowels_enumeration import consonants_vowels_enumeration, Conson
 from .declare_banks import declare_banks
 from .banks import banks, BanksApi, BanksState
 from .initial_vowel_chord import initial_vowel_chord
-from .optional_vowels import optional_vowels
+from .optional_middle_vowels import optional_middle_vowels
+from .optional_middle_consonants import optional_middle_consonants
+from .optional_unstressed_middle_consonants import optional_unstressed_middle_consonants
 from .left_alt_chords import left_alt_chords, LeftAltChordsHooks, LeftAltChordsState
 from .right_alt_chords import right_alt_chords
 from .clusters import consonant_clusters, vowel_clusters

@@ -50,6 +50,16 @@ T = TypeVar("T")
 class BanksApi:
     class Begin(Protocol):
         def __call__(self) -> Any: ...
+    class BeginConsonant(Protocol):
+        def __call__(self,
+            *,
+            state: Any,
+            banks_state: BanksState,
+            group_index: int,
+            sound_index: int,
+            consonant: Sound,
+            set_consonant: Callable[[Sound], None],
+        ) -> None: ...
     class BeforeCompleteConsonant(Protocol):
         def __call__(self,
             *,
@@ -102,6 +112,7 @@ class BanksApi:
     right_chords: Callable[[Sound], Iterable[Stroke]]
 
     begin = Hook(Begin)
+    begin_consonant = Hook(BeginConsonant)
     before_complete_consonant = Hook(BeforeCompleteConsonant)
     complete_consonant = Hook(CompleteConsonant)
     begin_vowel = Hook(BeginVowel)
@@ -125,6 +136,23 @@ def banks(
                 states[plugin_id] = handler()
 
             return states
+
+        def on_begin_consonant(
+            banks_state: BanksState,
+            group_index: int,
+            sound_index: int,
+            consonant: Sound,
+            set_consonant: Callable[[Sound], None],
+        ):
+            for plugin_id, handler in hooks.begin_consonant.ids_handlers():
+                handler(
+                    state=banks_state.plugin_states.get(plugin_id),
+                    banks_state=banks_state,
+                    group_index=group_index,
+                    sound_index=sound_index,
+                    consonant=consonant,
+                    set_consonant=set_consonant,
+                )
 
         def on_before_complete_consonant(banks_state: BanksState, consonant: Sound, left_node: "int | None", right_node: "int | None"):
             for plugin_id, handler in hooks.before_complete_consonant.ids_handlers():
@@ -224,6 +252,14 @@ def banks(
         def _(state: BanksState, consonant: Sound, group_index: int, sound_index: int, **_):
             state.group_index = group_index
             state.sound_index = sound_index
+
+
+            def set_consonant(new_consonant: Sound):
+                nonlocal consonant
+                consonant = new_consonant
+
+
+            on_begin_consonant(state, group_index, sound_index, consonant, set_consonant)
 
 
             left_node = join_on_strokes(state.trie, state.left_srcs, left_chords(consonant), state.entry_id)

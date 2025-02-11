@@ -5,13 +5,13 @@ from plover_hatchery.lib.pipes.banks import BanksState, banks
 from plover_hatchery.lib.sopheme import Keysymbol, Sound
 
 
-def optional_vowels() -> Plugin[None]:
-    @define_plugin(optional_vowels)
+def optional_middle_vowels() -> Plugin[None]:
+    @define_plugin(optional_middle_vowels)
     def plugin(get_plugin_api: GetPluginApi, **_):
         banks_api = get_plugin_api(banks)
 
 
-        @banks_api.begin_vowel.listen(optional_vowels)
+        @banks_api.begin_vowel.listen(optional_middle_vowels)
         def _(banks_state: BanksState, vowel: Sound, set_vowel: Callable[[Sound], None], **_):
             # Filter out starting vowels
             if len(banks_state.sounds.nonfinals[0].consonants) == 0 and banks_state.group_index == 0:

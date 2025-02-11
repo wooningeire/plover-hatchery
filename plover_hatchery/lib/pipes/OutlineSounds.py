@@ -94,6 +94,12 @@ class OutlineSounds:
         
         return self.get_consonant(*last_index)
 
+    def n_consonants_in_group(self, group_index: int):
+        return len(self.get_consonants(group_index))
+
+    def get_vowel_of_group(self, group_index: int):
+        return self.nonfinals[group_index].vowel
+
     def is_last_group(self, group_index: int):
         return group_index == len(self.nonfinals)
     
