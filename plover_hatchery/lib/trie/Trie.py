@@ -1,10 +1,12 @@
 from collections import defaultdict
 from collections.abc import Generator
+from plover_hatchery.lib.trie.TriePath import TriePath
 from typing import Any, Generator, Generic, Iterable, TypeVar, NamedTuple
 from dataclasses import dataclass
 
 from .Transition import Transition, TransitionCostInfo, TransitionCostKey
 from .LookupResult import LookupResult
+from .TriePath import TriePath
 
 
 S = TypeVar("S")
@@ -178,7 +180,7 @@ class NondeterministicTrie(Generic[Key, Value]):
         return current_node
 
 
-    def get_dst_nodes(self, src_nodes: dict[int, tuple[Transition, ...]], key: Key) -> dict[int, tuple[Transition, ...]]:
+    def get_dst_nodes(self, src_node_paths: Iterable[TriePath], key: Key):
         """
         Gets the destination nodes obtained by following all existing transitions associated with the given key from the given set of
         source nodes
@@ -189,17 +191,14 @@ class NondeterministicTrie(Generic[Key, Value]):
 
         key_id = self.__keys.get(key)
         if key_id is None:
-            return {}
+            return
         
-        # TODO if multiple paths are found to a destination node, this does not store all paths and so minimum-cost paths might be overwritten
-        return {
-            dst_node: node_transitions + (Transition(src_node, key_id, transition_index),)
-            for src_node, node_transitions in src_nodes.items()
-            for transition_index, dst_node in enumerate(self.__nodes[src_node].get(key_id, []))
-        }
+        for path in src_node_paths:
+            for transition_index, dst_node in enumerate(self.__nodes[path.node_id].get(key_id, [])):
+                yield TriePath(dst_node, path.transitions + (Transition(path.node_id, key_id, transition_index),))
 
     
-    def get_dst_nodes_chain(self, src_nodes: dict[int, tuple[Transition, ...]], keys: tuple[Key, ...]) -> dict[int, tuple[Transition, ...]]:
+    def get_dst_nodes_chain(self, src_node_paths: Iterable[TriePath], keys: tuple[Key, ...]) -> Iterable[TriePath]:
         """
         Gets the destination nodes obtained by following all existing transitions associated with the given series of keys from the given set of
         source nodes
@@ -208,11 +207,9 @@ class NondeterministicTrie(Generic[Key, Value]):
         :returns: A dictionary mapping destination IDs to the updated sequences of Transitions followed to get to those nodes
         """
 
-        current_nodes = src_nodes
+        current_nodes = src_node_paths
         for key in keys:
             current_nodes = self.get_dst_nodes(current_nodes, key)
-            if len(current_nodes) == 0:
-                return current_nodes
         return current_nodes
     
 
@@ -282,12 +279,12 @@ class NondeterministicTrie(Generic[Key, Value]):
             yield (self.__values_list[translation_id], cumsum_cost)
 
 
-    def get_translations_and_costs(self, nodes: dict[int, tuple[Transition, ...]]):
+    def get_translations_and_costs(self, nodes: Iterable[TriePath]):
         min_cost_results: dict[Value, tuple[float, tuple[Transition, ...]]] = {}
-        for node, transitions in nodes.items():
-            for translation, cost in self.get_translations_and_costs_single(node, transitions):
+        for path in nodes:
+            for translation, cost in self.get_translations_and_costs_single(path.node_id, path.transitions):
                 if cost >= min_cost_results.get(translation, (float("inf"), -1))[0]: continue
-                min_cost_results[translation] = (cost, transitions)
+                min_cost_results[translation] = (cost, path.transitions)
 
         for translation, (cost, transitions) in min_cost_results.items():
             yield LookupResult(translation, cost, transitions)

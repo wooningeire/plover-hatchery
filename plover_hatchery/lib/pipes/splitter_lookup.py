@@ -6,10 +6,15 @@ from plover_hatchery.lib.config import TRIE_STROKE_BOUNDARY_KEY
 from plover_hatchery.lib.pipes.Plugin import GetPluginApi, Plugin, define_plugin
 from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
 from plover_hatchery.lib.pipes.declare_banks import declare_banks
-from plover_hatchery.lib.trie import LookupResult, NondeterministicTrie, Transition
+from plover_hatchery.lib.trie import LookupResult, NondeterministicTrie, Transition, TriePath
 
 
-def splitter_lookup(*, cycle_on: "str | None"=None, prohibit_strokes: Iterable[str]=(), debug_on: "str | None"="") -> Plugin[None]:
+def splitter_lookup(
+    *,
+    cycle_on: "str | None"=None,
+    debug_on: "str | None"="",
+    prohibit_strokes: Iterable[str]=(),
+) -> Plugin[None]:
     cycler_stroke = Stroke.from_steno(cycle_on) if cycle_on is not None else None
     debug_stroke = Stroke.from_steno(debug_on) if debug_on is not None else None
 
@@ -26,9 +31,7 @@ def splitter_lookup(*, cycle_on: "str | None"=None, prohibit_strokes: Iterable[s
             # plover.log.debug("")
             # plover.log.debug("new lookup")
 
-            current_nodes = {
-                trie.ROOT: (),
-            }
+            current_nodes = [TriePath(trie.ROOT, ())]
             n_variation = 0
             debug = False
 
@@ -39,10 +42,12 @@ def splitter_lookup(*, cycle_on: "str | None"=None, prohibit_strokes: Iterable[s
                 if len(stroke) == 0:
                     return None
 
+                # The debug stroke must be the last stroke of the outline if present
                 if debug_stroke is not None and i == len(stroke_stenos) - 1 and stroke == debug_stroke:
                     debug = True
                     break
                 
+                # Increase the variation number for each cycler stroke
                 if cycler_stroke is not None and stroke == cycler_stroke:
                     n_variation += 1
                     continue
@@ -56,13 +61,16 @@ def splitter_lookup(*, cycle_on: "str | None"=None, prohibit_strokes: Iterable[s
                 if stroke in prohibited_strokes:
                     return None
 
+                # A series of cycler strokes should follow any strokes that comprise the word if present
                 if n_variation > 0:
                     return None
                 
+
+                # Traverse stroke boundaries
                 if i > 0:
                     # plover.log.debug(current_nodes)
                     # plover.log.debug(TRIE_STROKE_BOUNDARY_KEY)
-                    current_nodes = trie.get_dst_nodes(current_nodes, TRIE_STROKE_BOUNDARY_KEY)
+                    current_nodes = list(trie.get_dst_nodes(current_nodes, TRIE_STROKE_BOUNDARY_KEY))
                     if len(current_nodes) == 0:
                         return None
 
@@ -70,13 +78,13 @@ def splitter_lookup(*, cycle_on: "str | None"=None, prohibit_strokes: Iterable[s
 
 
                 for positionless_key in positionless.keys():
-                    current_nodes |= trie.get_dst_nodes_chain(current_nodes, positionless_key)
+                    current_nodes.extend(trie.get_dst_nodes_chain(current_nodes, positionless_key))
 
 
                 for key in (left_bank_consonants + vowels + right_bank_consonants).keys():
-                    current_nodes = trie.get_dst_nodes(current_nodes, key)
+                    current_nodes = list(trie.get_dst_nodes(current_nodes, key))
                     for positionless_key in positionless.keys():
-                        current_nodes |= trie.get_dst_nodes_chain(current_nodes, positionless_key)
+                        current_nodes.extend(trie.get_dst_nodes_chain(current_nodes, positionless_key))
 
                     if len(current_nodes) == 0:
                         return None
