@@ -294,7 +294,7 @@ theory = compile_theory(
     ),
 
 
-    splitter_lookup(
+    key_by_key_lookup(
         cycle_on="#TPHEGT",
         debug_on="#TKPWUG",
         prohibit_strokes=(

@@ -310,7 +310,7 @@ theory = compile_theory(
         base_cost=2,
     ),
 
-    splitter_lookup(
+    key_by_key_lookup(
         cycle_on="@",
         debug_on="@*",
         prohibit_strokes=(

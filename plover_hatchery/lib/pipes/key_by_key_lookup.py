@@ -9,7 +9,7 @@ from plover_hatchery.lib.pipes.declare_banks import declare_banks
 from plover_hatchery.lib.trie import LookupResult, NondeterministicTrie, Transition, TriePath
 
 
-def splitter_lookup(
+def key_by_key_lookup(
     *,
     cycle_on: "str | None"=None,
     debug_on: "str | None"="",
@@ -21,12 +21,12 @@ def splitter_lookup(
     prohibited_strokes = tuple(Stroke.from_steno(steno) for steno in prohibit_strokes)
 
 
-    @define_plugin(splitter_lookup)
+    @define_plugin(key_by_key_lookup)
     def plugin(get_plugin_api: GetPluginApi, base_hooks: TheoryHooks, **_) -> None:
         banks_info = get_plugin_api(declare_banks)
 
 
-        @base_hooks.lookup.listen(splitter_lookup)
+        @base_hooks.lookup.listen(key_by_key_lookup)
         def _(trie: NondeterministicTrie[str, int], stroke_stenos: tuple[str, ...], translations: list[str], **_) -> "str | None":
             # plover.log.debug("")
             # plover.log.debug("new lookup")

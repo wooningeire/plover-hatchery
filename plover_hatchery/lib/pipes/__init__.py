@@ -13,7 +13,7 @@ from .left_alt_chords import left_alt_chords, LeftAltChordsHooks, LeftAltChordsS
 from .right_alt_chords import right_alt_chords
 from .clusters import consonant_clusters, vowel_clusters
 from .linker_chord import linker_chord
-from .splitter_lookup import splitter_lookup
+from .key_by_key_lookup import key_by_key_lookup
 from .path_traversal_reverse_lookup import path_traversal_reverse_lookup
 
 from .Theory import Theory
