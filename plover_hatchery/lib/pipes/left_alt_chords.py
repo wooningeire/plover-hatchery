@@ -6,6 +6,8 @@ from dataclasses import dataclass
 
 from plover.steno import Stroke
 
+from plover_hatchery.lib.pipes.declare_banks import declare_banks
+
 from ..sopheme import Sound
 from .banks import banks, BanksState
 from .join import NodeSrc, join_on_strokes, tuplify
@@ -38,11 +40,18 @@ def left_alt_chords(chords: Callable[[Sound], Generator[Stroke, None, None]]) ->
     def plugin(get_plugin_api: GetPluginApi, **_):
         hooks = LeftAltChordsHooks()
         banks_api = get_plugin_api(banks)
+        declare_banks_api = get_plugin_api(declare_banks)
 
 
         @banks_api.begin.listen(left_alt_chords)
         def _():
             return LeftAltChordsState()
+
+
+        # @banks_api.generate_left_chords.listen(left_alt_chords)
+        # def _(consonant: Sound, **_):
+        #     for chord in chords(consonant):
+        #         yield chord, 
         
 
         @banks_api.before_complete_consonant.listen(left_alt_chords)

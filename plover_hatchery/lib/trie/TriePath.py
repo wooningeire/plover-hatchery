@@ -1,11 +1,11 @@
 from dataclasses import dataclass
 from typing import final
-from .Transition import Transition
+from .Transition import TransitionKey
 
 
 @final
 @dataclass
 class TriePath:
     node_id: int
-    transitions: tuple[Transition, ...]
+    transitions: tuple[TransitionKey, ...]
     

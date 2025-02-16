@@ -7,16 +7,16 @@ T = TypeVar("T")
 K = TypeVar("K")
 V = TypeVar("V")
 
-class Transition(NamedTuple):
-    node_index: int
-    key_id: int
+class TransitionKey(NamedTuple):
+    src_node_index: int
+    key_id: "int | None"
     transition_index: int
 
 class TransitionCostKey(NamedTuple):
-    transition: Transition
-    value_id: int
+    transition: TransitionKey
+    translation_id: int
 
 @dataclass(frozen=True)
 class TransitionCostInfo(Generic[V]):
     cost: float
-    value: V
+    translation: V

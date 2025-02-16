@@ -1,12 +1,19 @@
 
 from collections.abc import Iterable
+from typing import final
 from plover.steno import Stroke
 
 from plover_hatchery.lib.config import TRIE_STROKE_BOUNDARY_KEY
 from plover_hatchery.lib.pipes.Plugin import GetPluginApi, Plugin, define_plugin
 from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
 from plover_hatchery.lib.pipes.declare_banks import declare_banks
-from plover_hatchery.lib.trie import LookupResult, NondeterministicTrie, Transition, TriePath
+from plover_hatchery.lib.trie import LookupResult, NondeterministicTrie, TransitionKey, TriePath
+
+
+# @final
+# class KeyByKeyLookupApi:
+
+
 
 
 def key_by_key_lookup(
@@ -70,7 +77,7 @@ def key_by_key_lookup(
                 if i > 0:
                     # plover.log.debug(current_nodes)
                     # plover.log.debug(TRIE_STROKE_BOUNDARY_KEY)
-                    current_nodes = list(trie.get_dst_nodes(current_nodes, TRIE_STROKE_BOUNDARY_KEY))
+                    current_nodes = list(trie.traverse(current_nodes, TRIE_STROKE_BOUNDARY_KEY))
                     if len(current_nodes) == 0:
                         return None
 
@@ -78,13 +85,13 @@ def key_by_key_lookup(
 
 
                 for positionless_key in positionless.keys():
-                    current_nodes.extend(trie.get_dst_nodes_chain(current_nodes, positionless_key))
+                    current_nodes.extend(trie.traverse_chain(current_nodes, positionless_key))
 
 
                 for key in (left_bank_consonants + vowels + right_bank_consonants).keys():
-                    current_nodes = list(trie.get_dst_nodes(current_nodes, key))
+                    current_nodes = list(trie.traverse(current_nodes, key))
                     for positionless_key in positionless.keys():
-                        current_nodes.extend(trie.get_dst_nodes_chain(current_nodes, positionless_key))
+                        current_nodes.extend(trie.traverse_chain(current_nodes, positionless_key))
 
                     if len(current_nodes) == 0:
                         return None
@@ -129,14 +136,14 @@ def _summarize_result(trie: NondeterministicTrie[str, int], result: LookupResult
     return f"""{translations[result.translation]} [#{result.translation}] ({result.cost})
     {_summarize_transitions(trie, result.transitions, result.translation)}"""
 
-def _summarize_transitions(trie: NondeterministicTrie[str, int], transitions: Iterable[Transition], entry_id: int):
+def _summarize_transitions(trie: NondeterministicTrie[str, int], transitions: Iterable[TransitionKey], entry_id: int):
     try:
         return f"{''.join(_summarize_transition(trie, transition, entry_id) for transition in transitions)}→"
     except KeyError as e:
         return f"bad transitions: {str(e)}"
 
-def _summarize_transition(trie: NondeterministicTrie[str, int], transition: Transition, entry_id: int):
+def _summarize_transition(trie: NondeterministicTrie[str, int], transition: TransitionKey, entry_id: int):
     cost = trie.get_transition_cost(transition, entry_id)
 
-    return f"—[{trie.get_key(transition.key_id)} ({cost})]"
+    return f"—[{trie.get_key_str(transition.key_id)} ({cost})]"
     

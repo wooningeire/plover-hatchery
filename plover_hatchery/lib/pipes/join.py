@@ -13,7 +13,6 @@ class NodeSrc:
     node: int
     cost: int = 0
 
-
     @staticmethod
     def increment_costs(srcs: "Iterable[NodeSrc]", cost_change: int):
         for src in srcs:
