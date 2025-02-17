@@ -1,3 +1,5 @@
+from collections.abc import Iterable
+from itertools import product
 from plover_hatchery.lib.pipes.Plugin import Plugin
 
 
@@ -7,6 +9,7 @@ from enum import Enum
 
 from plover.steno import Stroke
 
+from plover_hatchery.lib.pipes.SophoneType import Sophone, SophoneType
 from plover_hatchery.lib.pipes.declare_banks import declare_banks
 
 from ..OutlineSounds import OutlineSounds
@@ -24,13 +27,13 @@ class ConsonantClustersState:
     upcoming_clusters: dict[tuple[int, int], list[Cluster]] = field(default_factory=lambda: {})
 
 
-def consonant_clusters(Sophone: Enum, map_sophones: Callable[[Sound], Any], clusters: dict[str, str], *, base_cost: int) -> Plugin[None]:
-    def build_consonant_clusters_trie() -> ReadonlyTrie[Any, Stroke]:
-        trie: Trie[Any, Stroke] = Trie()
+def consonant_clusters(sophone_type: SophoneType, clusters: dict[str, str], *, base_cost: int) -> Plugin[None]:
+    def build_consonant_clusters_trie() -> ReadonlyTrie[Sophone, Stroke]:
+        trie: Trie[Sophone, Stroke] = Trie()
         for phonemes, steno in clusters.items():
             current_head = trie.ROOT
             for key in phonemes.split(" "):
-                sophone = Sophone.__dict__[key]
+                sophone = sophone_type[key]
                 current_head = trie.follow(current_head, sophone)
 
             trie.set_translation(current_head, Stroke.from_steno(steno))
@@ -53,15 +56,25 @@ def consonant_clusters(Sophone: Enum, map_sophones: Callable[[Sound], Any], clus
 
             state: BanksState,
         ):
-            current_head = consonant_clusters_trie.ROOT
+            current_heads = (consonant_clusters_trie.ROOT,)
             current_index = (start_group_index, start_phoneme_index)
-            while current_head is not None and current_index is not None:
-                current_head = consonant_clusters_trie.traverse(current_head, map_sophones(sounds.get_consonant(*current_index)))
+            while current_index is not None:
+                new_current_heads: list[int] = []
+                for node, sound in product(current_heads, sophone_type.from_sound(sounds.get_consonant(*current_index))):
+                    new_node = consonant_clusters_trie.traverse(node, sound)
+                    if new_node is None: continue
+                    new_current_heads.append(new_node)
+                
 
-                if current_head is None: return
+                if len(new_current_heads) == 0: return
 
-                if (result := get_clusters_from_node(current_head, current_index, consonant_clusters_trie, state, banks_info.left)) is not None:
-                    yield result
+
+                current_heads = tuple(new_current_heads)
+
+                for node in current_heads:
+                    result = get_clusters_from_node(node, current_index, consonant_clusters_trie, state, banks_info.left)
+                    if result is not None:
+                        yield result
 
                 current_index = sounds.increment_consonant_index(*current_index)
 

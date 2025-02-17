@@ -32,7 +32,7 @@ class ConsonantsVowelsEnumerationHooks:
     complete = Hook(OnComplete)
 
 
-def consonants_vowels_enumeration(vowel_diphthong_transition: Callable[[Sound], "Sopheme | None"]) -> Plugin[ConsonantsVowelsEnumerationHooks]:
+def consonants_vowels_enumeration(vowel_diphthong_transition: Callable[[Sound], Iterable[Sopheme]]) -> Plugin[ConsonantsVowelsEnumerationHooks]:
     class _OutlineSoundsBuilder:
         def __init__(self):
             self.__consonant_vowel_groups: list[ConsonantVowelGroup] = []
@@ -48,10 +48,11 @@ def consonants_vowels_enumeration(vowel_diphthong_transition: Callable[[Sound], 
             if not self.__last_sound_was_vowel: return
             
             prev_vowel = self.__consonant_vowel_groups[-1].vowel
-            diphthong_transition_sopheme = vowel_diphthong_transition(prev_vowel)
-            if diphthong_transition_sopheme is None: return
-
-            self.__current_group_consonants.append(Sound(diphthong_transition_sopheme.keysymbols[0], diphthong_transition_sopheme))
+            diphthong_transition_sophemes = vowel_diphthong_transition(prev_vowel)
+            for sopheme in diphthong_transition_sophemes:
+                self.__current_group_consonants.append(Sound(sopheme.keysymbols[0], sopheme))
+                break
+                # TODO
 
 
         def add_consonant(self, consonant: Sound):

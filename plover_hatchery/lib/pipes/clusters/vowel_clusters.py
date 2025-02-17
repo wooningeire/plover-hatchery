@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from plover_hatchery.lib.pipes.Plugin import Plugin
 
 
@@ -7,6 +8,7 @@ from enum import Enum
 
 from plover.steno import Stroke
 
+from plover_hatchery.lib.pipes.SophoneType import Sophone, SophoneType
 from plover_hatchery.lib.pipes.declare_banks import declare_banks
 
 from ...trie import Trie, ReadonlyTrie
@@ -24,16 +26,16 @@ class VowelClustersState:
     upcoming_clusters: dict[tuple[int, int], list[Cluster]] = field(default_factory=lambda: {})
 
 
-def vowel_clusters(Sophone: Enum, map_sophones: Callable[[Sound], Any], vowel_sophones: set[Any], clusters: dict[str, str], base_cost: int) -> Plugin[None]:
-    def build_vowel_clusters_trie() -> ReadonlyTrie[Any, Stroke]:
-        trie: Trie[Any, Stroke] = Trie()
+def vowel_clusters(sophone_type: SophoneType, vowel_sophones: set[Sophone], clusters: dict[str, str], base_cost: int) -> Plugin[None]:
+    def build_vowel_clusters_trie() -> "ReadonlyTrie[Sophone | None, Stroke]":
+        trie: "Trie[Sophone | None, Stroke]" = Trie()
         for phonemes, steno in clusters.items():
             current_head = trie.ROOT
             for key in phonemes.split(" "):
                 if key == ".":
-                    sophone = Sophone.ANY_VOWEL
+                    sophone = None
                 else:
-                    sophone = Sophone.__dict__[key]
+                    sophone = sophone_type[key]
                 current_head = trie.follow(current_head, sophone)
 
             trie.set_translation(current_head, Stroke.from_steno(steno))
@@ -64,8 +66,8 @@ def vowel_clusters(Sophone: Enum, map_sophones: Callable[[Sound], Any], vowel_so
                 current_nodes = {
                     node
                     for current_node in current_nodes
-                    for node in (vowel_clusters_trie.traverse(current_node, map_sophones(sound)),)
-                            + ((vowel_clusters_trie.traverse(current_node, Sophone.ANY_VOWEL),) if map_sophones(sound) in vowel_sophones else ())
+                    for node in tuple(vowel_clusters_trie.traverse(current_node, sophone) for sophone in sophone_type.from_sound(sound))
+                        + ((vowel_clusters_trie.traverse(current_node, None),) if any(sophone in vowel_sophones for sophone in sophone_type.from_sound(sound)) else ())
                     if node is not None
                 }
 
@@ -102,8 +104,8 @@ def vowel_clusters(Sophone: Enum, map_sophones: Callable[[Sound], Any], vowel_so
 
             check_found_clusters(
                 state.upcoming_clusters,
-                banks_state.left_srcs[0],
-                banks_state.right_srcs[0] if len(banks_state.right_srcs) > 0 else None,
+                banks_state.left_srcs[0].node,
+                banks_state.right_srcs[0].node if len(banks_state.right_srcs) > 0 else None,
                 banks_state,
                 base_cost,
             )

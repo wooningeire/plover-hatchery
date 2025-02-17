@@ -21,7 +21,6 @@ from .lookup_result_filtering import lookup_result_filtering
 from .Theory import Theory
 from .compile_theory import compile_theory
 
-from .define_sophones import define_sophones
-from .sophone_mapper import sophone_to_strokes_mapper, sophone_to_sopheme_mapper
+from .SophoneType import SophoneType, Sophone
 from .yield_if import yield_if, yield_stroke_if
 from .map_unstressed_vowels import map_unstressed_vowels

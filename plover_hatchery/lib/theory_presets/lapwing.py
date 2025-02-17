@@ -3,7 +3,16 @@ from ..pipes import *
 from ..sopheme import Sound
 
 
-Sophone = define_sophones("""
+def as_spelled(sound: Sound):
+    return {
+        "a": "A",
+        "e": "E",
+        "i": "I",
+        "o": "O",
+        "u": "U",
+    }.get(sound.sopheme.chars, "")
+
+sophone_type = SophoneType.create_with_sophones("""
 S T K P W H R
 Z J V D G F N Y B M L
 CH SH TH
@@ -11,117 +20,90 @@ NG
 A E I O U
 AA EE II OO UU
 AU OU OI
-ANY_VOWEL
-""")
+""", {
+    "p": "P",
+    "t": "T D",
+    "?": "",  # glottal stop
+    "t^": "T R",  # tapped R
+    "k": "K",
+    "x": "K",
+    "b": "B",
+    "d": "D T",
+    "g": "G",
+    "ch": "CH",
+    "jh": "J",
+    "s": "S",
+    "z": "Z",
+    "sh": "SH",
+    "zh": "SH J",
+    "f": "F",
+    "v": "V",
+    "th": "TH",
+    "dh": "TH",
+    "h": "H",
+    "m": "M",
+    "m!": "M",
+    "n": "N",
+    "n!": "N",
+    "ng": "NG",
+    "l": "L",
+    "ll": "L",
+    "lw": "L",
+    "l!": "L",
+    "r": "R",
+    "y": "Y",
+    "w": "W",
+    "hw": "W",
+    
+    "e": "E EE AA",
+    "ao": "A AA O U",
+    "a": "A AA",
+    "ah": "A O",
+    "oa": "A O U",
+    "aa": "O A",
+    "ar": "A",
+    "eh": "A",
+    "ou": "OO O",
+    "ouw": "OO",
+    "oou": "OO",
+    "o": "O",
+    "au": "O A",
+    "oo": "O",
+    "or": "O",
+    "our": "O",
+    "ii": "EE",
+    "iy": "EE",
+    "i": "I EE E",
+    "@r": as_spelled,
+    "@": as_spelled,
+    "uh": "U",
+    "u": "U O OO",
+    "uu": "UU",
+    "iu": "UU",
+    "ei": "AA E",
+    "ee": "AA E A",
+    "ai": "II",
+    "ae": "II",
+    "aer": "II",
+    "aai": "II",
+    "oi": "OI",
+    "oir": "OI",
+    "ow": "OU",
+    "owr": "OU",
+    "oow": "OU",
+    "ir": "EE",
+    "@@r": as_spelled,
+    "er": "E U",
+    "eir": "E",
+    "ur": "U UU",
+    "i@": as_spelled,
+})
 
-vowel_sophones = {
-    Sophone.AA,
-    Sophone.A,
-    Sophone.EE,
-    Sophone.E,
-    Sophone.II,
-    Sophone.I,
-    Sophone.OO,
-    Sophone.O,
-    Sophone.UU,
-    Sophone.U,
-    Sophone.AU,
-    Sophone.OI,
-    Sophone.OU,
-}
-
-
-def default_sound_to_sophone_mapping(sound: Sound):
-    spelled = {
-        "a": "A",
-        "e": "E",
-        "i": "I",
-        "o": "O",
-        "u": "U",
-    }.get(sound.sopheme.chars)
-
-    return Sophone.__dict__[{
-        "p": ("P",),
-        "t": ("T", "D"),
-        "?": (),  # glottal stop
-        "t^": ("T", "R"),  # tapped R
-        "k": ("K",),
-        "x": ("K",),
-        "b": ("B",),
-        "d": ("D", "T"),
-        "g": ("G",),
-        "ch": ("CH",),
-        "jh": ("J",),
-        "s": ("S",),
-        "z": ("Z",),
-        "sh": ("SH",),
-        "zh": ("SH", "J"),
-        "f": ("F",),
-        "v": ("V",),
-        "th": ("TH",),
-        "dh": ("TH",),
-        "h": ("H",),
-        "m": ("M",),
-        "m!": ("M",),
-        "n": ("N",),
-        "n!": ("N",),
-        "ng": ("NG",),
-        "l": ("L",),
-        "ll": ("L",),
-        "lw": ("L",),
-        "l!": ("L",),
-        "r": ("R",),
-        "y": ("Y",),
-        "w": ("W",),
-        "hw": ("W",),
-        
-        "e": ("E", "EE", "AA"),
-        "ao": ("A", "AA", "O", "U"),
-        "a": ("A", "AA"),
-        "ah": ("A", "O"),
-        "oa": ("A", "O", "U"),
-        "aa": ("O", "A"),
-        "ar": ("A",),
-        "eh": ("A",),
-        "ou": ("OO", "O"),
-        "ouw": ("OO",),
-        "oou": ("OO",),
-        "o": ("O",),
-        "au": ("O", "A"),
-        "oo": ("O",),
-        "or": ("O",),
-        "our": ("O",),
-        "ii": ("EE",),
-        "iy": ("EE",),
-        "i": ("I", "EE", "E"),
-        "@r": (spelled,),
-        "@": (spelled,),
-        "uh": ("U",),
-        "u": ("U", "O", "OO"),
-        "uu": ("UU",),
-        "iu": ("UU",),
-        "ei": ("AA", "E"),
-        "ee": ("AA", "E", "A"),
-        "ai": ("II",),
-        "ae": ("II",),
-        "aer": ("II",),
-        "aai": ("II",),
-        "oi": ("OI",),
-        "oir": ("OI",),
-        "ow": ("OU",),
-        "owr": ("OU",),
-        "oow": ("OU",),
-        "ir": ("EE",),
-        "@@r": (spelled,),
-        "er": ("E", "U"),
-        "eir": ("E",),
-        "ur": ("U", "UU"),
-        "i@": (spelled,),
-    }[sound.keysymbol.base_symbol][0]]
-
-
-map_sophones_to_strokes = sophone_to_strokes_mapper(Sophone, default_sound_to_sophone_mapping)
-map_sophones_to_sophemes = sophone_to_sopheme_mapper(Sophone, default_sound_to_sophone_mapping)
+vowel_sophones = set(sophone_type.iterate("""
+A E I O U
+AA EE II OO UU
+AU OI OU
+"""))
 
 
 theory = compile_theory(
@@ -133,7 +115,7 @@ theory = compile_theory(
     ),
 
     consonants_vowels_enumeration(
-        vowel_diphthong_transition=map_sophones_to_sophemes({
+        vowel_diphthong_transition=sophone_type.mapper_to_sophemes({
             "E": ".y?",
             "OO": ".w?",
             "OU": ".w?",
@@ -146,8 +128,6 @@ theory = compile_theory(
         }),
     ),
 
-    lookup_result_filtering(),
-
     key_by_key_lookup(
         cycle_on="#TPHEGT",
         debug_on="#TKPWUG",
@@ -159,7 +139,7 @@ theory = compile_theory(
     path_traversal_reverse_lookup(),
 
     banks(
-        left_chords=map_sophones_to_strokes({
+        left_chords=sophone_type.mapper_to_chords({
             "S": "S",
             "T": "T",
             "K": "K",
@@ -187,7 +167,7 @@ theory = compile_theory(
             "NG": "TPH",
         }),
 
-        mid_chords=map_sophones_to_strokes({
+        mid_chords=sophone_type.mapper_to_chords({
             "AA": "AEU",
             "A": "A",
             "EE": "AOE",
@@ -203,7 +183,7 @@ theory = compile_theory(
             "OU": "OU",
         }),
 
-        right_chords=map_sophones_to_strokes({
+        right_chords=sophone_type.mapper_to_chords({
             "F": "-F",
             "R": "-R",
             "P": "-P",
@@ -230,19 +210,19 @@ theory = compile_theory(
 
     optional_middle_vowels(),
     optional_middle_consonants(
-        ignore_consonant_if=lambda sound: default_sound_to_sophone_mapping(sound) in (Sophone.Y, Sophone.W),
+        ignore_consonant_if=sophone_type.given_sound_maps_to_sophones("Y W"),
     ),
     optional_unstressed_middle_consonants(
-        ignore_consonant_if=lambda sound: default_sound_to_sophone_mapping(sound) in (Sophone.R, Sophone.N, Sophone.L),
+        ignore_consonant_if=sophone_type.given_sound_maps_to_sophones("R N L"),
     ),
 
     alternate_chords(
-        left_chords=map_sophones_to_strokes({
+        left_chords=sophone_type.mapper_to_chords({
             "V": "W",
             "Z": "S*",
         }),
         
-        right_chords=map_sophones_to_strokes({
+        right_chords=sophone_type.mapper_to_chords({
             "S": "-F",
             "Z": "-F",
             "V": "-F",
@@ -251,8 +231,7 @@ theory = compile_theory(
     ),
     
     consonant_clusters(
-        Sophone,
-        default_sound_to_sophone_mapping,
+        sophone_type,
         {
             "D S": "STK",
             "D S T": "STK",
@@ -287,8 +266,7 @@ theory = compile_theory(
     ),
 
     vowel_clusters(
-        Sophone,
-        default_sound_to_sophone_mapping,
+        sophone_type,
         vowel_sophones,
         {
             ". N T": "SPW",

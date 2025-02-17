@@ -131,7 +131,7 @@ def alternate_chords(
 
         @filtering_api.determine_should_keep.listen(alternate_chords)
         def _(lookup_result: LookupResult[int], trie: NondeterministicTrie[str, int], **_):
-            # Return true if, for every alt chord path taken, any of the main chords were unusable
+            # Return true iff, for every alt chord path taken, any of the main chords were unusable
 
             for found_path, path_data in taken_alt_chord_paths(lookup_result):
                 preceding_chord = get_adjacent_chord(found_path, lookup_result, trie, True)
