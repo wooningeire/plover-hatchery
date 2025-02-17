@@ -78,11 +78,10 @@ def link_join_on_strokes(
 
 
     transition_seqs: list[JoinedTransitionSeq] = []
-    
-    for src_node in src_nodes:
-        for stroke in strokes:
-            transitions = trie.link_chain(src_node.node, dst_node, stroke.keys(), TransitionCostInfo(src_node.cost, entry_id))
-            transition_seqs.append(JoinedTransitionSeq(transitions, stroke))
+
+    for src_node, stroke in product(src_nodes, strokes):
+        transitions = trie.link_chain(src_node.node, dst_node, stroke.keys(), TransitionCostInfo(src_node.cost, entry_id))
+        transition_seqs.append(JoinedTransitionSeq(transitions, stroke))
 
     return JoinedTriePaths(dst_node, tuple(transition_seqs))
 

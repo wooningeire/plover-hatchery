@@ -8,6 +8,7 @@ from dataclasses import dataclass
 
 from plover.steno import Stroke
 
+from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
 from plover_hatchery.lib.pipes.declare_banks import declare_banks
 from plover_hatchery.lib.pipes.key_by_key_lookup import key_by_key_lookup
 from plover_hatchery.lib.trie import LookupResult, NondeterministicTrie, Trie, TriePath
@@ -20,26 +21,29 @@ from .Plugin import define_plugin, GetPluginApi
 from .Hook import Hook
 
 
-@final
-@dataclass
-class LeftAltChordsState:
-    newest_left_alt_node: "int | None" = None
-    last_left_alt_nodes: tuple[NodeSrc, ...] = ()
-    """Collection of left alt nodes since which only vowels, optional sounds, or silent sounds have occurred."""
-
-
-def left_alt_chords(chords: Callable[[Sound], Generator[Stroke, None, None]]) -> Plugin[None]:
+def alternate_chords(
+    *,
+    left_chords: Callable[[Sound], Generator[Stroke, None, None]],
+    right_chords: Callable[[Sound], Generator[Stroke, None, None]],
+) -> Plugin[None]:
     """Adds support for alternate chords, or chords that are only available when the typical "main" chord cannot be used.
     
     Example: KOFT ↦ cost. -F is an alt chord for S. It is available because the main chord -S could not be used in this stroke, since it comes after -T.
     """
 
 
-    @define_plugin(left_alt_chords)
-    def plugin(get_plugin_api: GetPluginApi, **_):
+    @define_plugin(alternate_chords)
+    def plugin(get_plugin_api: GetPluginApi, base_hooks: TheoryHooks, **_):
         banks_api = get_plugin_api(banks)
         banks_info = get_plugin_api(declare_banks)
         key_by_key_lookup_api = get_plugin_api(key_by_key_lookup)
+
+
+        @final
+        @dataclass
+        class AlternateChordsState:
+            newest_left_alt_node: "int | None" = None
+            newest_right_alt_node: "int | None" = None
 
 
         @final
@@ -48,25 +52,35 @@ def left_alt_chords(chords: Callable[[Sound], Generator[Stroke, None, None]]) ->
             """Data for a path in the lookup trie corresponding with an alt chord, used during result validation"""
 
             consonant: Sound
-            attempted_alt_chord: Stroke
+            is_left_bank: bool
 
         transitions_tries: dict[int, Trie[TransitionKey, AttemptedAltChordPathData]] = defaultdict(Trie)
 
 
-        @banks_api.begin.listen(left_alt_chords)
-        def _():
-            return LeftAltChordsState()
+        @base_hooks.build_lookup.listen(alternate_chords)
+        def _(**_):
+            nonlocal transitions_tries
+            transitions_tries = defaultdict(Trie)
+
+
+        @banks_api.begin.listen(alternate_chords)
+        def _(**_):
+            return AlternateChordsState()
         
 
-        @banks_api.before_complete_consonant.listen(left_alt_chords)
-        def _(state: LeftAltChordsState, banks_state: BanksState, left_node: "int | None", consonant: Sound, **_):
+        @banks_api.before_complete_consonant.listen(alternate_chords)
+        def _(state: AlternateChordsState, banks_state: BanksState, left_node: "int | None", right_node: "int | None", consonant: Sound, **_):
             left_alt_paths = link_join_on_strokes(
                 banks_state.trie,
                 NodeSrc.increment_costs(banks_state.left_srcs, 3),
                 left_node,
-                chords(consonant),
+                left_chords(consonant),
                 banks_state.entry_id,
             )
+            if left_node is not None:
+                state.newest_left_alt_node = None
+            else:
+                state.newest_left_alt_node = left_alt_paths.dst_node_id
 
 
             for transition_seq in left_alt_paths.transition_seqs:
@@ -74,17 +88,38 @@ def left_alt_chords(chords: Callable[[Sound], Generator[Stroke, None, None]]) ->
                 transitions_trie = transitions_tries[banks_state.entry_id]
 
                 exit_node = transitions_trie.follow_chain(transitions_trie.ROOT, transition_seq.transitions)
-                transitions_trie.set_translation(exit_node, AttemptedAltChordPathData(consonant, transition_seq.chord))
+                transitions_trie.set_translation(exit_node, AttemptedAltChordPathData(consonant, True))
 
 
-            state.newest_left_alt_node = left_alt_paths.dst_node_id
+            right_alt_paths = link_join_on_strokes(
+                banks_state.trie,
+                NodeSrc.increment_costs(banks_state.right_srcs, 3),
+                right_node,
+                right_chords(consonant),
+                banks_state.entry_id,
+            )
+            if right_node is not None:
+                state.newest_right_alt_node = None
+            else:
+                state.newest_right_alt_node = right_alt_paths.dst_node_id
+            
+            for transition_seq in right_alt_paths.transition_seqs:
+                transitions_trie = transitions_tries[banks_state.entry_id]
+
+                exit_node = transitions_trie.follow_chain(transitions_trie.ROOT, transition_seq.transitions)
+                transitions_trie.set_translation(exit_node, AttemptedAltChordPathData(consonant, False))
+
+
 
         
-        @banks_api.complete_consonant.listen(left_alt_chords)
-        def _(state: LeftAltChordsState, banks_state: BanksState, **_):
+        @banks_api.complete_consonant.listen(alternate_chords)
+        def _(state: AlternateChordsState, banks_state: BanksState, **_):
             new_last_left_alt_nodes = tuplify(state.newest_left_alt_node)
+            new_last_right_alt_nodes = tuplify(state.newest_right_alt_node)
 
             banks_state.left_srcs += new_last_left_alt_nodes
+            banks_state.mid_srcs += new_last_left_alt_nodes
+            banks_state.right_srcs += new_last_right_alt_nodes
 
 
         @dataclass
@@ -93,17 +128,23 @@ def left_alt_chords(chords: Callable[[Sound], Generator[Stroke, None, None]]) ->
             transition_indices: tuple[int, ...]
 
 
-        @key_by_key_lookup_api.validate_path.listen(left_alt_chords)
+        @key_by_key_lookup_api.validate_path.listen(alternate_chords)
         def _(lookup_result: LookupResult[int], trie: NondeterministicTrie[str, int], **_):
-            # Return true if, for every alt chord path taken, any of the main chords
+            # Return true if, for every alt chord path taken, any of the main chords were unusable
 
             for found_path, path_data in taken_alt_chord_paths(lookup_result):
+                print(path_data)
                 preceding_chord = get_adjacent_chord(found_path, lookup_result, trie, True)
                 following_chord = get_adjacent_chord(found_path, lookup_result, trie, False)
 
                 could_have_used_main_chord = True
 
-                for main_chord in banks_api.left_chords(path_data.consonant):
+                if path_data.is_left_bank:
+                    main_chords = banks_api.left_chords(path_data.consonant)
+                else:
+                    main_chords = banks_api.right_chords(path_data.consonant)
+
+                for main_chord in main_chords:
                     if not banks_info.can_add_stroke_on(preceding_chord, main_chord):
                         could_have_used_main_chord = False
                         break
@@ -113,8 +154,10 @@ def left_alt_chords(chords: Callable[[Sound], Generator[Stroke, None, None]]) ->
                         break
                 
                 if could_have_used_main_chord:
+                    print(lookup_result.translation, False)
                     return False
 
+            print(lookup_result.translation, True)
             return True
 
 

@@ -1,1 +1,1 @@
-from .build_trie_from_dict import build_lookup_json, get_lookup_builder_hatchery
+from .build_trie_from_dict import build_lookup_json

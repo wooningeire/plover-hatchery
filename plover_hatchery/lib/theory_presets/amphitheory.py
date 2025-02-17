@@ -247,16 +247,14 @@ theory = compile_theory(
         ignore_consonant_if=lambda sound: default_sound_to_sophone_mapping(sound) in (Sophone.R, Sophone.N, Sophone.L),
     ),
 
-    left_alt_chords(
-        chords=map_sophones_to_strokes({
+    alternate_chords(
+        left_chords=map_sophones_to_strokes({
             "F": "W",
             "V": "W",
             "Z": "S*",
-        })
-    ),
-
-    right_alt_chords(
-        chords=map_sophones_to_strokes({
+        }),
+        
+        right_chords=map_sophones_to_strokes({
             "S": "-F",
             "Z": "-F",
             "V": "-F",
@@ -264,7 +262,7 @@ theory = compile_theory(
             "M": "-FR",
             "J": "-FR",
             "K": "*G",
-        })
+        }),
     ),
     
     consonant_clusters(
