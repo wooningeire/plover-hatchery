@@ -146,6 +146,8 @@ theory = compile_theory(
         }),
     ),
 
+    lookup_result_filtering(),
+
     key_by_key_lookup(
         cycle_on="#TPHEGT",
         debug_on="#TKPWUG",

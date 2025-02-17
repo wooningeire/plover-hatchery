@@ -8,15 +8,8 @@ from plover_hatchery.lib.pipes.Hook import Hook
 from plover_hatchery.lib.pipes.Plugin import GetPluginApi, Plugin, define_plugin
 from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
 from plover_hatchery.lib.pipes.declare_banks import declare_banks
+from plover_hatchery.lib.pipes.lookup_result_filtering import lookup_result_filtering
 from plover_hatchery.lib.trie import LookupResult, NondeterministicTrie, TransitionKey, TriePath
-
-
-@final
-class KeyByKeyLookupApi:
-    class ValidatePath(Protocol):
-        def __call__(self, *, lookup_result: LookupResult[int], trie: NondeterministicTrie[str, int]) -> bool: ...
-    
-    validate_path = Hook(ValidatePath)
 
 
 def key_by_key_lookup(
@@ -24,7 +17,7 @@ def key_by_key_lookup(
     cycle_on: "str | None"=None,
     debug_on: "str | None"="",
     prohibit_strokes: Iterable[str]=(),
-) -> Plugin[KeyByKeyLookupApi]:
+) -> Plugin[None]:
     cycler_stroke = Stroke.from_steno(cycle_on) if cycle_on is not None else None
     debug_stroke = Stroke.from_steno(debug_on) if debug_on is not None else None
 
@@ -34,9 +27,7 @@ def key_by_key_lookup(
     @define_plugin(key_by_key_lookup)
     def plugin(get_plugin_api: GetPluginApi, base_hooks: TheoryHooks, **_):
         banks_info = get_plugin_api(declare_banks)
-
-
-        hooks = KeyByKeyLookupApi()
+        filtering_api = get_plugin_api(lookup_result_filtering)
 
 
         @base_hooks.lookup.listen(key_by_key_lookup)
@@ -107,10 +98,8 @@ def key_by_key_lookup(
 
             validated_lookup_results: list[LookupResult[int]] = []
             for lookup_result in lookup_results:
-                if any(
-                    not handler(lookup_result=lookup_result, trie=trie)
-                    for handler in hooks.validate_path.handlers()
-                ): continue
+                if not filtering_api.should_keep(lookup_result, trie):
+                    continue
 
                 validated_lookup_results.append(lookup_result)
 
@@ -144,7 +133,7 @@ def key_by_key_lookup(
             return translations[choices[n_variation % len(choices)].translation]
 
 
-        return hooks
+        return None
 
 
     return plugin

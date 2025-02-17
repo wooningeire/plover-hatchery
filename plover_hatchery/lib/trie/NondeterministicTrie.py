@@ -1,5 +1,6 @@
 from collections import defaultdict
 from collections.abc import Generator, Iterable
+from plover_hatchery.lib.trie.Transition import TransitionKey
 from typing import TYPE_CHECKING, Any, Generator, Generic, TypeVar, final
 
 from .Transition import TransitionKey, TransitionCostInfo, TransitionCostKey
@@ -344,31 +345,41 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
                 reverse_translations[self.__translations_list[translation_id]].append(node)
 
 
-        def dfs(node: int, key_ids_reversed: tuple[int, ...], visited_nodes: set[int], translation: _Translation) -> Generator[tuple[_KeyVar, ...], None, None]:
+        def dfs(
+            node: int,
+            translation_id: int,
+            transitions_reversed: tuple[TransitionKey, ...],
+            cost: float,
+            visited_nodes: set[int],
+        ) -> Generator[tuple[tuple[TransitionKey, ...], float], None, None]:
             if node == self.ROOT:
-                yield tuple(self.__keys_list[key_id] for key_id in reversed(key_ids_reversed))
+                yield transitions_reversed, cost
                 return
             
             for key_id, src_nodes in reverse_nodes[node].items():
                 for src_node_id, transition_index in src_nodes:
                     if src_node_id in visited_nodes: continue
 
-                    if not self.__transition_has_cost_for_translation(src_node_id, key_id, transition_index, translation):
+                    if not self.__transition_has_cost_for_translation(src_node_id, key_id, transition_index, self.__translations_list[translation_id]):
                         continue
 
+                    transition_key = TransitionKey(src_node_id, key_id, transition_index)
+                    transition_cost_key = TransitionCostKey(transition_key, translation_id)
 
-                    if key_id is None:
-                        new_key_ids_reversed = key_ids_reversed
-                    else:
-                        new_key_ids_reversed = key_ids_reversed + (key_id,)
+                    yield from dfs(
+                        src_node_id,
+                        translation_id,
+                        transitions_reversed + (transition_key,),
+                        cost + self.__transition_costs[transition_cost_key],
+                        visited_nodes | {src_node_id},
+                    )
 
-                    yield from dfs(src_node_id, new_key_ids_reversed, visited_nodes | {src_node_id}, translation)
-
-        def get_sequences(translation: _Translation) -> Generator[tuple[_KeyVar, ...], None, None]:
+        def get_sequences(translation: _Translation) -> Generator[LookupResult[_Translation], None, None]:
             if translation not in reverse_translations: return
             
             for node in reverse_translations[translation]:
-                yield from dfs(node, (), {node}, translation)
+                for transitions_reversed, cost in dfs(node, self.__translations[translation], (), 0, {node}):
+                    yield LookupResult(translation, cost, tuple(reversed(transitions_reversed)))
         
         return get_sequences
 
