@@ -39,12 +39,12 @@ def linker_chord(chord: str) -> Plugin[None]:
             current_index = sounds.increment_index(banks_state.group_index, banks_state.sound_index)
 
 
-            new_stroke_node = banks_state.trie.follow(right_node, TRIE_STROKE_BOUNDARY_KEY, TransitionCostInfo(0, banks_state.entry_id))
+            new_stroke_node = banks_state.trie.follow(right_node, TRIE_STROKE_BOUNDARY_KEY, TransitionCostInfo(0, banks_state.entry_id)).dst_node_id
 
 
             while current_index is not None:
                 if sounds.is_vowel(*current_index):
-                    post_linker_node = banks_state.trie.follow_chain(new_stroke_node, stroke.keys(), TransitionCostInfo(0, banks_state.entry_id))
+                    post_linker_node = banks_state.trie.follow_chain(new_stroke_node, stroke.keys(), TransitionCostInfo(0, banks_state.entry_id)).dst_node_id
 
                     state.newest_post_linker_node = post_linker_node
 

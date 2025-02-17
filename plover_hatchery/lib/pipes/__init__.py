@@ -5,13 +5,13 @@ Two types of elision:
 """
 
 from .consonants_vowels_enumeration import consonants_vowels_enumeration, ConsonantsVowelsEnumerationHooks
-from .declare_banks import declare_banks
+from .declare_banks import declare_banks, BankStrokes
 from .banks import banks, BanksApi, BanksState
 from .initial_vowel_chord import initial_vowel_chord
 from .optional_middle_vowels import optional_middle_vowels
 from .optional_middle_consonants import optional_middle_consonants
 from .optional_unstressed_middle_consonants import optional_unstressed_middle_consonants
-from .left_alt_chords import left_alt_chords, LeftAltChordsHooks, LeftAltChordsState
+from .left_alt_chords import left_alt_chords
 from .right_alt_chords import right_alt_chords
 from .clusters import consonant_clusters, vowel_clusters
 from .linker_chord import linker_chord

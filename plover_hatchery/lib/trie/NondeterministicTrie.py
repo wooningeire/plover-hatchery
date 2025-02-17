@@ -1,6 +1,5 @@
 from collections import defaultdict
 from collections.abc import Generator, Iterable
-from plover_hatchery.lib.trie.TriePath import TriePath
 from typing import TYPE_CHECKING, Any, Generator, Generic, TypeVar, final
 
 from .Transition import TransitionKey, TransitionCostInfo, TransitionCostKey
@@ -40,13 +39,13 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
 
         self.__keys_list: list[_KeyVar] = []
 
-        self.__used_nodes: dict[int, set[int]] = defaultdict(set)
+        self.__used_nodes_by_translation: dict[int, set[int]] = defaultdict(set)
 
 
-    def follow(self, src_node_id: int, key: _Key[_KeyVar], cost_info: TransitionCostInfo[_Translation]) -> int:
+    def follow(self, src_node_id: int, key: _Key[_KeyVar], cost_info: TransitionCostInfo[_Translation]):
         """
-        Gets the destination node obtained by following the first existing transition associated with the given key
-        from the given source node, or creates it if it does not exist
+        Gets the destination node obtained by following an existing transition associated with the given key
+        from the given source node, or creates it if it does not exist. The node will not yet have been used by the current translation
         """
 
         key_id = self.__get_key_id_else_create(key)
@@ -56,77 +55,47 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
         transitions = self.__transitions[src_node_id]
         if key_id in transitions:
             for transition_index, dst_node_id in enumerate(transitions[key_id]):
-                if dst_node_id in self.__used_nodes[translation_id]:
+                if dst_node_id in self.__used_nodes_by_translation[translation_id]:
                     continue
 
-                self.__used_nodes[translation_id].add(dst_node_id)
+                self.__used_nodes_by_translation[translation_id].add(dst_node_id)
                 self.__assign_transition_cost(src_node_id, key_id, transition_index, cost_info)
-                return dst_node_id
+                return TriePath(dst_node_id, (TransitionKey(src_node_id, key_id, transition_index),))
         
         new_node_id = self.__create_new_node()
-        self.__used_nodes[translation_id].add(new_node_id)
+        self.__used_nodes_by_translation[translation_id].add(new_node_id)
         if key_id in transitions:
             new_transition_index = len(transitions[key_id])
             transitions[key_id].append(new_node_id)
-            self.__assign_transition_cost(src_node_id, key_id, new_transition_index, cost_info)
         else:
+            new_transition_index = 0
             transitions[key_id] = [new_node_id]
-            self.__assign_transition_cost(src_node_id, key_id, 0, cost_info)
 
-        return new_node_id
+        self.__assign_transition_cost(src_node_id, key_id, new_transition_index, cost_info)
+
+        return TriePath(new_node_id, (TransitionKey(src_node_id, key_id, new_transition_index),))
     
 
-    def follow_chain(self, src_node_id: int, keys: tuple[_Key[_KeyVar], ...], cost_info: TransitionCostInfo[_Translation]) -> int:
+    def follow_chain(self, src_node_id: int, keys: tuple[_Key[_KeyVar], ...], cost_info: TransitionCostInfo[_Translation]):
         """
         Gets the destination node obtained by following the first existing transitions associated with the given series of keys
-        from the given source node, or creates it (and any missing intermediate nodes) if it does not exist
+        from the given source node, or creates it (and any missing intermediate nodes) if it does not exist. Any nodes in the chain will
+        not have bewen used by the current translation 
         """
 
         current_node = src_node_id
+        transitions: list[TransitionKey] = []
+
         for i, key in enumerate(keys):
-            if i == len(keys) - 1:
-                current_node = self.follow(current_node, key, cost_info)
-            else:
-                current_node = self.follow(current_node, key, TransitionCostInfo(0, cost_info.translation))
-        return current_node
+            if i == len(keys) - 1: # Only assign the cost to the last transition
+                path_addend = self.follow(current_node, key, cost_info)
+            else: # but still assign a cost of 0 and associate the translation with the transition otherwise
+                path_addend = self.follow(current_node, key, TransitionCostInfo(0, cost_info.translation))
+            
+            current_node = path_addend.dst_node_id
+            transitions.append(path_addend.transitions[0])
 
-    
-    def branch(self, src_node_id: int, key: _Key[_KeyVar], cost_info: TransitionCostInfo[_Translation]):
-        """
-        Gets the destination node obtained by following the first existing transition associated with the given key and not yet associated
-        with the given translation, or creates it if it does not exist
-        """
-
-        key_id = self.__get_key_id_else_create(key)
-
-        transitions = self.__transitions[src_node_id]
-        if key_id in transitions:
-            for i, dst_node_id in enumerate(transitions[key_id]):
-                if not self.__transition_has_cost_for_translation(src_node_id, key_id, i, cost_info.translation):
-                    self.__assign_transition_cost(src_node_id, key_id, i, cost_info)
-                    return dst_node_id
-
-        new_node_id = self.__create_new_node()
-        transitions[key_id] = [new_node_id]
-        self.__assign_transition_cost(src_node_id, key_id, 0, cost_info)
-        return new_node_id
-    
-
-    def branch_chain(self, src_node_id: int, keys: tuple[_Key[_KeyVar], ...], cost_info: TransitionCostInfo[_Translation]) -> int:
-        """
-        Gets the destination node obtained by following the first existing transitions associated with the given series of keys and not yet associated
-        with the given translation from the given source node, or creates it (and any missing intermediate nodes) if it does not exist
-        """
-
-        current_node = src_node_id
-        for i, key in enumerate(keys):
-            if i == len(keys) - 1:
-                current_node = self.branch(current_node, key, cost_info)
-            else:
-                current_node = self.branch(current_node, key, TransitionCostInfo(0, cost_info.translation))
-        return current_node
-
-
+        return TriePath(current_node, tuple(transitions))
 
     def traverse(self, src_node_paths: Iterable[TriePath], key: _KeyVar) -> Generator[TriePath, None, None]:
         """
@@ -142,13 +111,13 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
             return
         
         for path in src_node_paths:
-            transitions = self.__transitions[path.node_id]
+            transitions = self.__transitions[path.dst_node_id]
             if key_id not in transitions:
                 continue
 
-            for transition_index, dst_node_id in enumerate(self.__transitions[path.node_id][key_id]):
+            for transition_index, dst_node_id in enumerate(self.__transitions[path.dst_node_id][key_id]):
                 yield from self.__dfs_empty_transitions(
-                    TriePath(dst_node_id, path.transitions + (TransitionKey(path.node_id, key_id, transition_index),)),
+                    TriePath(dst_node_id, path.transitions + (TransitionKey(path.dst_node_id, key_id, transition_index),)),
                     set(),
                 )
 
@@ -169,19 +138,19 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
 
     
     def __dfs_empty_transitions(self, src_node_path: TriePath, visited_nodes: set[int]) -> Generator[TriePath, None, None]:
-        if src_node_path.node_id in visited_nodes:
+        if src_node_path.dst_node_id in visited_nodes:
             return
 
         yield src_node_path
 
-        transitions = self.__transitions[src_node_path.node_id]
+        transitions = self.__transitions[src_node_path.dst_node_id]
         if None not in transitions:
             return
 
-        for transition_index, dst_node_id in enumerate(self.__transitions[src_node_path.node_id][None]):
+        for transition_index, dst_node_id in enumerate(self.__transitions[src_node_path.dst_node_id][None]):
             yield from self.__dfs_empty_transitions(
-                TriePath(dst_node_id, src_node_path.transitions + (TransitionKey(src_node_path.node_id, None, transition_index),)),
-                visited_nodes | {src_node_path.node_id},
+                TriePath(dst_node_id, src_node_path.transitions + (TransitionKey(src_node_path.dst_node_id, None, transition_index),)),
+                visited_nodes | {src_node_path.dst_node_id},
             )
     
 
@@ -208,17 +177,19 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
 
         self.__assign_transition_cost(src_node_id, key_id, transition_index, cost_info)
 
+        return TransitionKey(src_node_id, key_id, transition_index)
+
     
     def link_chain(self, src_node_id: int, dst_node_id: int, keys: tuple[_Key[_KeyVar], ...], cost_info: TransitionCostInfo[_Translation]):
         """
         Follows all but the final transition from a given source node and series of keys, and then creates the final transition
         to the given already-existing destination node
         """
-        current_node = src_node_id
-        for key in keys[:-1]:
-            current_node = self.follow(current_node, key, TransitionCostInfo(0, cost_info.translation))
+        path = self.follow_chain(src_node_id, keys[:-1], TransitionCostInfo(0, cost_info.translation))
 
-        self.link(current_node, dst_node_id, keys[-1], cost_info)
+        transition = self.link(path.dst_node_id, dst_node_id, keys[-1], cost_info)
+
+        return path.transitions + (transition,)
     
 
     def set_translation(self, node_id: int, translation: _Translation):
@@ -254,7 +225,7 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
     def get_translations_and_costs(self, node_paths: Iterable[TriePath]):
         min_cost_results: dict[_Translation, tuple[float, tuple[TransitionKey, ...]]] = {}
         for path in node_paths:
-            for translation, cost in self.get_translations_and_costs_single(path.node_id, path.transitions):
+            for translation, cost in self.get_translations_and_costs_single(path.dst_node_id, path.transitions):
                 if cost >= min_cost_results.get(translation, (float("inf"), -1))[0]: continue
                 min_cost_results[translation] = (cost, path.transitions)
 

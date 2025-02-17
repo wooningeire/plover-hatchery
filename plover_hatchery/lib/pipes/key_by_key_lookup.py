@@ -1,19 +1,22 @@
 
 from collections.abc import Iterable
-from typing import final
+from typing import Protocol, final
 from plover.steno import Stroke
 
 from plover_hatchery.lib.config import TRIE_STROKE_BOUNDARY_KEY
+from plover_hatchery.lib.pipes.Hook import Hook
 from plover_hatchery.lib.pipes.Plugin import GetPluginApi, Plugin, define_plugin
 from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
 from plover_hatchery.lib.pipes.declare_banks import declare_banks
 from plover_hatchery.lib.trie import LookupResult, NondeterministicTrie, TransitionKey, TriePath
 
 
-# @final
-# class KeyByKeyLookupApi:
-
-
+@final
+class KeyByKeyLookupApi:
+    class ValidatePath(Protocol):
+        def __call__(self, *, lookup_result: LookupResult[int], trie: NondeterministicTrie[str, int]) -> bool: ...
+    
+    validate_path = Hook(ValidatePath)
 
 
 def key_by_key_lookup(
@@ -21,7 +24,7 @@ def key_by_key_lookup(
     cycle_on: "str | None"=None,
     debug_on: "str | None"="",
     prohibit_strokes: Iterable[str]=(),
-) -> Plugin[None]:
+) -> Plugin[KeyByKeyLookupApi]:
     cycler_stroke = Stroke.from_steno(cycle_on) if cycle_on is not None else None
     debug_stroke = Stroke.from_steno(debug_on) if debug_on is not None else None
 
@@ -29,8 +32,11 @@ def key_by_key_lookup(
 
 
     @define_plugin(key_by_key_lookup)
-    def plugin(get_plugin_api: GetPluginApi, base_hooks: TheoryHooks, **_) -> None:
+    def plugin(get_plugin_api: GetPluginApi, base_hooks: TheoryHooks, **_):
         banks_info = get_plugin_api(declare_banks)
+
+
+        hooks = KeyByKeyLookupApi()
 
 
         @base_hooks.lookup.listen(key_by_key_lookup)
@@ -97,8 +103,22 @@ def key_by_key_lookup(
                         return None
 
                     
-            translation_choices = sorted(trie.get_translations_and_costs(current_nodes), key=lambda result: result.cost)
-            if len(translation_choices) == 0: return None
+            lookup_results = trie.get_translations_and_costs(current_nodes)
+
+            validated_lookup_results: list[LookupResult[int]] = []
+            for lookup_result in lookup_results:
+                if any(
+                    not handler(lookup_result=lookup_result, trie=trie)
+                    for handler in hooks.validate_path.handlers()
+                ): continue
+
+                validated_lookup_results.append(lookup_result)
+
+
+            if len(validated_lookup_results) == 0: return None
+
+            
+            translation_choices = sorted(validated_lookup_results, key=lambda result: result.cost)
 
             
             if debug:
@@ -124,7 +144,8 @@ def key_by_key_lookup(
             return translations[choices[n_variation % len(choices)].translation]
 
 
-        return None
+        return hooks
+
 
     return plugin
 

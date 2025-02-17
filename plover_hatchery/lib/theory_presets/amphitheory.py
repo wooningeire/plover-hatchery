@@ -148,6 +148,16 @@ theory = compile_theory(
         }),
     ),
 
+    key_by_key_lookup(
+        cycle_on="@",
+        debug_on="@*",
+        prohibit_strokes=(
+            "AEU",
+        ),
+    ),
+
+    path_traversal_reverse_lookup(),
+
     banks(
         left_chords=map_sophones_to_strokes({
             "S": "S",
@@ -315,16 +325,6 @@ theory = compile_theory(
         },
         base_cost=2,
     ),
-
-    key_by_key_lookup(
-        cycle_on="@",
-        debug_on="@*",
-        prohibit_strokes=(
-            "AEU",
-        ),
-    ),
-
-    path_traversal_reverse_lookup(),
 
     # consonant_inversions(),
 )

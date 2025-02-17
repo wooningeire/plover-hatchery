@@ -31,7 +31,7 @@ def consonant_clusters(Sophone: Enum, map_sophones: Callable[[Sound], Any], clus
             current_head = trie.ROOT
             for key in phonemes.split(" "):
                 sophone = Sophone.__dict__[key]
-                current_head = trie.get_dst_node_else_create(current_head, sophone)
+                current_head = trie.follow(current_head, sophone)
 
             trie.set_translation(current_head, Stroke.from_steno(steno))
             
@@ -56,7 +56,7 @@ def consonant_clusters(Sophone: Enum, map_sophones: Callable[[Sound], Any], clus
             current_head = consonant_clusters_trie.ROOT
             current_index = (start_group_index, start_phoneme_index)
             while current_head is not None and current_index is not None:
-                current_head = consonant_clusters_trie.get_dst_node(current_head, map_sophones(sounds.get_consonant(*current_index)))
+                current_head = consonant_clusters_trie.traverse(current_head, map_sophones(sounds.get_consonant(*current_index)))
 
                 if current_head is None: return
 

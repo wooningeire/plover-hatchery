@@ -48,7 +48,12 @@ def right_alt_chords(chords: Callable[[Sound], Generator[Stroke, None, None]]) -
 
         @banks_hooks.before_complete_consonant.listen(right_alt_chords)
         def _(state: RightAltChordsState, banks_state: BanksState, consonant: Sound, **_):
-            right_alt_node = join_on_strokes(banks_state.trie, banks_state.right_srcs, chords(consonant), banks_state.entry_id)
+            right_alt_node = join_on_strokes(
+                banks_state.trie,
+                banks_state.right_srcs,
+                chords(consonant),
+                banks_state.entry_id,    
+            ).dst_node_id
 
             state.newest_right_alt_node = right_alt_node
 

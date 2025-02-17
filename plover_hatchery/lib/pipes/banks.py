@@ -42,6 +42,26 @@ class BanksState:
     def clone(self):
         return dataclasses.replace(self)
 
+    @property
+    def sounds_index(self):
+        return (self.group_index, self.sound_index)
+    
+    @property
+    def previous_consonant(self):
+        index = self.sounds.decrement_consonant_index(*self.sounds_index)
+        if index is None:
+            return None
+
+        return self.sounds[index]
+    
+    @property
+    def next_consonant(self):
+        index = self.sounds.increment_consonant_index(*self.sounds_index)
+        if index is None:
+            return None
+
+        return self.sounds[index]
+
 
 T = TypeVar("T")
 
@@ -262,8 +282,8 @@ def banks(
             on_begin_consonant(state, group_index, sound_index, consonant, set_consonant)
 
 
-            left_node = join_on_strokes(state.trie, state.left_srcs, left_chords(consonant), state.entry_id)
-            right_node = join_on_strokes(state.trie, state.right_srcs, right_chords(consonant), state.entry_id)
+            left_node = join_on_strokes(state.trie, state.left_srcs, left_chords(consonant), state.entry_id).dst_node_id
+            right_node = join_on_strokes(state.trie, state.right_srcs, right_chords(consonant), state.entry_id).dst_node_id
 
 
             on_before_complete_consonant(state, consonant, left_node, right_node)
@@ -311,11 +331,11 @@ def banks(
             on_begin_vowel(state, group_index, sound_index, vowel, set_vowel)
 
 
-            mid_node = join_on_strokes(state.trie, state.mid_srcs, mid_chords(vowel), state.entry_id)
+            mid_node = join_on_strokes(state.trie, state.mid_srcs, mid_chords(vowel), state.entry_id).dst_node_id
             
 
             if mid_node is not None:
-                new_stroke_node = state.trie.follow(mid_node, TRIE_STROKE_BOUNDARY_KEY, TransitionCostInfo(0, state.entry_id))
+                new_stroke_node = state.trie.follow(mid_node, TRIE_STROKE_BOUNDARY_KEY, TransitionCostInfo(0, state.entry_id)).dst_node_id
             else:
                 new_stroke_node = None
 

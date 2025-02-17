@@ -13,7 +13,7 @@ class Trie(Generic[Key, Value]):
         self.__translations: dict[int, Value] = {}
         self.__keys: dict[Key, int] = {}
 
-    def get_dst_node_else_create(self, src_node: int, key: Key):
+    def follow(self, src_node: int, key: Key):
         key_id = self.__get_key_id(key)
 
         transitions = self.__nodes[src_node]
@@ -26,23 +26,23 @@ class Trie(Generic[Key, Value]):
 
         return new_node_id
 
-    def get_dst_node_else_create_chain(self, src_node: int, keys: tuple[Key, ...]):
+    def follow_chain(self, src_node: int, keys: tuple[Key, ...]):
         current_node = src_node
         for key in keys:
-            current_node = self.get_dst_node_else_create(current_node, key)
+            current_node = self.follow(current_node, key)
         return current_node
     
-    def get_dst_node(self, src_node: int, key: Key):
+    def traverse(self, src_node: int, key: Key):
         key_id = self.__keys.get(key)
         if key_id is None:
             return None
         
         return self.__nodes[src_node].get(key_id)
     
-    def get_dst_node_chain(self, src_node: int, keys: tuple[Key, ...]):
+    def traverse_chain(self, src_node: int, keys: tuple[Key, ...]):
         current_node = src_node
         for stroke in keys:
-            current_node = self.get_dst_node(current_node, stroke)
+            current_node = self.traverse(current_node, stroke)
             if current_node is None:
                 return None
         return current_node
@@ -52,6 +52,9 @@ class Trie(Generic[Key, Value]):
     
     def get_translation(self, node: int):
         return self.__translations.get(node)
+    
+    def node_has_translations(self, node: int):
+        return node in self.__translations
     
     def frozen(self):
         return ReadonlyTrie(self.__nodes, self.__translations, self.__keys)
@@ -97,20 +100,23 @@ class ReadonlyTrie(Generic[Key, Value]):
         self.__translations: dict[int, Value] = translations
         self.__keys: dict[Key, int] = keys
     
-    def get_dst_node(self, src_node: int, key: Key):
+    def traverse(self, src_node: int, key: Key):
         key_id = self.__keys.get(key)
         if key_id is None:
             return None
         
         return self.__nodes.get((src_node, key_id))
     
-    def get_dst_node_chain(self, src_node: int, keys: tuple[Key, ...]):
+    def traverse_chain(self, src_node: int, keys: tuple[Key, ...]):
         current_node = src_node
         for stroke in keys:
-            current_node = self.get_dst_node(current_node, stroke)
+            current_node = self.traverse(current_node, stroke)
             if current_node is None:
                 return None
         return current_node
     
     def get_translation(self, node: int):
         return self.__translations.get(node)
+    
+    def node_has_translations(self, node: int):
+        return node in self.__translations

@@ -3,6 +3,14 @@ Theory engine plugin for Plover!
 
 Hatchery generates all possible writeouts from a word list, according to customizable theory rules.
 
+## Motivation
+> [!IMPORTANT]
+> To be documented!
+
+## Functionality
+> [!IMPORTANT]
+> To be documented!
+
 ## Entrypoints
 This plugin exposes the following tools and interfaces:
 
@@ -38,7 +46,7 @@ json_to_hatchery.py [-h] -j IN_JSON_PATH -u IN_UNILEX_PATH -o OUT_PATH
 ## Methodology
 *See the algorithms being ideated and developed in the [algorithm drafting whiteboard](https://www.figma.com/board/22f2V9ufYxLdvBtGWj6nXv/Hatchery?node-id=0-1&t=rvw11Srj6YIEvjmo-1)*
 
-### Dictionary generation
+### Intermediate entry representation
 Hatchery dictionaries are (or will be) intended to be added to directly. However, for testing or as a base, a JSON dictionary along with the Unilex lexicon can be used to generate a large starter dictionary (using `./local-utils/json_to_hatchery.py`).
 
 Letters, steno chords, and keysymbols are matched and aligned using a modified variant of the [Needleman–Wunsch string alignment algorithm](https://en.wikipedia.org/wiki/Needleman–Wunsch_algorithm). First, letters are matched with keysymbols, and then those "orthokeysymbols" are matched with steno chords.

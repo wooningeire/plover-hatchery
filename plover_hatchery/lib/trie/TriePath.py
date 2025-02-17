@@ -6,6 +6,5 @@ from .Transition import TransitionKey
 @final
 @dataclass
 class TriePath:
-    node_id: int
+    dst_node_id: int
     transitions: tuple[TransitionKey, ...]
-    
