@@ -40,6 +40,8 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
 
         self.__keys_list: list[_KeyVar] = []
 
+        self.__used_nodes: dict[int, set[int]] = defaultdict(set)
+
 
     def follow(self, src_node_id: int, key: _Key[_KeyVar], cost_info: TransitionCostInfo[_Translation]) -> int:
         """
@@ -48,15 +50,29 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
         """
 
         key_id = self.__get_key_id_else_create(key)
+        translation_id = self.__get_translation_id_else_create(cost_info.translation)
 
-        self.__assign_transition_cost(src_node_id, key_id, 0, cost_info)
 
         transitions = self.__transitions[src_node_id]
         if key_id in transitions:
-            return transitions[key_id][0]
+            for transition_index, dst_node_id in enumerate(transitions[key_id]):
+                if dst_node_id in self.__used_nodes[translation_id]:
+                    continue
+
+                self.__used_nodes[translation_id].add(dst_node_id)
+                self.__assign_transition_cost(src_node_id, key_id, transition_index, cost_info)
+                return dst_node_id
         
         new_node_id = self.__create_new_node()
-        transitions[key_id] = [new_node_id]
+        self.__used_nodes[translation_id].add(new_node_id)
+        if key_id in transitions:
+            new_transition_index = len(transitions[key_id])
+            transitions[key_id].append(new_node_id)
+            self.__assign_transition_cost(src_node_id, key_id, new_transition_index, cost_info)
+        else:
+            transitions[key_id] = [new_node_id]
+            self.__assign_transition_cost(src_node_id, key_id, 0, cost_info)
+
         return new_node_id
     
 

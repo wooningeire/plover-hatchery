@@ -42,17 +42,19 @@ def get_lookup_builder_hatchery(theory: Theory):
             if i % 1000 == 0:
                 print(f"hatched {i}")
 
+            translations.append("")
+
             try:
                 sophemes = tuple(Sopheme.parse_seq(line.strip()))
                 n_passed_parses += 1
 
                 try:
-                    entry_id = len(translations)
+                    entry_id = len(translations) - 1
 
                     theory.add_entry(trie, sophemes, entry_id)
 
                     translation = Sopheme.get_translation(sophemes)
-                    translations.append(translation)
+                    translations[-1] = translation
                     reverse_translations[translation].append(entry_id)
 
                     n_passed_additions += 1
