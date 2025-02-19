@@ -310,6 +310,7 @@ theory = compile_theory(
             "SH": "-RB",
             "ZH": "*RB",
             "TH": "*T",
+            "NG": "-PBG -PB",
         }),
     ),
 

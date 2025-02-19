@@ -88,7 +88,7 @@ class SophoneType:
     def map_given_sound_to_chords_by_sophone(self, mappings: "dict[str, str | Iterable[str]]") -> Callable[[Sound], Generator[Stroke, None, None]]:
         def map_steno_or_stenos(steno_or_stenos: "str | Iterable[str]") -> tuple[Stroke, ...]:
             if isinstance(steno_or_stenos, str):
-                return (Stroke.from_steno(steno_or_stenos),)
+                return tuple(Stroke.from_steno(steno) for steno in steno_or_stenos.split())
 
             return tuple(Stroke.from_steno(steno) for steno in steno_or_stenos)
     

@@ -105,3 +105,14 @@ def test__build_lookup_hatchery__cycling():
 
     assert lookup(("TPWORPL",)) == "inform"
     assert lookup(("TPWORPL", "#TPHEGT")) == "tapeworm"
+
+
+def test__build_lookup_hatchery__ng():
+    from ..theory_presets.lapwing import theory
+
+    lookup, reverse_lookup = theory.build_lookup(entries=(
+        "th.th i.i!1 n.ng k.k",
+    ))
+
+
+    assert lookup(("TH*EUPBG",)) == "think"

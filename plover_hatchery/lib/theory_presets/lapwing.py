@@ -214,6 +214,7 @@ theory = compile_theory(
             "CH": "-FP",
             "SH": "-RB",
             "TH": "*T",
+            "NG": "-PBG -PB",
         }),
     ),
 
