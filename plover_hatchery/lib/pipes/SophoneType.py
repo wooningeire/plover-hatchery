@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, final, Callable
+from typing import Any, Generator, final, Callable
 from collections.abc import Iterable, Generator
 
 from plover.steno import Stroke
@@ -73,10 +73,20 @@ class SophoneType:
         
         return check_sound
 
+    class MapperToChords:
+        def __init__(self, sophone_type: "SophoneType", chords: dict[Sophone, tuple[Stroke, ...]]):
+            self.__sophone_type = sophone_type
+            self.__chords = chords
 
 
-    def mapper_to_chords(self, mappings: "dict[str, str | Iterable[str]]") -> Callable[[Sound], Generator[Stroke, None, None]]:
-        def map_steno_or_stenos(steno_or_stenos: "str | Iterable[str]"):
+        def __call__(self, sound: Sound) -> Generator[Stroke, None, None]:
+            for sophone in self.__sophone_type.from_sound(sound):
+                if sophone not in self.__chords: continue
+                yield from self.__chords[sophone]
+
+
+    def map_given_sound_to_chords_by_sophone(self, mappings: "dict[str, str | Iterable[str]]") -> Callable[[Sound], Generator[Stroke, None, None]]:
+        def map_steno_or_stenos(steno_or_stenos: "str | Iterable[str]") -> tuple[Stroke, ...]:
             if isinstance(steno_or_stenos, str):
                 return (Stroke.from_steno(steno_or_stenos),)
 
@@ -88,13 +98,7 @@ class SophoneType:
             for key, steno_or_stenos in mappings.items()
         }
 
-
-        def generate(sound: Sound) -> Generator[Stroke, None, None]:
-            for sophone in self.from_sound(sound):
-                if sophone not in chords: continue
-                yield from chords[sophone]
-
-        return generate
+        return SophoneType.MapperToChords(self, chords)
 
 
     def mapper_to_sophemes(self, mappings: dict[str, str]):
@@ -115,3 +119,11 @@ class SophoneType:
 
         return generate
 
+
+    def given_sound_is_pronounced_as(self, target_sophone_names: str):
+        target_sophones = set(self.iterate(target_sophone_names))
+
+        def check(sound: Sound):
+            return any(sophone in target_sophones for sophone in self.from_sound(sound))
+
+        return check

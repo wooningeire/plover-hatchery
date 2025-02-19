@@ -22,13 +22,13 @@ AA EE II OO UU
 AU OU OI
 """, {
     "p": "P",
-    "t": "T D",
+    "t": "T",
     "?": "",  # glottal stop
-    "t^": "T R",  # tapped R
+    "t^": "T",  # tapped R
     "k": "K",
     "x": "K",
     "b": "B",
-    "d": "D T",
+    "d": "D",
     "g": "G",
     "ch": "CH",
     "jh": "J",
@@ -55,33 +55,33 @@ AU OU OI
     "w": "W",
     "hw": "W",
     
-    "e": "E EE AA",
-    "ao": "A AA O U",
-    "a": "A AA",
-    "ah": "A O",
-    "oa": "A O U",
-    "aa": "O A",
+    "e": "E",
+    "ao": "A",
+    "a": "A",
+    "ah": "A",
+    "oa": "A",
+    "aa": "O",
     "ar": "A",
     "eh": "A",
-    "ou": "OO O",
+    "ou": "OO",
     "ouw": "OO",
     "oou": "OO",
     "o": "O",
-    "au": "O A",
+    "au": "O",
     "oo": "O",
     "or": "O",
     "our": "O",
     "ii": "EE",
     "iy": "EE",
-    "i": "I EE E",
+    "i": "I",
     "@r": as_spelled,
     "@": as_spelled,
     "uh": "U",
-    "u": "U O OO",
+    "u": "U",
     "uu": "UU",
     "iu": "UU",
-    "ei": "AA E",
-    "ee": "AA E A",
+    "ei": "AA",
+    "ee": "AA",
     "ai": "II",
     "ae": "II",
     "aer": "II",
@@ -93,9 +93,9 @@ AU OU OI
     "oow": "OU",
     "ir": "EE",
     "@@r": as_spelled,
-    "er": "E U",
+    "er": "E",
     "eir": "E",
-    "ur": "U UU",
+    "ur": "U",
     "i@": as_spelled,
 })
 
@@ -139,7 +139,7 @@ theory = compile_theory(
     path_traversal_reverse_lookup(),
 
     banks(
-        left_chords=sophone_type.mapper_to_chords({
+        left_chords=sophone_type.map_given_sound_to_chords_by_sophone({
             "S": "S",
             "T": "T",
             "K": "K",
@@ -167,23 +167,34 @@ theory = compile_theory(
             "NG": "TPH",
         }),
 
-        mid_chords=sophone_type.mapper_to_chords({
-            "AA": "AEU",
-            "A": "A",
-            "EE": "AOE",
-            "E": "E",
-            "II": "AOEU",
-            "I": "EU",
-            "OO": "OE",
-            "O": "O",
-            "UU": "AOU",
-            "U": "U",
-            "AU": "AU",
-            "OI": "OEU",
-            "OU": "OU",
-        }),
+        mid_chords=take_first_match(
+            yield_if(
+                all_true(
+                    sophone_type.given_sound_is_pronounced_as("EE"),
+                    given_sound_has_in_spelling_including_silent("i y"),
+                    not_true(given_sound_has_in_spelling_including_silent("e")),
+                ),
+                chords("EU"),
+            ),
 
-        right_chords=sophone_type.mapper_to_chords({
+            sophone_type.map_given_sound_to_chords_by_sophone({
+                "AA": "AEU",
+                "A": "A",
+                "EE": "AOE",
+                "E": "E",
+                "II": "AOEU",
+                "I": "EU",
+                "OO": "OE",
+                "O": "O",
+                "UU": "AOU",
+                "U": "U",
+                "AU": "AU",
+                "OI": "OEU",
+                "OU": "OU",
+            }),
+        ),
+
+        right_chords=sophone_type.map_given_sound_to_chords_by_sophone({
             "F": "-F",
             "R": "-R",
             "P": "-P",
@@ -217,12 +228,12 @@ theory = compile_theory(
     ),
 
     alternate_chords(
-        left_chords=sophone_type.mapper_to_chords({
+        left_chords=sophone_type.map_given_sound_to_chords_by_sophone({
             "V": "W",
             "Z": "S*",
         }),
         
-        right_chords=sophone_type.mapper_to_chords({
+        right_chords=sophone_type.map_given_sound_to_chords_by_sophone({
             "S": "-F",
             "Z": "-F",
             "V": "-F",

@@ -22,5 +22,5 @@ from .Theory import Theory
 from .compile_theory import compile_theory
 
 from .SophoneType import SophoneType, Sophone
-from .yield_if import yield_if, yield_stroke_if
-from .map_unstressed_vowels import map_unstressed_vowels
+from .iter_helpers import *
+from .sound_conditions import *
