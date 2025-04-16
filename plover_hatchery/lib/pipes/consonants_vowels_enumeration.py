@@ -3,10 +3,10 @@ from enum import Enum
 from collections.abc import Iterable
 
 from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
+from plover_hatchery.lib.sopheme import SophemeSeq, SophemeSeqPhoneme
 
 from ..trie import  NondeterministicTrie
-from ..sopheme import Sound, Sopheme
-from .OutlineSounds import OutlineSounds, ConsonantVowelGroup
+from ..sopheme import Sopheme
 from .Hook import Hook
 from .Plugin import Plugin, define_plugin
 from ..pipes.Theory import Theory
@@ -16,92 +16,50 @@ T = TypeVar("T")
 
 @final
 class ConsonantsVowelsEnumerationHooks:
+    class ProcessSophemeSeq(Protocol):
+        def __call__(self, *, sopheme_seq: SophemeSeq) -> Iterable[Sopheme]: ...
     class OnBegin(Protocol):
-        def __call__(self, *, trie: NondeterministicTrie[str, int], sounds: OutlineSounds, entry_id: int) -> Any: ...
+        def __call__(self, *, trie: NondeterministicTrie[str, int], sophemes: SophemeSeq, entry_id: int) -> Any: ...
     class OnConsonant(Protocol):
-        def __call__(self, *, state: Any, consonant: Sound, group_index: int, sound_index: int) -> None: ...
+        def __call__(self, *, state: Any, phoneme: SophemeSeqPhoneme) -> None: ...
     class OnVowel(Protocol):
-        def __call__(self, *, state: Any, vowel: Sound, group_index: int, sound_index: int) -> None: ...
+        def __call__(self, *, state: Any, phoneme: SophemeSeqPhoneme) -> None: ...
     class OnComplete(Protocol):
         def __call__(self, *, state: Any) -> None: ...
 
 
+    process_sopheme_seq = Hook(ProcessSophemeSeq)
     begin = Hook(OnBegin)
     consonant = Hook(OnConsonant)
     vowel = Hook(OnVowel)
     complete = Hook(OnComplete)
 
 
-def consonants_vowels_enumeration(vowel_diphthong_transition: Callable[[Sound], Iterable[Sopheme]]) -> Plugin[ConsonantsVowelsEnumerationHooks]:
-    class _OutlineSoundsBuilder:
-        def __init__(self):
-            self.__consonant_vowel_groups: list[ConsonantVowelGroup] = []
-            self.__current_group_consonants: list[Sound] = []
-
-
-        @property
-        def __last_sound_was_vowel(self):
-            return len(self.__consonant_vowel_groups) > 0 and len(self.__current_group_consonants) == 0
-
-
-        def __append_diphthong_transition(self):
-            if not self.__last_sound_was_vowel: return
-            
-            prev_vowel = self.__consonant_vowel_groups[-1].vowel
-            diphthong_transition_sophemes = vowel_diphthong_transition(prev_vowel)
-            for sopheme in diphthong_transition_sophemes:
-                self.__current_group_consonants.append(Sound(sopheme.keysymbols[0], sopheme))
-                break
-                # TODO
-
-
-        def add_consonant(self, consonant: Sound):
-            self.__current_group_consonants.append(consonant)
-        
-
-        def add_vowel(self, vowel: Sound):
-            self.__append_diphthong_transition()
-
-            self.__consonant_vowel_groups.append(ConsonantVowelGroup(tuple(self.__current_group_consonants), vowel))
-            self.__current_group_consonants = []
-
-
-        def build_sounds(self):
-            return OutlineSounds(tuple(self.__consonant_vowel_groups), tuple(self.__current_group_consonants))
-
-
-    def get_sopheme_sounds(sophemes: Iterable[Sopheme]):
-        builder = _OutlineSoundsBuilder()
-
-        for sopheme in sophemes:
-            for keysymbol in sopheme.keysymbols:
-                if keysymbol.is_vowel:
-                    builder.add_vowel(Sound(keysymbol, sopheme))
-                else:
-                    builder.add_consonant(Sound(keysymbol, sopheme))
-
-
-        return builder.build_sounds()
-
-
+def consonants_vowels_enumeration() -> Plugin[ConsonantsVowelsEnumerationHooks]:
     @define_plugin(consonants_vowels_enumeration)
     def plugin(base_hooks: TheoryHooks, **_):
         hooks = ConsonantsVowelsEnumerationHooks()
 
 
-        def on_begin(trie: NondeterministicTrie[str, int], sounds: OutlineSounds, entry_id: int):
+        def process_sopheme_seq(sopheme_seq: SophemeSeq):
+            for plugin_id, handler in hooks.process_sopheme_seq.ids_handlers():
+                sopheme_seq = SophemeSeq(tuple(handler(sopheme_seq=sopheme_seq)))
+            return sopheme_seq
+
+
+        def on_begin(trie: NondeterministicTrie[str, int], sophemes: SophemeSeq, entry_id: int):
             states: dict[int, Any] = {}
             for plugin_id, handler in hooks.begin.ids_handlers():
-                states[plugin_id] = handler(trie=trie, sounds=sounds, entry_id=entry_id)
+                states[plugin_id] = handler(trie=trie, sophemes=sophemes, entry_id=entry_id)
             return states
 
-        def on_consonant(states: dict[int, Any], consonant: Sound, group_index: int, sound_index: int):
+        def on_consonant(states: dict[int, Any], consonant: SophemeSeqPhoneme):
             for plugin_id, handler in hooks.consonant.ids_handlers():
-                handler(state=states.get(plugin_id), consonant=consonant, group_index=group_index, sound_index=sound_index)
+                handler(state=states.get(plugin_id), phoneme=consonant)
 
-        def on_vowel(states: dict[int, Any], vowel: Sound, group_index: int, sound_index: int):
+        def on_vowel(states: dict[int, Any], vowel: SophemeSeqPhoneme):
             for plugin_id, handler in hooks.vowel.ids_handlers():
-                handler(state=states.get(plugin_id), vowel=vowel, group_index=group_index, sound_index=sound_index)
+                handler(state=states.get(plugin_id), phoneme=vowel)
 
         def on_complete(states: dict[int, Any]):
             for plugin_id, handler in hooks.complete.ids_handlers():
@@ -109,20 +67,16 @@ def consonants_vowels_enumeration(vowel_diphthong_transition: Callable[[Sound], 
 
 
         @base_hooks.add_entry.listen(consonants_vowels_enumeration)
-        def _(trie: NondeterministicTrie[str, int], sophemes: Iterable[Sopheme], entry_id: int):
-            sounds = get_sopheme_sounds(sophemes)
+        def _(trie: NondeterministicTrie[str, int], sophemes: SophemeSeq, entry_id: int):
+            sophemes = process_sopheme_seq(sophemes)
 
-            states = on_begin(trie, sounds, entry_id)
+            states = on_begin(trie, sophemes, entry_id)
 
-            for group_index, group in enumerate(sounds.nonfinals):
-                for sound_index, consonant in enumerate(group.consonants):
-                    on_consonant(states, consonant, group_index, sound_index)
-
-                on_vowel(states, group.vowel, group_index, len(group.consonants))
-
-            group_index = len(sounds.nonfinals)
-            for sound_index, consonant in enumerate(sounds.final_consonants):
-                on_consonant(states, consonant, group_index, sound_index)
+            for phoneme in sophemes.phonemes():
+                if phoneme.keysymbol.is_vowel:
+                    on_vowel(states, phoneme)
+                else:
+                    on_consonant(states, phoneme)
 
             on_complete(states)
 

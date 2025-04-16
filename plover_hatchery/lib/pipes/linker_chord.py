@@ -35,25 +35,28 @@ def linker_chord(chord: str) -> Plugin[None]:
         def _(state: LinkerChordState, banks_state: BanksState, left_node: "int | None", right_node: "int | None", **_):
             if left_node is None or right_node is None: return
 
-            sounds = banks_state.sounds
-            current_index = sounds.increment_index(banks_state.group_index, banks_state.sound_index)
+
+            current_phoneme = banks_state.current_phoneme
+            if current_phoneme is None: return
+
+            current_phoneme = current_phoneme.next()
 
 
             new_stroke_node = banks_state.trie.follow(right_node, TRIE_STROKE_BOUNDARY_KEY, TransitionCostInfo(0, banks_state.entry_id)).dst_node_id
 
 
-            while current_index is not None:
-                if sounds.is_vowel(*current_index):
+            while current_phoneme is not None:
+                if current_phoneme.keysymbol.is_vowel:
                     post_linker_node = banks_state.trie.follow_chain(new_stroke_node, stroke.keys(), TransitionCostInfo(0, banks_state.entry_id)).dst_node_id
 
                     state.newest_post_linker_node = post_linker_node
 
                     break
 
-                if not sounds[current_index].keysymbol.optional:
+                if not current_phoneme.keysymbol.optional:
                     break
 
-                current_index = sounds.increment_index(*current_index)
+                current_phoneme = current_phoneme.next()
 
             state.newest_new_stroke_node = new_stroke_node
 

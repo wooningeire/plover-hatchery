@@ -1,11 +1,11 @@
-import dataclasses
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Iterable
 
 from plover.steno import Stroke
 
-from ..OutlineSounds import OutlineSounds
+from plover_hatchery.lib.sopheme.SophemeSeq import SophemeSeqPhoneme
+
 from ..banks import BanksState
 
 from ...trie import NondeterministicTrie, TransitionCostInfo, ReadonlyTrie
@@ -58,9 +58,9 @@ class _ClusterRight(Cluster):
         #         trie, cluster_stroke, right_consonant_f_node, origin.pre_rtl_stroke_boundary, translation, TransitionCosts.CLUSTER + TransitionCosts.F_CONSONANT,
         #     )
 
-def get_clusters_from_node(
+def get_clusters_from_clusters_trie_node(
     node: int,
-    current_index: tuple[int, int],
+    current_phoneme: SophemeSeqPhoneme,
     clusters_trie: ReadonlyTrie[Any, Stroke],
 
     state: BanksState,
@@ -71,9 +71,9 @@ def get_clusters_from_node(
     if stroke is None: return None
 
     if len(stroke & left_bank) > 0:
-        return current_index, _ClusterLeft(stroke, state.clone())
+        return current_phoneme.indices, _ClusterLeft(stroke, state.clone())
     else:
-        return current_index, _ClusterRight(stroke, state.clone())
+        return current_phoneme.indices, _ClusterRight(stroke, state.clone())
     
 
 def handle_clusters(
@@ -81,9 +81,9 @@ def handle_clusters(
     
     state: BanksState,
 
-    find_clusters: "Callable[[OutlineSounds, int, int, BanksState], Iterable[tuple[tuple[int, int], Cluster]]]",
+    find_clusters_ending_at: "Callable[[BanksState], Iterable[tuple[tuple[int, int], Cluster]]]",
 ):
-    for index, cluster in find_clusters(state.sounds, state.group_index, state.sound_index, state):
+    for index, cluster in find_clusters_ending_at(state):
         if index not in upcoming_clusters:
             upcoming_clusters[index] = [cluster]
         else:
@@ -98,7 +98,10 @@ def check_found_clusters(
     state: BanksState,
     cost: int,
 ):
-    if (state.group_index, state.sound_index) not in upcoming_clusters: return
+    current_phoneme = state.current_phoneme
+    if current_phoneme is None: return
+
+    if current_phoneme.indices not in upcoming_clusters: return
     
-    for cluster in upcoming_clusters[state.group_index, state.sound_index]:
+    for cluster in upcoming_clusters[current_phoneme.indices]:
         cluster.apply(state.trie, state.entry_id, left_consonant_node, right_consonant_node, cost)

@@ -3,9 +3,6 @@ from typing import Any, Callable, Generator, TypeVar
 
 from plover.steno import Stroke
 
-from plover_hatchery.lib.sopheme import Sound
-
-
 K = TypeVar("K")
 V = TypeVar("V")
 
@@ -42,7 +39,7 @@ def yield_if(predicate: Callable[[K], bool], values: Callable[[K], Iterable[V]])
 def chords(stenos: str):
     strokes = tuple(Stroke.from_steno(steno) for steno in stenos.split())
 
-    def generate(_: Sound):
+    def generate(_: Any):
         return strokes
     
     return generate

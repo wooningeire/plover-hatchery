@@ -5,11 +5,9 @@ from dataclasses import dataclass
 
 from plover.steno import Stroke
 
-from plover_hatchery.lib.sopheme import Sopheme
+from plover_hatchery.lib.sopheme import Sopheme, SophemeSeq
 
 from ..trie import  NondeterministicTrie
-from ..sopheme import Sound
-from .OutlineSounds import OutlineSounds
 from .Hook import Hook
 from .Plugin import Plugin
 from .Theory import Theory
@@ -23,7 +21,7 @@ class TheoryHooks:
     class OnBuildLookup(Protocol):
         def __call__(self) -> Any: ...
     class AddEntry(Protocol):
-        def __call__(self, *, trie: NondeterministicTrie[str, int], sophemes: Iterable[Sopheme], entry_id: int) -> None: ...
+        def __call__(self, *, trie: NondeterministicTrie[str, int], sophemes: SophemeSeq, entry_id: int) -> None: ...
     class Lookup(Protocol):
         def __call__(self, *, trie: NondeterministicTrie[str, int], stroke_stenos: tuple[str, ...], translations: list[str]) -> "str | None": ...
     class ReverseLookup(Protocol):
@@ -129,7 +127,7 @@ Hatched {n_entries} entries
 
     def add_entry(states: dict[int, Any], trie: NondeterministicTrie[str, int], sophemes: Iterable[Sopheme], entry_id: int):
         for plugin_id, handler in hooks.add_entry.ids_handlers():
-            handler(trie=trie, sophemes=sophemes, entry_id=entry_id)
+            handler(trie=trie, sophemes=SophemeSeq(tuple(sophemes)), entry_id=entry_id)
 
 
     def lookup(states: dict[int, Any], trie: NondeterministicTrie[str, int], stroke_stenos: tuple[str, ...], translations: list[str]) -> "str | None":

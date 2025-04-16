@@ -1,10 +1,9 @@
 from plover_hatchery.lib.pipes.Plugin import Plugin
 
 
-from typing import Any
-
-
 from plover.steno import Stroke
+
+from plover_hatchery.lib.sopheme import SophemeSeqPhoneme
 
 from ..trie import TransitionCostInfo
 from .banks import BanksState, banks
@@ -19,10 +18,10 @@ def initial_vowel_chord(chord: str) -> Plugin[None]:
 
 
         @banks_hooks.complete_vowel.listen(initial_vowel_chord)
-        def _(banks_state: BanksState, group_index: int, sound_index: int, new_stroke_node: "int | None", **_):
-            if group_index > 0 or sound_index > 0 or new_stroke_node is None: return
+        def _(banks_state: BanksState, phoneme: SophemeSeqPhoneme, new_stroke_node: "int | None", **_):
+            if phoneme.sopheme_index > 0 or phoneme.keysymbol_index > 0 or new_stroke_node is None: return
 
-            banks_state.trie.link_chain(
+            _ = banks_state.trie.link_chain(
                 banks_state.trie.ROOT,
                 new_stroke_node,
                 stroke.keys(),

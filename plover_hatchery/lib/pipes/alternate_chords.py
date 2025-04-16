@@ -12,10 +12,10 @@ from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
 from plover_hatchery.lib.pipes.declare_banks import declare_banks
 from plover_hatchery.lib.pipes.key_by_key_lookup import key_by_key_lookup
 from plover_hatchery.lib.pipes.lookup_result_filtering import lookup_result_filtering
+from plover_hatchery.lib.sopheme import SophemeSeqPhoneme
 from plover_hatchery.lib.trie import LookupResult, NondeterministicTrie, Trie, TriePath
 from plover_hatchery.lib.trie.Transition import TransitionKey
 
-from ..sopheme import Sound
 from .banks import banks, BanksState
 from .join import NodeSrc, join_on_strokes, link_join_on_strokes, tuplify
 from .Plugin import define_plugin, GetPluginApi
@@ -24,8 +24,8 @@ from .Hook import Hook
 
 def alternate_chords(
     *,
-    left_chords: Callable[[Sound], Generator[Stroke, None, None]],
-    right_chords: Callable[[Sound], Generator[Stroke, None, None]],
+    left_chords: Callable[[SophemeSeqPhoneme], Generator[Stroke, None, None]],
+    right_chords: Callable[[SophemeSeqPhoneme], Generator[Stroke, None, None]],
 ) -> Plugin[None]:
     """Adds support for alternate chords, or chords that are only available when the typical "main" chord cannot be used.
     
@@ -52,7 +52,7 @@ def alternate_chords(
         class AttemptedAltChordPathData:
             """Data for a path in the lookup trie corresponding with an alt chord, used during result validation"""
 
-            consonant: Sound
+            phoneme: SophemeSeqPhoneme
             is_left_bank: bool
 
         transitions_tries: dict[int, Trie[TransitionKey, AttemptedAltChordPathData]] = defaultdict(Trie)
@@ -70,12 +70,12 @@ def alternate_chords(
         
 
         @banks_api.before_complete_consonant.listen(alternate_chords)
-        def _(state: AlternateChordsState, banks_state: BanksState, left_node: "int | None", right_node: "int | None", consonant: Sound, **_):
+        def _(state: AlternateChordsState, banks_state: BanksState, left_node: "int | None", right_node: "int | None", phoneme: SophemeSeqPhoneme, **_):
             left_alt_paths = link_join_on_strokes(
                 banks_state.trie,
                 NodeSrc.increment_costs(banks_state.left_srcs, 3),
                 left_node,
-                left_chords(consonant),
+                left_chords(phoneme),
                 banks_state.entry_id,
             )
             if left_node is not None:
@@ -89,14 +89,14 @@ def alternate_chords(
                 transitions_trie = transitions_tries[banks_state.entry_id]
 
                 exit_node = transitions_trie.follow_chain(transitions_trie.ROOT, transition_seq.transitions)
-                transitions_trie.set_translation(exit_node, AttemptedAltChordPathData(consonant, True))
+                transitions_trie.set_translation(exit_node, AttemptedAltChordPathData(phoneme, True))
 
 
             right_alt_paths = link_join_on_strokes(
                 banks_state.trie,
                 NodeSrc.increment_costs(banks_state.right_srcs, 3),
                 right_node,
-                right_chords(consonant),
+                right_chords(phoneme),
                 banks_state.entry_id,
             )
             if right_node is not None:
@@ -108,7 +108,7 @@ def alternate_chords(
                 transitions_trie = transitions_tries[banks_state.entry_id]
 
                 exit_node = transitions_trie.follow_chain(transitions_trie.ROOT, transition_seq.transitions)
-                transitions_trie.set_translation(exit_node, AttemptedAltChordPathData(consonant, False))
+                transitions_trie.set_translation(exit_node, AttemptedAltChordPathData(phoneme, False))
 
 
 
@@ -140,9 +140,9 @@ def alternate_chords(
                 could_have_used_main_chord = True
 
                 if path_data.is_left_bank:
-                    main_chords = banks_api.left_chords(path_data.consonant)
+                    main_chords = banks_api.left_chords(path_data.phoneme)
                 else:
-                    main_chords = banks_api.right_chords(path_data.consonant)
+                    main_chords = banks_api.right_chords(path_data.phoneme)
 
                 for main_chord in main_chords:
                     if not banks_info.can_add_stroke_on(preceding_chord, main_chord):

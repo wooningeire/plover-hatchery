@@ -1,18 +1,20 @@
 import itertools
 
+from plover_hatchery.lib.pipes import diphthong_transition_consonants
+
 from ..pipes import *
 
-from ..sopheme import Sound
+from ..sopheme import SophemeSeqPhoneme
 
 
-def as_spelled(sound: Sound):
+def as_spelled(phoneme: SophemeSeqPhoneme):
     return {
         "a": "A",
         "e": "E",
         "i": "I",
         "o": "O",
         "u": "U",
-    }.get(sound.sopheme.chars, "")
+    }.get(phoneme.sopheme.chars, "")
 
 sophone_type = SophoneType.create_with_sophones("""
 S T K P W H R
@@ -117,8 +119,10 @@ theory = compile_theory(
         positionless="*",
     ),
 
-    consonants_vowels_enumeration(
-        vowel_diphthong_transition=sophone_type.mapper_to_sophemes({
+    consonants_vowels_enumeration(),
+
+    diphthong_transition_consonants(
+        keysymbols_by_first_vowel=sophone_type.mapper_to_sophemes({
             "E": ".y?",
             "OO": ".w?",
             "OU": ".w?",
@@ -159,7 +163,7 @@ theory = compile_theory(
                 chords("KPW"),
             ),
 
-            sophone_type.map_given_sound_to_chords_by_sophone({
+            sophone_type.map_given_phoneme_to_chords_by_sophone({
                 "S": "S",
                 "T": "T",
                 "K": "K",
@@ -272,7 +276,7 @@ theory = compile_theory(
                 chords("A AU"),
             ),
 
-            sophone_type.map_given_sound_to_chords_by_sophone({
+            sophone_type.map_given_phoneme_to_chords_by_sophone({
                 "AA": "AEU",
                 "A": "A",
                 "EE": "AOE",
@@ -289,7 +293,7 @@ theory = compile_theory(
             }),
         ),
 
-        right_chords=sophone_type.map_given_sound_to_chords_by_sophone({
+        right_chords=sophone_type.map_given_phoneme_to_chords_by_sophone({
             "F": "-F",
             "R": "-R",
             "P": "-P",
@@ -310,7 +314,7 @@ theory = compile_theory(
             "SH": "-RB",
             "ZH": "*RB",
             "TH": "*T",
-            "NG": "-PBG -PB",
+            "NG": "-PBG",
         }),
     ),
 
@@ -320,20 +324,20 @@ theory = compile_theory(
 
     optional_middle_vowels(),
     optional_middle_consonants(
-        ignore_consonant_if=sophone_type.given_sound_maps_to_sophones("Y W"),
+        make_optional_if=sophone_type.given_phoneme_maps_to_sophones("Y W"),
     ),
     optional_unstressed_middle_consonants(
-        ignore_consonant_if=sophone_type.given_sound_maps_to_sophones("R N L"),
+        make_optional_if=sophone_type.given_phoneme_maps_to_sophones("R N L"),
     ),
 
     alternate_chords(
-        left_chords=sophone_type.map_given_sound_to_chords_by_sophone({
+        left_chords=sophone_type.map_given_phoneme_to_chords_by_sophone({
             "F": "W",
             "V": "W",
             "Z": "S*",
         }),
         
-        right_chords=sophone_type.map_given_sound_to_chords_by_sophone({
+        right_chords=sophone_type.map_given_phoneme_to_chords_by_sophone({
             "S": "-F",
             "Z": "-F",
             "V": "-F",
@@ -341,6 +345,7 @@ theory = compile_theory(
             "M": "-FR",
             "J": "-FR",
             "K": "*G",
+            # "NG": "-PB",
         }),
     ),
     
@@ -375,6 +380,7 @@ theory = compile_theory(
             "S T": "*S",
             "SH N": "-GS",
             "K SH N": "-BGS",
+            "NG K": "*PBG",
         },
         base_cost=2,
     ),

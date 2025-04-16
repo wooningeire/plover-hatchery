@@ -1,10 +1,7 @@
-from collections.abc import Iterable
 from plover_hatchery.lib.pipes.Plugin import Plugin
 
 
-from typing import Callable, Any
 from dataclasses import dataclass, field
-from enum import Enum
 
 from plover.steno import Stroke
 
@@ -12,13 +9,11 @@ from plover_hatchery.lib.pipes.SophoneType import Sophone, SophoneType
 from plover_hatchery.lib.pipes.declare_banks import declare_banks
 
 from ...trie import Trie, ReadonlyTrie
-from ...sopheme import Sound
 
 from ..Plugin import define_plugin, GetPluginApi
-from ..OutlineSounds import OutlineSounds
 from ..banks import banks, BanksState
 
-from .find_clusters import Cluster, handle_clusters, get_clusters_from_node, check_found_clusters
+from .find_clusters import Cluster, handle_clusters, get_clusters_from_clusters_trie_node, check_found_clusters
 
 
 @dataclass
@@ -52,34 +47,27 @@ def vowel_clusters(sophone_type: SophoneType, vowel_sophones: set[Sophone], clus
         banks_hooks = get_plugin_api(banks)
 
 
-        def find_vowel_clusters(
-            sounds: OutlineSounds,
-            start_group_index: int,
-            start_phoneme_index: int,
-
-            state: BanksState,
-        ):
+        def find_vowel_clusters_ending_at(state: BanksState):
             current_nodes = {vowel_clusters_trie.ROOT}
-            current_index = (start_group_index, start_phoneme_index)
-            while current_nodes is not None and current_index is not None:
-                sound = sounds[current_index]
+            current_phoneme = state.current_phoneme
+            while current_phoneme is not None:
                 current_nodes = {
                     node
                     for current_node in current_nodes
-                    for node in tuple(vowel_clusters_trie.traverse(current_node, sophone) for sophone in sophone_type.from_sound(sound))
-                        + ((vowel_clusters_trie.traverse(current_node, None),) if any(sophone in vowel_sophones for sophone in sophone_type.from_sound(sound)) else ())
+                    for node in tuple(vowel_clusters_trie.traverse(current_node, sophone) for sophone in sophone_type.from_phoneme(current_phoneme))
+                        + ((vowel_clusters_trie.traverse(current_node, None),) if any(sophone in vowel_sophones for sophone in sophone_type.from_phoneme(current_phoneme)) else ())
                     if node is not None
                 }
 
                 if len(current_nodes) == 0: return
 
                 for current_node in current_nodes:
-                    if (result := get_clusters_from_node(current_node, current_index, vowel_clusters_trie, state, banks_info.left)) is None:
+                    if (result := get_clusters_from_clusters_trie_node(current_node, current_phoneme, vowel_clusters_trie, state, banks_info.left)) is None:
                         continue
 
                     yield result
 
-                current_index = sounds.increment_index(*current_index)
+                current_phoneme = current_phoneme.next()
 
 
         @banks_hooks.begin.listen(vowel_clusters)
@@ -100,7 +88,7 @@ def vowel_clusters(sophone_type: SophoneType, vowel_sophones: set[Sophone], clus
         
         @banks_hooks.before_complete_vowel.listen(vowel_clusters)
         def _(state: VowelClustersState, banks_state: BanksState, **_):
-            handle_clusters(state.upcoming_clusters, banks_state, find_vowel_clusters)
+            handle_clusters(state.upcoming_clusters, banks_state, find_vowel_clusters_ending_at)
 
             check_found_clusters(
                 state.upcoming_clusters,

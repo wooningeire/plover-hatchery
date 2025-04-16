@@ -35,14 +35,9 @@ def test__build_lookup_hatchery__reverse_lookup():
 
     outlines = reverse_lookup("cristail")
 
-    assert all(
-        outline in outlines
-        for outline in (
-            ("KREU", "STAEUL"),
-            ("KREUS", "TAEUL"),
-            ("KREUFT", "KWRAEUL"),
-        )
-    )
+    assert ("KREU", "STAEUL") in outlines
+    assert ("KREUS", "TAEUL") in outlines
+    assert ("KREUFT", "KWRAEUL") in outlines
 
 
 def test__build_lookup_hatchery__boundary_elision():

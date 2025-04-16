@@ -5,7 +5,6 @@ from typing import TextIO
 from plover.steno import Stroke
 import plover.log
 
-from plover_hatchery.lib.pipes.OutlineSounds import OutlineSounds
 
 from ..trie import NondeterministicTrie
 from ..sopheme import Sopheme

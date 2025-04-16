@@ -69,6 +69,10 @@ class Keysymbol:
         return self.base_symbol in _vowel_symbols
 
     @property
+    def is_consonant(self):
+        return self.base_symbol not in _vowel_symbols
+
+    @property
     def base_symbol(self):
         """Strips brackets and digits from a keysymbol"""
         return re.sub(r"[\[\]\d]", "", self.symbol.lower())
