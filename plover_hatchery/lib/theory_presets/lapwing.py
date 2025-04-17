@@ -173,8 +173,8 @@ theory = compile_theory(
             yield_if(
                 all_true(
                     sophone_type.given_sound_is_pronounced_as("EE"),
-                    given_sound_has_in_spelling_including_silent("i y"),
-                    not_true(given_sound_has_in_spelling_including_silent("e")),
+                    given_phoneme_has_in_spelling_including_silent("i y"),
+                    not_true(given_phoneme_has_in_spelling_including_silent("e")),
                 ),
                 chords("EU"),
             ),
