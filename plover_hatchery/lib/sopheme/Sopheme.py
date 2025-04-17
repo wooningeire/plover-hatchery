@@ -8,6 +8,10 @@ class Sopheme:
     chars: str
     keysymbols: tuple[Keysymbol, ...]
 
+    @property
+    def can_be_silent(self):
+        return all(keysymbol.optional for keysymbol in self.keysymbols)
+
     def __str__(self):
         keysymbols_string = " ".join(str(keysymbol) for keysymbol in self.keysymbols)
         if len(self.keysymbols) > 1:
