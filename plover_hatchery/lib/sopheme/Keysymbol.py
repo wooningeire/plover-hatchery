@@ -47,6 +47,8 @@ _vowel_symbols = {
     "i@",
 }
 
+keysymbol_sub = re.compile(r"[\[\]\d]")
+
 @dataclass(frozen=True)
 class Keysymbol:
     symbol: str
@@ -75,4 +77,4 @@ class Keysymbol:
     @property
     def base_symbol(self):
         """Strips brackets and digits from a keysymbol"""
-        return re.sub(r"[\[\]\d]", "", self.symbol.lower())
+        return keysymbol_sub.sub("", self.symbol.lower())
