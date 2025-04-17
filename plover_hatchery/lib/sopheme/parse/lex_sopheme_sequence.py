@@ -41,7 +41,7 @@ def lex_sopheme_sequence(seq: str):
     for char in seq:
         if char == " ":
             yield from lexer.step(char, TokenType.WHITESPACE)
-        elif char.isalnum() or char in "-/@":
+        elif char.isalnum() or char in "-@":
             yield from lexer.step(char, TokenType.CHARS)
         else:
             yield from lexer.step(char, TokenType.SYMBOL)
