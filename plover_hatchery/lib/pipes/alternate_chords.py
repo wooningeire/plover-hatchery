@@ -170,22 +170,26 @@ def alternate_chords(
 
 
             transition_index = edge_transition_index
-            adjacent_key_id = None
-            while adjacent_key_id is None:
-                if lookbehind:
-                    transition_index -= 1
-                else:
-                    transition_index += 1
 
-                adjacent_key_id = lookup_result.transitions[transition_index].key_id
+            adjacent_key = None
+            while adjacent_key is None or adjacent_key in banks_info.positionless:
+                adjacent_key_id = None
+                while adjacent_key_id is None:
+                    if lookbehind:
+                        transition_index -= 1
+                    else:
+                        transition_index += 1
 
-            adjacent_key = trie.get_key(adjacent_key_id)
+                    adjacent_key_id = lookup_result.transitions[transition_index].key_id
 
-            if adjacent_key == TRIE_STROKE_BOUNDARY_KEY:
-                return Stroke.from_integer(0)
+                adjacent_key_steno = trie.get_key(adjacent_key_id)
 
+                if adjacent_key_steno == TRIE_STROKE_BOUNDARY_KEY:
+                    return Stroke.from_integer(0)
 
-            return Stroke.from_steno(adjacent_key)
+                adjacent_key = Stroke.from_steno(adjacent_key_steno)
+
+            return adjacent_key
 
 
 

@@ -241,7 +241,6 @@ theory = compile_theory(
             "Z": "-F",
             "V": "-F",
             "K": "*G",
-            # "NG": "-PB",
         }),
     ),
     
@@ -276,6 +275,7 @@ theory = compile_theory(
             "S T": "*S",
             "SH N": "-GS",
             "K SH N": "-BGS",
+            "NG G": "-PBG",
             "NG K": "*PBG",
         },
         base_cost=2,
