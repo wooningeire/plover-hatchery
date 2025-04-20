@@ -170,7 +170,7 @@ _any_vowel_mapping = (
 
 _KEYSYMBOL_TO_STENO_MAPPINGS = {
     tuple(keysymbol.split(" ")): tuple(_Mapping(phoneme, AsteriskableKey.annotations_from_outline(outline_steno)) for phoneme, outline_steno in mapping)
-    for keysymbol, mapping in cast(dict[str, tuple[tuple[Sophone | None, str], ...]], {
+    for keysymbol, mapping in cast("dict[str, tuple[tuple[Sophone | None, str], ...]]", {
         # How does each keysymbol appear as it does in Lapwing?
 
         "": _no_phoneme("KWR", "W"),
