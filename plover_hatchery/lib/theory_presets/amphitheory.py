@@ -146,21 +146,23 @@ theory = compile_theory(
     path_traversal_reverse_lookup(),
 
     banks(
-        left_chords=take_first_match(
-            yield_if(
-                if_all(
-                    sophone_type.given_sound_is_pronounced_as("S"),
-                    given_phoneme_has_in_spelling_including_silent("sc"),
+        left_chords=take_all(
+            take_first_match(
+                yield_if(
+                    if_all(
+                        sophone_type.given_sound_is_pronounced_as("S"),
+                        given_phoneme_has_in_spelling_including_silent("sc"),
+                    ),
+                    chords("SKPW"),
                 ),
-                chords("SKPW"),
-            ),
 
-            yield_if(
-                if_all(
-                    sophone_type.given_sound_is_pronounced_as("S"),
-                    given_phoneme_has_in_spelling("c"),
+                yield_if(
+                    if_all(
+                        sophone_type.given_sound_is_pronounced_as("S"),
+                        given_phoneme_has_in_spelling("c"),
+                    ),
+                    chords("KPW"),
                 ),
-                chords("KPW"),
             ),
 
             sophone_type.map_given_phoneme_to_chords_by_sophone({

@@ -10,7 +10,7 @@ from plover_hatchery.lib.sopheme import Sopheme, SophemeSeq
 from ..trie import  NondeterministicTrie
 from .Hook import Hook
 from .Plugin import Plugin
-from .Theory import Theory
+from .Theory import Theory, TheoryLookup
 
 
 T = TypeVar("T")
@@ -122,7 +122,7 @@ Hatched {n_entries} entries
         def true_reverse_lookup(translation: str):
             return reverse_lookup(states, trie, translation, reverse_translations)
 
-        return true_lookup, true_reverse_lookup
+        return TheoryLookup(true_lookup, true_reverse_lookup)
         
 
     def add_entry(states: dict[int, Any], trie: NondeterministicTrie[str, int], sophemes: Iterable[Sopheme], entry_id: int):

@@ -21,7 +21,10 @@ class HatcheryDictionary(StenoDictionary):
         from .lib.theory_presets.amphitheory import theory
 
         with open(filepath, "r", encoding="utf-8") as file:
-            self.__maybe_lookup, self.__maybe_reverse_lookup = theory.build_lookup(entries=file)
+            lookup = theory.build_lookup(entries=file)
+
+            self.__maybe_lookup = lookup.lookup
+            self.__maybe_reverse_lookup = lookup.reverse_lookup
             
 
     def __getitem__(self, stroke_stenos: tuple[str, ...]) -> str:

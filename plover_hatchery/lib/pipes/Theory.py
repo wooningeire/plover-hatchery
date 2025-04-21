@@ -8,9 +8,16 @@ from ..sopheme import Sopheme
 
 @final
 @dataclass(frozen=True)
+class TheoryLookup:
+    lookup: "Callable[[tuple[str, ...]], str | None]"
+    reverse_lookup: "Callable[[str], list[tuple[str, ...]]]"
+
+
+@final
+@dataclass(frozen=True)
 class Theory:
     class BuildLookup(Protocol):
-        def __call__(self, *, entries: Iterable[str]) -> "tuple[Callable[[tuple[str, ...]], str | None], Callable[[str], list[tuple[str, ...]]]]": ...
+        def __call__(self, *, entries: Iterable[str]) -> TheoryLookup: ...
     # class AddEntry(Protocol):
     #     def __call__(self, *, trie: NondeterministicTrie[str, int], sophemes: Iterable[Sopheme], entry_id: int) -> None: ...
     # class Lookup(Protocol):
@@ -22,4 +29,3 @@ class Theory:
     # add_entry: AddEntry
     # lookup: Lookup
     # reverse_lookup: ReverseLookup
-

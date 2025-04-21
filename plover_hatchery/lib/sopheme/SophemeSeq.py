@@ -57,6 +57,13 @@ class SophemeSeq:
             yield sopheme, yield_phonemes(sopheme_index, sopheme)
 
 
+    def __str__(self):
+        return " ".join(str(sopheme) for sopheme in self.sophemes)
+    
+    def __repr__(self):
+        return f"SophemeSeq({str(self)})"
+
+
 
 @final
 @dataclass(frozen=True)
