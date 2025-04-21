@@ -45,21 +45,21 @@ def chords(stenos: str):
     return generate
 
 
-def all_true(*predicates: Callable[[K], bool]):
+def if_all(*predicates: Callable[[K], bool]):
     def check(key: K):
         return all(condition(key) for condition in predicates)
     
     return check
 
 
-def any_true(*predicates: Callable[[K], bool]):
+def if_any(*predicates: Callable[[K], bool]):
     def check(key: K):
         return any(condition(key) for condition in predicates)
     
     return check
 
 
-def not_true(predicate: Callable[[K], bool]):
+def if_not(predicate: Callable[[K], bool]):
     def check(key: K):
         return not predicate(key)
     

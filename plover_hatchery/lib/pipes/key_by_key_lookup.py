@@ -41,18 +41,21 @@ def key_by_key_lookup(
 
             positionless = Stroke.from_integer(0)
 
-            for i, stroke_steno in enumerate(stroke_stenos):
-                stroke = Stroke.from_steno(stroke_steno)
+            outline = tuple(Stroke.from_steno(steno) for steno in stroke_stenos)
+            filtering_end_index = len(outline)
+            for i, stroke in enumerate(outline):
                 if len(stroke) == 0:
                     return None
 
                 # The debug stroke must be the last stroke of the outline if present
                 if debug_stroke is not None and i == len(stroke_stenos) - 1 and stroke == debug_stroke:
+                    filtering_end_index = min(filtering_end_index, i)
                     debug = True
                     break
                 
                 # Increase the variation number for each cycler stroke
                 if cycler_stroke is not None and stroke == cycler_stroke:
+                    filtering_end_index = min(filtering_end_index, i)
                     n_variation += 1
                     continue
                 # if stroke == CYCLER_STROKE_BACKWARD:
@@ -97,8 +100,9 @@ def key_by_key_lookup(
             lookup_results = trie.get_translations_and_costs(current_nodes)
 
             validated_lookup_results: list[LookupResult[int]] = []
+            outline_for_filtering = outline[:filtering_end_index]
             for lookup_result in lookup_results:
-                if not filtering_api.should_keep(lookup_result, trie):
+                if not filtering_api.should_keep(lookup_result, trie, outline_for_filtering):
                     continue
 
                 validated_lookup_results.append(lookup_result)

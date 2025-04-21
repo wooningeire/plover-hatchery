@@ -148,7 +148,7 @@ theory = compile_theory(
     banks(
         left_chords=take_first_match(
             yield_if(
-                all_true(
+                if_all(
                     sophone_type.given_sound_is_pronounced_as("S"),
                     given_phoneme_has_in_spelling_including_silent("sc"),
                 ),
@@ -156,7 +156,7 @@ theory = compile_theory(
             ),
 
             yield_if(
-                all_true(
+                if_all(
                     sophone_type.given_sound_is_pronounced_as("S"),
                     given_phoneme_has_in_spelling_including_silent("c"),
                 ),
@@ -195,83 +195,83 @@ theory = compile_theory(
 
         mid_chords=take_first_match(
             yield_if(
-                all_true(
-                    not_true(given_phoneme_has_stress(1)),
+                if_all(
+                    if_not(given_phoneme_has_stress(1)),
                     given_phoneme_has_in_spelling_including_silent("oi oy"),
                 ),
                 chords("OEU"),
             ),
 
             yield_if(
-                all_true(
-                    not_true(given_phoneme_has_stress(1)),
+                if_all(
+                    if_not(given_phoneme_has_stress(1)),
                     given_phoneme_has_in_spelling_including_silent("au"),
                 ),
                 chords("AU"),
             ),
 
             yield_if(
-                all_true(
-                    not_true(given_phoneme_has_stress(1)),
+                if_all(
+                    if_not(given_phoneme_has_stress(1)),
                     given_phoneme_has_in_spelling_including_silent("ou"),
                 ),
                 chords("OU"),
             ),
 
             yield_if(
-                all_true(
-                    not_true(given_phoneme_has_stress(1)),
+                if_all(
+                    if_not(given_phoneme_has_stress(1)),
                     given_phoneme_has_in_spelling_including_silent("a"),
                 ),
                 chords("A AEU"),
             ),
 
             yield_if(
-                all_true(
-                    not_true(given_phoneme_has_stress(1)),
+                if_all(
+                    if_not(given_phoneme_has_stress(1)),
                     given_phoneme_has_in_spelling_including_silent("e"),
                 ),
                 chords("E AOE"),
             ),
 
             yield_if(
-                all_true(
-                    not_true(given_phoneme_has_stress(1)),
+                if_all(
+                    if_not(given_phoneme_has_stress(1)),
                     given_phoneme_has_in_spelling_including_silent("i"),
                 ),
                 chords("EU AOEU"),
             ),
 
             yield_if(
-                all_true(
-                    not_true(given_phoneme_has_stress(1)),
+                if_all(
+                    if_not(given_phoneme_has_stress(1)),
                     given_phoneme_has_in_spelling_including_silent("o"),
                 ),
                 chords("O OE"),
             ),
 
             yield_if(
-                all_true(
-                    not_true(given_phoneme_has_stress(1)),
+                if_all(
+                    if_not(given_phoneme_has_stress(1)),
                     given_phoneme_has_in_spelling_including_silent("u"),
                 ),
                 chords("U AOU"),
             ),
 
             yield_if(
-                all_true(
+                if_all(
                     sophone_type.given_sound_is_pronounced_as("EE"),
                     given_phoneme_has_in_spelling_including_silent("i y"),
-                    not_true(given_phoneme_has_in_spelling_including_silent("e")),
+                    if_not(given_phoneme_has_in_spelling_including_silent("e")),
                 ),
                 chords("EU"),
             ),
 
             yield_if(
-                all_true(
+                if_all(
                     sophone_type.given_sound_is_pronounced_as("O AU"),
                     given_phoneme_has_in_spelling_including_silent("a"),
-                    not_true(given_phoneme_has_in_spelling_including_silent("o")),
+                    if_not(given_phoneme_has_in_spelling_including_silent("o")),
                 ),
                 chords("A AU"),
             ),
@@ -318,7 +318,10 @@ theory = compile_theory(
         }),
     ),
 
-    linker_chord("^"),
+    linker_chord(
+        "^",
+        stroke_must_have_linker=always,
+    ),
 
     initial_vowel_chord("@"),
 

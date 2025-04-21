@@ -55,7 +55,12 @@ def alternate_chords(
             phoneme: SophemeSeqPhoneme
             is_left_bank: bool
 
-        transitions_tries: dict[int, Trie[TransitionKey, AttemptedAltChordPathData]] = defaultdict(Trie)
+        transitions_tries: dict[int, Trie[TransitionKey, AttemptedAltChordPathData]]
+        """
+        The first transition of each alternate chord path is associated with a trie, which stores a chain of the remaining transitions in that alternate chord path.
+        That chain will translate to a path data struct. If the user's outline follows an alternate chord path to completion, then it can then obtain that path data struct,
+        which can then be used to verify whether the outline could have used the main chord for a sophone instead of the alt chord.
+        """
 
 
         @base_hooks.build_lookup.listen(alternate_chords)
@@ -160,6 +165,7 @@ def alternate_chords(
 
 
         def get_adjacent_chord(path: FoundPath, lookup_result: LookupResult[int], trie: NondeterministicTrie[str, int], lookbehind: bool):
+            # If the adjacent chord is behind (lookbehind), get the first key in the current path. If it is ahead (otherwise), get the last key.
             edge_transition_index = path.transition_indices[0] if lookbehind else path.transition_indices[-1]
 
             if lookbehind and edge_transition_index == 0:

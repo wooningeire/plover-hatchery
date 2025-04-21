@@ -35,11 +35,7 @@ def path_traversal_reverse_lookup() -> Plugin[None]:
             
             for entry_id in reverse_translations[translation]:
                 for lookup_result in reverse_lookup(entry_id):
-                    if not filtering_api.should_keep(lookup_result, trie):
-                        continue
-
-
-                    outline: list[str] = []
+                    outline: list[Stroke] = []
                     latest_stroke: Stroke = Stroke.from_integer(0)
                     invalid = False
                     for transition in lookup_result.transitions:
@@ -47,7 +43,7 @@ def path_traversal_reverse_lookup() -> Plugin[None]:
                         key = trie.get_key(transition.key_id)
 
                         if key == TRIE_STROKE_BOUNDARY_KEY:
-                            outline.append(latest_stroke.rtfcre)
+                            outline.append(latest_stroke)
                             latest_stroke = Stroke.from_integer(0)
                             continue
 
@@ -62,9 +58,16 @@ def path_traversal_reverse_lookup() -> Plugin[None]:
                             invalid = True
                             break
 
-                    if not invalid:
-                        outline.append(latest_stroke.rtfcre)
-                        yield tuple(outline)
+                    if invalid:
+                        continue
+
+
+                    outline.append(latest_stroke)
+
+                    if not filtering_api.should_keep(lookup_result, trie, tuple(outline)):
+                        continue
+
+                    yield tuple(stroke.rtfcre for stroke in outline)
 
 
         return None

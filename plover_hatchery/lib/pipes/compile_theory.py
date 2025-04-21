@@ -110,8 +110,8 @@ def compile_theory(
 
         print(f"""
 Hatched {n_entries} entries
-    {n_failed_additions} ({n_failed_additions / n_entries:.3f}%) total failed additions
-    ({n_failed_parses} ({n_failed_parses / n_entries:.3f}%) failed parsing)
+    {n_failed_additions} ({n_failed_additions / n_entries * 100:.2f}%) total failed additions
+    ({n_failed_parses} ({n_failed_parses / n_entries * 100:.2f}%) failed parsing)
 """)
 
         # print(trie)

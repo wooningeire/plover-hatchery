@@ -103,12 +103,19 @@ class BanksApi:
     right_chords: Callable[[SophemeSeqPhoneme], Iterable[Stroke]]
 
     begin = Hook(Begin)
+    """Fires when a new entry starts being added"""
     begin_consonant = Hook(BeginConsonant)
+    """Fires when adding a consonant to the trie"""
     before_complete_consonant = Hook(BeforeCompleteConsonant)
+    """Fires after a consonant has been added to the trie, but the BanksState has not yet been updated"""
     complete_consonant = Hook(CompleteConsonant)
+    """Fires after a consonant has been added to the trie and the BanksState has been updated"""
     begin_vowel = Hook(BeginVowel)
+    """Fires when adding a vowel to the trie"""
     before_complete_vowel = Hook(BeforeCompleteVowel)
+    """Fires after a vowel has been added to the trie, but the BanksState has not yet been updated"""
     complete_vowel = Hook(CompleteVowel)
+    """Fires after a vowel has been added to the trie and the BanksState has been updated"""
 
 
 def banks(
@@ -139,7 +146,12 @@ def banks(
                     phoneme=phoneme,
                 )
 
-        def on_before_complete_consonant(banks_state: BanksState, phoneme: SophemeSeqPhoneme, left_node: "int | None", right_node: "int | None"):
+        def on_before_complete_consonant(
+            banks_state: BanksState,
+            phoneme: SophemeSeqPhoneme,
+            left_node: "int | None",
+            right_node: "int | None",
+        ):
             for plugin_id, handler in hooks.before_complete_consonant.ids_handlers():
                 handler(
                     state=banks_state.plugin_states.get(plugin_id),
@@ -233,6 +245,9 @@ def banks(
             left_node = join_on_strokes(state.trie, state.left_srcs, left_chords(phoneme), state.entry_id).dst_node_id
             right_node = join_on_strokes(state.trie, state.right_srcs, right_chords(phoneme), state.entry_id).dst_node_id
 
+            if right_node is not None and left_node is not None:
+                _ = state.trie.link(right_node, left_node, TRIE_STROKE_BOUNDARY_KEY, TransitionCostInfo(0, state.entry_id))
+            
 
             on_before_complete_consonant(state, phoneme, left_node, right_node)
 

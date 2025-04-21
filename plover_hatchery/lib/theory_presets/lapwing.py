@@ -171,10 +171,10 @@ theory = compile_theory(
 
         mid_chords=take_first_match(
             yield_if(
-                all_true(
+                if_all(
                     sophone_type.given_sound_is_pronounced_as("EE"),
                     given_phoneme_has_in_spelling_including_silent("i y"),
-                    not_true(given_phoneme_has_in_spelling_including_silent("e")),
+                    if_not(given_phoneme_has_in_spelling_including_silent("e")),
                 ),
                 chords("EU"),
             ),
@@ -220,7 +220,11 @@ theory = compile_theory(
         }),
     ),
 
-    linker_chord("KWR"),
+    linker_chord(
+        "KWR",
+        stroke_must_have_linker=if_not(if_stroke_has_overlap_with("STKPWHR")),
+        stroke_must_not_have_linker=if_stroke_has_overlap_with("STKPWHR"),
+    ),
 
     optional_middle_vowels(),
     optional_middle_consonants(

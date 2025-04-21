@@ -181,7 +181,7 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
         return TransitionKey(src_node_id, key_id, transition_index)
 
     
-    def link_chain(self, src_node_id: int, dst_node_id: int, keys: tuple[_Key[_KeyVar], ...], cost_info: TransitionCostInfo[_Translation]):
+    def link_chain(self, src_node_id: int, dst_node_id: int, keys: tuple[_Key[_KeyVar], ...], cost_info: TransitionCostInfo[_Translation]) -> tuple[TransitionKey, ...]:
         """
         Follows all but the final transition from a given source node and series of keys, and then creates the final transition
         to the given already-existing destination node
