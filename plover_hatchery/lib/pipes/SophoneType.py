@@ -1,6 +1,6 @@
 from dataclasses import dataclass
-from enum import Enum
-from typing import Any, Generator, final, Callable
+from enum import Enum, auto
+from typing import cast, Any, Generator, final, Callable
 from collections.abc import Iterable, Generator
 
 from plover.steno import Stroke
@@ -15,6 +15,36 @@ class Sophone:
 
     def __str__(self):
         return self.name
+
+
+@final
+class _MapResultType(Enum):
+    Str = auto()
+    Fn = auto()
+
+_MapResultFn = Callable[[SophemeSeqPhoneme], str]
+
+@final
+@dataclass(frozen=True)
+class _MapResult:
+    type: _MapResultType
+    value: "str | _MapResultFn"
+
+    @staticmethod
+    def of(value: "str | _MapResultFn"):
+        if isinstance(value, Callable):
+            return _MapResult(_MapResultType.Fn, value)
+        
+        return _MapResult(_MapResultType.Str, value)
+
+    def resolve(self, phoneme: SophemeSeqPhoneme):
+        if self.type is _MapResultType.Fn:
+            value = cast(_MapResultFn, self.value)
+            return value(phoneme)
+        
+        value = cast(str, self.value)
+        return value
+
 
 
 @final
@@ -51,13 +81,14 @@ class SophoneType:
 
     @staticmethod
     def mapper_from_phonemes(mappings: "dict[str, str | Callable[[SophemeSeqPhoneme], str]]"):
-        def mapper(sound: SophemeSeqPhoneme, sophone_type: SophoneType):
-            result = mappings[sound.keysymbol.base_symbol]
+        new_mappings = {
+            key: _MapResult.of(value)
+            for key, value in mappings.items()
+        }
 
-            if isinstance(result, Callable):
-                return sophone_type.iterate(result(sound))
-            else:
-                return sophone_type.iterate(result)
+        def mapper(phoneme: SophemeSeqPhoneme, sophone_type: SophoneType):
+            result = new_mappings[phoneme.keysymbol.base_symbol]
+            return sophone_type.iterate(result.resolve(phoneme))
 
         return mapper
 
