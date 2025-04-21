@@ -61,7 +61,13 @@ def consonant_clusters(sophone_type: SophoneType, clusters: dict[str, str], *, b
                 current_heads = tuple(new_current_heads)
 
                 for node in current_heads:
-                    result = get_clusters_from_clusters_trie_node(node, current_phoneme, consonant_clusters_trie, state, banks_info.left)
+                    result = get_clusters_from_clusters_trie_node(
+                        node,
+                        current_phoneme,
+                        consonant_clusters_trie,
+                        state,
+                        banks_info
+                    )
                     if result is not None:
                         yield result
 

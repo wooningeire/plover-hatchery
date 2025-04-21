@@ -62,7 +62,14 @@ def vowel_clusters(sophone_type: SophoneType, vowel_sophones: set[Sophone], clus
                 if len(current_nodes) == 0: return
 
                 for current_node in current_nodes:
-                    if (result := get_clusters_from_clusters_trie_node(current_node, current_phoneme, vowel_clusters_trie, state, banks_info.left)) is None:
+                    result = get_clusters_from_clusters_trie_node(
+                        current_node,
+                        current_phoneme,
+                        vowel_clusters_trie,
+                        state,
+                        banks_info
+                    )
+                    if result is None:
                         continue
 
                     yield result

@@ -158,7 +158,7 @@ theory = compile_theory(
             yield_if(
                 if_all(
                     sophone_type.given_sound_is_pronounced_as("S"),
-                    given_phoneme_has_in_spelling_including_silent("c"),
+                    given_phoneme_has_in_spelling("c"),
                 ),
                 chords("KPW"),
             ),
@@ -193,11 +193,11 @@ theory = compile_theory(
             }),
         ),
 
-        mid_chords=take_first_match(
+        mid_chords=take_all(
             yield_if(
                 if_all(
                     if_not(given_phoneme_has_stress(1)),
-                    given_phoneme_has_in_spelling_including_silent("oi oy"),
+                    given_phoneme_has_in_spelling("oi oy"),
                 ),
                 chords("OEU"),
             ),
@@ -205,7 +205,7 @@ theory = compile_theory(
             yield_if(
                 if_all(
                     if_not(given_phoneme_has_stress(1)),
-                    given_phoneme_has_in_spelling_including_silent("au"),
+                    given_phoneme_has_in_spelling("au"),
                 ),
                 chords("AU"),
             ),
@@ -213,7 +213,7 @@ theory = compile_theory(
             yield_if(
                 if_all(
                     if_not(given_phoneme_has_stress(1)),
-                    given_phoneme_has_in_spelling_including_silent("ou"),
+                    given_phoneme_has_in_spelling("ou"),
                 ),
                 chords("OU"),
             ),
@@ -221,7 +221,7 @@ theory = compile_theory(
             yield_if(
                 if_all(
                     if_not(given_phoneme_has_stress(1)),
-                    given_phoneme_has_in_spelling_including_silent("a"),
+                    given_phoneme_has_in_spelling("a"),
                 ),
                 chords("A AEU"),
             ),
@@ -229,7 +229,7 @@ theory = compile_theory(
             yield_if(
                 if_all(
                     if_not(given_phoneme_has_stress(1)),
-                    given_phoneme_has_in_spelling_including_silent("e"),
+                    given_phoneme_has_in_spelling("e"),
                 ),
                 chords("E AOE"),
             ),
@@ -237,7 +237,7 @@ theory = compile_theory(
             yield_if(
                 if_all(
                     if_not(given_phoneme_has_stress(1)),
-                    given_phoneme_has_in_spelling_including_silent("i"),
+                    given_phoneme_has_in_spelling("i"),
                 ),
                 chords("EU AOEU"),
             ),
@@ -245,7 +245,7 @@ theory = compile_theory(
             yield_if(
                 if_all(
                     if_not(given_phoneme_has_stress(1)),
-                    given_phoneme_has_in_spelling_including_silent("o"),
+                    given_phoneme_has_in_spelling("o"),
                 ),
                 chords("O OE"),
             ),
@@ -253,44 +253,46 @@ theory = compile_theory(
             yield_if(
                 if_all(
                     if_not(given_phoneme_has_stress(1)),
-                    given_phoneme_has_in_spelling_including_silent("u"),
+                    given_phoneme_has_in_spelling("u"),
                 ),
                 chords("U AOU"),
             ),
 
             yield_if(
                 if_all(
-                    sophone_type.given_sound_is_pronounced_as("EE"),
-                    given_phoneme_has_in_spelling_including_silent("i y"),
-                    if_not(given_phoneme_has_in_spelling_including_silent("e")),
-                ),
-                chords("EU"),
-            ),
-
-            yield_if(
-                if_all(
                     sophone_type.given_sound_is_pronounced_as("O AU"),
-                    given_phoneme_has_in_spelling_including_silent("a"),
-                    if_not(given_phoneme_has_in_spelling_including_silent("o")),
+                    given_phoneme_has_in_spelling("a"),
+                    if_not(given_phoneme_has_in_spelling("o")),
                 ),
                 chords("A AU"),
             ),
 
-            sophone_type.map_given_phoneme_to_chords_by_sophone({
-                "AA": "AEU",
-                "A": "A",
-                "EE": "AOE",
-                "E": "E",
-                "II": "AOEU",
-                "I": "EU",
-                "OO": "OE",
-                "O": "O",
-                "UU": "AOU",
-                "U": "U",
-                "AU": "AU",
-                "OI": "OEU",
-                "OU": "OU",
-            }),
+            take_first_match(
+                yield_if(
+                    if_all(
+                        sophone_type.given_sound_is_pronounced_as("EE"),
+                        given_phoneme_has_in_spelling_including_silent("i y"),
+                        if_not(given_phoneme_has_in_spelling("e")),
+                    ),
+                    chords("EU"),
+                ),
+
+                sophone_type.map_given_phoneme_to_chords_by_sophone({
+                    "AA": "AEU",
+                    "A": "A",
+                    "EE": "AOE",
+                    "E": "E",
+                    "II": "AOEU",
+                    "I": "EU",
+                    "OO": "OE",
+                    "O": "O",
+                    "UU": "AOU",
+                    "U": "U",
+                    "AU": "AU",
+                    "OI": "OEU",
+                    "OU": "OU",
+                }),
+            ),
         ),
 
         right_chords=sophone_type.map_given_phoneme_to_chords_by_sophone({

@@ -1,6 +1,15 @@
 from plover_hatchery.lib.sopheme import Sopheme, SophemeSeqPhoneme
 
 
+def given_phoneme_has_in_spelling(chars: str):
+    char_seqs = tuple(chars.split())
+
+    def check(phoneme: SophemeSeqPhoneme):
+        return any(char_seq in phoneme.sopheme.chars for char_seq in char_seqs)
+
+    return check
+
+
 def given_phoneme_has_in_spelling_including_silent(chars: str):
     char_seqs = tuple(chars.split())
 

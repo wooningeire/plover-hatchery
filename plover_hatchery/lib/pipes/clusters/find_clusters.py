@@ -4,9 +4,10 @@ from typing import Any, Callable, Iterable
 
 from plover.steno import Stroke
 
+from plover_hatchery.lib.pipes.declare_banks import BankStrokes
 from plover_hatchery.lib.sopheme.SophemeSeq import SophemeSeqPhoneme
 
-from ..banks import BanksState
+from ..banks import BanksApi, BanksState
 
 from ...trie import NondeterministicTrie, TransitionCostInfo, ReadonlyTrie
 
@@ -14,49 +15,33 @@ from ...trie import NondeterministicTrie, TransitionCostInfo, ReadonlyTrie
 
 
 @dataclass(frozen=True)
-class Cluster(ABC):
+class Cluster:
     stroke: Stroke
     initial_state: BanksState
+    banks_info: BankStrokes
 
     @abstractmethod
     def apply(self, trie: NondeterministicTrie[str, int], entry_id: int, current_left: "int | None", current_right: "int | None", cost: int):
-        ...
+        if len(self.stroke & (self.banks_info.mid | self.banks_info.right)) > 0: # TODO verify this
+            dst_node = current_right
+        else:
+            dst_node = current_left
 
-@dataclass(frozen=True)
-class _ClusterLeft(Cluster):
-    def apply(self, trie: NondeterministicTrie[str, int], entry_id: int, current_left: "int | None", current_right: "int | None", cost: int):
-        if current_left is None: return
-
-        state = self.initial_state
-
-        for left_src in state.left_srcs:
-            trie.link_chain(left_src.node, current_left, self.stroke.keys(), TransitionCostInfo(cost, entry_id))
-
-        # if state.can_elide_prev_vowel_left:
-        #     state.left_squish_elision.execute(state.trie, state.translation, current_left, self.stroke, amphitheory.spec.TransitionCosts.CLUSTER)
-        #     state.boundary_elision.execute(state.trie, state.translation, current_left, self.stroke, amphitheory.spec.TransitionCosts.CLUSTER)
-
-@dataclass(frozen=True)
-class _ClusterRight(Cluster):
-    def apply(self, trie: NondeterministicTrie[str, int], entry_id: int, current_left: "int | None", current_right: "int | None", cost: int):
-        if current_right is None: return
-
-        state = self.initial_state
-
-        for right_src in state.right_srcs:
-            trie.link_chain(right_src.node, current_right, self.stroke.keys(), TransitionCostInfo(cost, entry_id))
-
-        # if self.initial_state.is_first_consonant:
-        #     state.left_squish_elision.execute(state.trie, state.translation, current_right, self.stroke, amphitheory.spec.TransitionCosts.CLUSTER)
+        if dst_node is None: return
 
 
-        # if origin.right_f is not None and right_consonant_f_node is not None:
-        #     trie.link_chain(origin.right_f, right_consonant_f_node, cluster_stroke.keys(), TransitionCosts.CLUSTER, translation)
+        if len(self.stroke & self.banks_info.left) > 0:
+            node_srcs = self.initial_state.left_srcs
+        elif len(self.stroke & self.banks_info.mid) > 0:
+            node_srcs = self.initial_state.mid_srcs
+        else:
+            node_srcs = self.initial_state.right_srcs
 
-        # if is_first_consonant:
-        #     _allow_elide_previous_vowel_using_first_right_consonant(
-        #         trie, cluster_stroke, right_consonant_f_node, origin.pre_rtl_stroke_boundary, translation, TransitionCosts.CLUSTER + TransitionCosts.F_CONSONANT,
-        #     )
+
+        for src in node_srcs:
+            _ = trie.link_chain(src.node, dst_node, self.stroke.keys(), TransitionCostInfo(cost, entry_id))
+
+
 
 def get_clusters_from_clusters_trie_node(
     node: int,
@@ -65,15 +50,12 @@ def get_clusters_from_clusters_trie_node(
 
     state: BanksState,
 
-    left_bank: Stroke,
+    banks_info: BankStrokes,
 ):
     stroke = clusters_trie.get_translation(node)
     if stroke is None: return None
 
-    if len(stroke & left_bank) > 0:
-        return current_phoneme.indices, _ClusterLeft(stroke, state.clone())
-    else:
-        return current_phoneme.indices, _ClusterRight(stroke, state.clone())
+    return current_phoneme.indices, Cluster(stroke, state.clone(), banks_info)
     
 
 def handle_clusters(

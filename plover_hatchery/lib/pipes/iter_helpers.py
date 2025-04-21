@@ -1,4 +1,5 @@
 from collections.abc import Generator, Iterable
+import itertools
 from typing import Any, Callable, Generator, TypeVar
 
 from plover.steno import Stroke
@@ -26,6 +27,14 @@ def take_first_match(*generators: Callable[[K], Iterable[V]]):
     def generate(key: K) -> Generator[V, None, None]:
         yield from take_first_nonempty_iterable(*(generator(key) for generator in generators))
     
+    return generate
+
+
+def take_all(*generators: Callable[[K], Iterable[V]]):
+    def generate(key: K) -> Generator[V, None, None]:
+        for generator in generators:
+            yield from generator(key)
+
     return generate
 
 
