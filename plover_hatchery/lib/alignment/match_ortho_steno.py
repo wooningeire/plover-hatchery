@@ -109,8 +109,6 @@ class _Cost(NamedTuple):
 
 @aligner
 class match_chars_to_chords(AlignmentService, ABC):
-    MAPPINGS = _GRAPHEME_TO_STENO_MAPPINGS
-
     @staticmethod
     def process_input(translation: str, outline_steno: str) -> tuple[str, tuple[AsteriskableKey, ...]]:
         return (translation, AsteriskableKey.annotations_from_outline(outline_steno))
@@ -126,6 +124,14 @@ class match_chars_to_chords(AlignmentService, ABC):
             mismatch_parent.cost.n_unmatched_keys + (1 if increment_y else 0),
             mismatch_parent.cost.n_chunks + 1 if mismatch_parent.has_match else mismatch_parent.cost.n_chunks,
         )
+
+    @staticmethod
+    def has_mapping(candidate_x_key: str) -> bool:
+        return candidate_x_key in _GRAPHEME_TO_STENO_MAPPINGS
+
+    @staticmethod
+    def get_mappings(candidate_x_key: str):
+        return _GRAPHEME_TO_STENO_MAPPINGS[candidate_x_key]
     
     @staticmethod
     def is_match(actual_chord: tuple[AsteriskableKey, ...], candidate_chord: tuple[AsteriskableKey, ...]):

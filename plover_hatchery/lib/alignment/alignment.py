@@ -54,8 +54,6 @@ class Cell(Generic[Cost, MatchData]):
         return self.cost > cell.cost
 
 class AlignmentService(Generic[Cost, MatchData, InputX, InputY, MappingX, MappingY, ItemX, ItemY, Match], ABC):
-    MAPPINGS: Mapping[MappingX, MappingY]
-
     @staticmethod
     def process_input(x_input: InputX, y_input: InputY) -> tuple[Sliceable[ItemX], Sliceable[ItemY]]:
         return (x_input, y_input)
@@ -69,12 +67,20 @@ class AlignmentService(Generic[Cost, MatchData, InputX, InputY, MappingX, Mappin
         ...
 
     @staticmethod
-    def generate_candidate_x_key(candidate_subseq_x: MappingX) -> Sliceable[ItemX]:
+    def generate_candidate_x_key(candidate_subseq_x: Sliceable[ItemX]) -> MappingX:
         return candidate_subseq_x
     
     @staticmethod
-    def generate_candidate_y_key(candidate_subseq_y: MappingY) -> Sliceable[ItemY]:
+    def generate_candidate_y_key(candidate_subseq_y: Sliceable[ItemY]) -> MappingY:
         return candidate_subseq_y
+        
+    @staticmethod
+    def has_mapping(candidate_x_key: MappingX) -> bool:
+        ...
+    
+    @staticmethod
+    def get_mapping_options(candidate_x_key: MappingX) -> Iterable[Sliceable[ItemY]]:
+        ...
     
     @staticmethod
     def y_seq_len(candidate_subseq_y: Sliceable[ItemY]) -> int:
@@ -106,8 +112,6 @@ def aligner(Service: type[AlignmentService[Cost, MatchData, InputX, InputY, Mapp
         Assumptions:
         - Strict left-to-right parsing; no inversions
         """
-
-        mappings = Service.MAPPINGS
 
         seq_x, seq_y = Service.process_input(input_x, input_y)
 
@@ -143,16 +147,16 @@ def aligner(Service: type[AlignmentService[Cost, MatchData, InputX, InputY, Mapp
                 candidate_subseq_x = domain_seq_x[len(domain_seq_x) - i:]
                 candidate_subseq_x_key = Service.generate_candidate_x_key(candidate_subseq_x)
                 # print("using grapheme", candidate_subseq_x_key)
-                if candidate_subseq_x_key not in mappings: continue
+                if not Service.has_mapping(candidate_subseq_x_key): continue
 
 
-                # When not incrementing y, only consider silent letters
 
                 candidate_subseqs_y: Iterable[Sliceable[ItemY]]
                 if increment_y:
-                    candidate_subseqs_y = mappings[candidate_subseq_x_key]
+                    candidate_subseqs_y = Service.get_mapping_options(candidate_subseq_x_key)
                 else:
-                    candidate_subseqs_y = filter(lambda chord: Service.y_seq_len(chord) == 0, mappings[candidate_subseq_x_key])
+                    # When not incrementing y, only consider silent letters
+                    candidate_subseqs_y = filter(lambda chord: Service.y_seq_len(chord) == 0, Service.get_mapping_options(candidate_subseq_x_key))
 
                 for candidate_subseq_y in candidate_subseqs_y:
                     candidate_subseq_y_key = Service.generate_candidate_y_key(candidate_subseq_y)

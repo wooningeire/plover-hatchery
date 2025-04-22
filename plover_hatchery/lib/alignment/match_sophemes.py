@@ -29,7 +29,7 @@ _KEYSYMBOL_TO_GRAPHEME_MAPPINGS = {
         "jh": ("j", "g"),
         "s": ("s", "ss", "c", "sc", "z", "zz"),
         "z": ("z", "zz", "s", "ss", "x"),
-        "sh": ("sh", "ti", "ci", "si", "ssi"),
+        "sh": ("sh", "ti", "ci", "si", "ssi", "t"),
         "zh": ("sh", "zh", "j", "g", "si", "ssi", "ti", "ci"),
         "f": ("f", "ph", "ff", "v", "vv"),
         "v": ("v", "vv", "f", "ff", "ph"),
@@ -48,7 +48,7 @@ _KEYSYMBOL_TO_GRAPHEME_MAPPINGS = {
         "r": ("r", "rr"),
         "y": ("y",),
         "w": ("w",),
-        "hw": ("w",),
+        "hw": ("w", "wh"),
 
         "e": ("e", "ea"),
         "ao": ("a",),
@@ -277,8 +277,20 @@ _STRESS_KEYSYMBOLS = {
 }
 
 @aligner
-class match_keysymbols_to_chars(AlignmentService, ABC):
-    MAPPINGS = _KEYSYMBOL_TO_GRAPHEME_MAPPINGS
+class match_keysymbols_to_chars(
+    AlignmentService[
+        _Cost,
+        None,
+        str,
+        str,
+        tuple[str, ...],
+        str,
+        tuple[Keysymbol, ...],
+        str,
+        Sopheme,
+    ],
+    ABC,
+):
 
     @staticmethod
     def process_input(transcription: str, translation: str) -> tuple[tuple[Keysymbol, ...], str]:
@@ -315,6 +327,14 @@ class match_keysymbols_to_chars(AlignmentService, ABC):
     def generate_candidate_x_key(candidate_subseq_x: tuple[Keysymbol, ...]) -> tuple[str, ...]:
         return tuple(keysymbol.base_symbol for keysymbol in candidate_subseq_x)
     
+    @staticmethod
+    def has_mapping(candidate_x_key: tuple[str, ...]):
+        return candidate_x_key in _KEYSYMBOL_TO_GRAPHEME_MAPPINGS
+    
+    @staticmethod
+    def get_mapping_options(candidate_x_key: tuple[str, ...]):
+        return _KEYSYMBOL_TO_GRAPHEME_MAPPINGS[candidate_x_key]
+        
     @staticmethod
     def is_match(actual_chars: str, candidate_chars: str):
         return actual_chars == candidate_chars
@@ -377,6 +397,14 @@ class match_sophemes_to_chords(AlignmentService, ABC):
     @staticmethod
     def generate_candidate_y_key(mapping: _Mapping) -> tuple[AsteriskableKey, ...]:
         return tuple(key for key in mapping.keys)
+
+    @staticmethod
+    def has_mapping(candidate_x_key: tuple[str, ...]) -> bool:
+        return candidate_x_key in _KEYSYMBOL_TO_STENO_MAPPINGS
+
+    @staticmethod
+    def get_mapping_options(candidate_x_key: tuple[str, ...]):
+        return _KEYSYMBOL_TO_STENO_MAPPINGS[candidate_x_key]
     
     @staticmethod
     def y_seq_len(candidate_y: _Mapping) -> int:
