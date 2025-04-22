@@ -1,14 +1,15 @@
 
 from abc import ABC
 import dataclasses
-from typing import NamedTuple
+from dataclasses import dataclass
+from typing import NamedTuple, cast, final
 from plover_hatchery.lib.alignment.alignment import AlignmentService, Cell, aligner
-from plover_hatchery.lib.alignment.parse_morphology import Affix, Formatting, FreeMorpheme, MorphologyPart
+from plover_hatchery.lib.alignment.parse_morphology import Affix, Formatting, Morpheme, Morphology, MorphologyChunk, Root, MorphologyPart
 
 
 _VOWELS = "aeiou"
 
-_AFFIX_MAPPINGS = {
+_MORPHEME_ALTERNATIVES = {
     name: tuple(options.split())
     for name, options in {
         "ise": "ise ize"
@@ -21,7 +22,11 @@ class _Cost(NamedTuple):
     n_chunks: int
 
 @aligner
-class match_morphology_to_chars(AlignmentService, ABC):
+class _match_morphology_to_chars(AlignmentService, ABC):
+    @staticmethod
+    def process_input(morphology: Morphology, translation: str):
+        return (morphology.parts, translation)
+
     @staticmethod
     def initial_cost():
         return _Cost(0, 0, 0)
@@ -42,10 +47,6 @@ class match_morphology_to_chars(AlignmentService, ABC):
     def get_mapping_options(candidate_x_key: tuple[MorphologyPart, ...]):
         part = candidate_x_key[0]
 
-        if isinstance(part, FreeMorpheme):
-            yield "".join(bound.name for bound in part.parts)
-            return
-
         if isinstance(part, Formatting):
             yield part.name
             return
@@ -53,8 +54,8 @@ class match_morphology_to_chars(AlignmentService, ABC):
         
         # Elide vowels at the end of the affix
 
-        if part.name in _AFFIX_MAPPINGS:
-            affix_options = _AFFIX_MAPPINGS[part.name]
+        if part.name in _MORPHEME_ALTERNATIVES:
+            affix_options = _MORPHEME_ALTERNATIVES[part.name]
         else:
             affix_options = (part.name,)
         
@@ -94,3 +95,59 @@ class match_morphology_to_chars(AlignmentService, ABC):
             return Formatting(match_chars, match_chars)
         
         return dataclasses.replace(match_parts[0], ortho=match_chars)
+
+
+@final
+class _MorphologyReconstructor:
+    def __init__(self, morphology: Morphology, translation: str):
+        self.__morphology = morphology
+        self.__translation = translation
+
+
+        self.__current_old_chunk: "Root | Affix | None" = None
+        self.__new_chunk: "Root | Affix | None" = None
+
+        self.__new_parts: list[MorphologyPart] = []
+        self.__new_chunks: list[MorphologyChunk] = []
+    
+
+    def reconstruct(self):
+        parts = cast(tuple[MorphologyPart, ...], _match_morphology_to_chars(self.__morphology, self.__translation))
+        
+        for part in parts:
+            if isinstance(part, Formatting):
+                self.__finish_chunk()
+                self.__new_parts.append(part)
+                self.__new_chunks.append(part)
+                continue
+            
+
+            if part.parent is not self.__current_old_chunk:
+                self.__finish_chunk()
+
+                self.__current_old_chunk = part.parent
+                if isinstance(part.parent, Root):
+                    self.__new_chunk = Root()
+                else:
+                    self.__new_chunk = Affix(part.parent.is_suffix)
+            
+            if self.__new_chunk is not None:
+                self.__new_chunk.morpheme_seq.append(Morpheme(self.__new_chunk, part.name, part.phono, part.ortho))
+
+        self.__finish_chunk()
+        
+        return Morphology(tuple(self.__new_parts), tuple(self.__new_chunks))
+
+
+    def __finish_chunk(self):
+        if self.__current_old_chunk is None or self.__new_chunk is None: return
+
+        self.__new_parts.extend(self.__new_chunk.morpheme_seq.morphemes)
+        self.__new_chunks.append(self.__new_chunk)
+
+        self.__current_old_chunk = None
+        self.__new_chunk = None
+
+
+def match_morphology_to_chars(morphology: Morphology, translation: str):
+    return _MorphologyReconstructor(morphology, translation).reconstruct()
