@@ -12,7 +12,8 @@ _VOWELS = "aeiou"
 _MORPHEME_ALTERNATIVES = {
     name: tuple(options.split())
     for name, options in {
-        "ise": "ise ize"
+        "ise": "ise ize",
+        "able": "able ible abil ibil",
     }.items()
 }
 
@@ -142,7 +143,7 @@ class _MorphologyReconstructor:
     def __finish_chunk(self):
         if self.__current_old_chunk is None or self.__new_chunk is None: return
 
-        self.__new_parts.extend(self.__new_chunk.morpheme_seq.morphemes)
+        self.__new_parts.extend(self.__new_chunk.morpheme_seq.parts)
         self.__new_chunks.append(self.__new_chunk)
 
         self.__current_old_chunk = None

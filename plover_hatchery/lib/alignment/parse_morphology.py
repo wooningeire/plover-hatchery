@@ -1,26 +1,40 @@
 from abc import ABC
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import NamedTuple, Union, final
+from typing import Any, Generator, NamedTuple, Union, final
 
 
 class MorphemeSeq:
     def __init__(self):
-        self.morphemes: "list[Morpheme]" = []
+        self.parts: "list[Morpheme | Formatting]" = []
 
-    def append(self, morpheme: "Morpheme"):
-        self.morphemes.append(morpheme)
+    def append(self, morpheme: "Morpheme | Formatting"):
+        self.parts.append(morpheme)
+
+    def extend(self, morphemes: "Iterable[Morpheme | Formatting]"):
+        self.parts.extend(morphemes)
 
     @property
     def name(self):
-        return "".join(morpheme.name for morpheme in self.morphemes)
+        return "".join(morpheme.name for morpheme in self.parts)
 
     @property
     def phono(self):
-        return " ".join(morpheme.phono for morpheme in self.morphemes)
+        return " ".join(morpheme.phono for morpheme in self.parts)
 
     @property
     def ortho(self):
-        return "".join(morpheme.ortho for morpheme in self.morphemes)
+        return "".join(morpheme.ortho for morpheme in self.parts)
+
+    def repr(self, depth: int=0):
+        return (
+            "MorphemeSeq(\n"
+            + "".join("  " * (depth + 1) + repr(morpheme) + "\n" for morpheme in self.parts)
+            + ")"
+        )
+
+    def __repr__(self):
+        return self.repr()
 
 
 @final
@@ -89,11 +103,17 @@ class Morpheme:
     def varname(self):
         return f"@{self.name}"
 
+    def __repr__(self):
+        return f"Morpheme({self.name} : {self.phono} : {self.ortho})"
+
 @final
 @dataclass(frozen=True)
 class Formatting:
     name: str
     ortho: str = ""
+    @property
+    def phono(self):
+        return ""
 
 
 MorphologyPart = Union[Formatting, Morpheme]
@@ -115,6 +135,7 @@ class _Parser:
     transcription_index: int = 0
     morphology_index: int = 0
     morphology_index_at_last_part: int = 0
+    is_morpheme = True
 
     @property
     def transcription_char(self):
@@ -140,19 +161,19 @@ class _Parser:
                 if self.morphology_char == "{":
                     self.__catch_up_transcription_index("{")
                     root = self.__consume_root()
-                    morphemes.extend(root.morpheme_seq.morphemes)
+                    morphemes.extend(root.morpheme_seq.parts)
                     chunks.append(root)
 
                 elif self.morphology_char == ">":
                     self.__catch_up_transcription_index(">")
                     suffix = self.__consume_suffix()
-                    morphemes.extend(suffix.morpheme_seq.morphemes)
+                    morphemes.extend(suffix.morpheme_seq.parts)
                     chunks.append(suffix)
 
                 elif self.morphology_char == "<":
                     self.__catch_up_transcription_index("<")
                     prefix = self.__consume_prefix()
-                    morphemes.extend(prefix.morpheme_seq.morphemes)
+                    morphemes.extend(prefix.morpheme_seq.parts)
                     chunks.append(prefix)
 
                 self.morphology_index_at_last_part = self.morphology_index
@@ -178,12 +199,16 @@ class _Parser:
         self.morphology_index += 1
 
         suffix = Affix(True)
+        self.is_morpheme = True
         while True:
             if self.morphology_char == ">":
-                self.morphology_index += 1
                 break
 
-            suffix.morpheme_seq.append(self.__consume_morpheme(suffix))
+            suffix.morpheme_seq.extend(self.__handle_morpheme_boundary(suffix))
+
+        self.__catch_up_transcription_index(">")
+        self.transcription_index += 1
+        self.morphology_index += 1
 
         return suffix
 
@@ -193,40 +218,67 @@ class _Parser:
         self.morphology_index += 1
 
         prefix = Affix(False)
+        self.is_morpheme = True
         while True:
             if self.morphology_char == "<":
-                self.morphology_index += 1
                 break
 
-            prefix.morpheme_seq.append(self.__consume_morpheme(prefix))
+            prefix.morpheme_seq.extend(self.__handle_morpheme_boundary(prefix))
+
+        self.__catch_up_transcription_index("<")
+        self.transcription_index += 1
+        self.morphology_index += 1
 
         return prefix
 
 
     def __consume_root(self):
+        # {
         self.transcription_index += 1
         self.morphology_index += 1
         
         root = Root()
+        self.is_morpheme = True
         while True:
             if self.morphology_char == "}":
+                root.morpheme_seq.extend(self.__check_formatting())
+
+                self.__catch_up_transcription_index("}")
+                self.transcription_index += 1
                 self.morphology_index += 1
                 break
 
-            root.morpheme_seq.append(self.__consume_morpheme(root))
+            root.morpheme_seq.extend(self.__handle_morpheme_boundary(root))
+
+
+        root.morpheme_seq.extend(self.__check_formatting())
 
         return root
+
+
+    
+    def __handle_morpheme_boundary(self, parent: "Root | Affix") -> "Generator[Formatting | Morpheme, None, None]":
+        if self.morphology_char == "=":
+            self.is_morpheme = not self.is_morpheme
+            if not self.is_morpheme:
+                yield from self.__check_formatting()
+
+            self.__catch_up_transcription_index("=")
+            self.transcription_index += 1
+            self.morphology_index += 1
+            self.morphology_index_at_last_part = self.morphology_index
+            return
+
+        if self.is_morpheme:
+            yield self.__consume_morpheme(parent)
+        else:
+            self.morphology_index += 1
 
 
     def __consume_morpheme(self, parent: "Root | Affix"):
         phono = ""
         while True:
-            if self.transcription_char == "=":
-                self.__catch_up_transcription_index(" $")
-                self.transcription_index += 1
-                break
-                
-            if self.transcription_char in "}<>":
+            if self.transcription_char in "=}<>":
                 break
 
             phono += self.transcription_char
@@ -234,11 +286,7 @@ class _Parser:
 
         name = ""
         while True:
-            if self.morphology_char == "=":
-                self.morphology_index += 2
-                break
-                
-            if self.morphology_char in "}<>":
+            if self.morphology_char in "=}<>":
                 break
 
             name += self.morphology_char

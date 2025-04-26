@@ -25,10 +25,10 @@ def _setup_plover():
 
 
 def _main(args: argparse.Namespace):
-    from plover_hatchery.lib.sopheme import Sopheme
     from plover_hatchery.lib.alignment.match_sophemes import match_keysymbols_to_chars
-    from plover_hatchery.lib.alignment.parse_morphology import split_morphology, Affix, MorphologyPart
+    from plover_hatchery.lib.alignment.parse_morphology import split_morphology, Affix
     from plover_hatchery.lib.alignment.match_morphology import match_morphology_to_chars
+    from plover_hatchery.lib.sopheme import Sopheme
 
 
     root = Path(os.getcwd())
@@ -71,7 +71,7 @@ def _main(args: argparse.Namespace):
                 entry_parts: list[str] = []
                 for chunk in self.morphology.chunks:
                     if isinstance(chunk, Formatting):
-                        entry_parts.append(f"{chunk.ortho}.")
+                        entry_parts.append(formatting_code(chunk))
                         continue
 
                     elif isinstance(chunk, Affix):
@@ -80,6 +80,11 @@ def _main(args: argparse.Namespace):
 
                     else:
                         entry_parts.append("{" + root_full_varname(chunk) + "}")
+                        # if root_n_uses[root_key] > 1:
+                        #     entry_parts.append("{" + root_full_varname(chunk) + "}")
+                        # else:
+                        #     entry_parts.append(morpheme_seq_definition(chunk.morpheme_seq))
+
                         continue
                     
                 return self.translation + " = " + " ".join(entry_parts)
@@ -99,18 +104,40 @@ def _main(args: argparse.Namespace):
                 return morpheme.varname
             return f"{morpheme.varname}:{morpheme_ids_by_morpheme[morpheme.dict_key]}"
 
-        def morpheme_seq_entry(morpheme_seq: MorphemeSeq):
-            return " ".join("{" + morpheme_full_varname(morpheme) + "}" for morpheme in morpheme_seq.morphemes)
+        def morpheme_seq_definition(morpheme_seq: MorphemeSeq):
+            return " ".join(code(morpheme) for morpheme in morpheme_seq.parts)
+
+        def morpheme_definition(morpheme: Morpheme):
+            sophemes = match_keysymbols_to_chars(morpheme.phono, morpheme.ortho)
+            return " ".join(str(sopheme) for sopheme in sophemes)
+
+        def morpheme_code(morpheme: Morpheme):
+            return "{" + morpheme_full_varname(morpheme) + "}"
+            # if morpheme_n_uses[morpheme.dict_key] > 1:
+            #     return "{" + morpheme_full_varname(morpheme) + "}"
+            
+            # return morpheme_definition(morpheme)
+
+        def formatting_code(formatting: Formatting):
+            return str(Sopheme(formatting.ortho, ()))
+
+        def code(part: "Morpheme | Formatting"):
+            if isinstance(part, Morpheme):
+                return morpheme_code(part)
+            
+            return formatting_code(part)
 
 
         morphemes_dict: dict[MorphemeKey, Morpheme] = {}
         morphemes_by_name: dict[str, list[Morpheme]] = defaultdict(list)
         morpheme_ids_by_morpheme: dict[MorphemeKey, int] = {}
+        # morpheme_n_uses: dict[MorphemeKey, int] = defaultdict(lambda: 0)
 
 
         roots_dict: dict[RootKey, Root] = {}
         roots_by_name: dict[str, list[Root]] = defaultdict(list)
         root_ids_by_root: dict[RootKey, int] = {}
+        # root_n_uses: dict[RootKey, int] = defaultdict(lambda: 0)
 
 
         prefixes_dict: dict[AffixKey, Affix] = {}
@@ -137,6 +164,8 @@ def _main(args: argparse.Namespace):
 
                     for part in morphology.parts:
                         if not isinstance(part, Morpheme): continue
+
+                        # morpheme_n_uses[part.dict_key] += 1
                         if part.dict_key in morphemes_dict: continue
 
 
@@ -145,6 +174,7 @@ def _main(args: argparse.Namespace):
                         morphemes_dict[part.dict_key] = part
                         morphemes_by_name[part.name].append(part)
                         morpheme_ids_by_morpheme[part.dict_key] = morpheme_id
+
 
 
                     ignore_entry = False
@@ -166,6 +196,7 @@ def _main(args: argparse.Namespace):
                             continue
 
                         elif isinstance(chunk, Root):
+                            # root_n_uses[chunk.dict_key] += 1
                             if chunk.dict_key in roots_dict: continue
 
 
@@ -198,18 +229,20 @@ def _main(args: argparse.Namespace):
             _ = out_file.write("[morphemes]\n")
 
             for morpheme_key in sorted(morphemes_dict.keys(), key=lambda morpheme: (morpheme.name, morpheme_ids_by_morpheme[morpheme])):
-                morpheme = morphemes_dict[morpheme_key]
-                sophemes = match_keysymbols_to_chars(morpheme.phono, morpheme.ortho)
+                # if morpheme_n_uses[morpheme_key] == 1: continue
 
-                _ = out_file.write(morpheme_full_varname(morpheme) + " = " + " ".join(str(sopheme) for sopheme in sophemes) + "\n")
+                morpheme = morphemes_dict[morpheme_key]
+                _ = out_file.write(morpheme_full_varname(morpheme) + " = " + morpheme_definition(morpheme) + "\n")
 
 
             _ = out_file.write("\n")
             _ = out_file.write("[roots]\n")
 
             for root_key in sorted(roots_dict.keys(), key=lambda root: (root.name, root_ids_by_root[root])):
+                # if root_n_uses[root_key] == 1: continue
+
                 root_chunk = roots_dict[root_key]
-                _ = out_file.write(root_full_varname(root_chunk) + " = " + morpheme_seq_entry(root_chunk.morpheme_seq) + "\n")
+                _ = out_file.write(root_full_varname(root_chunk) + " = " + morpheme_seq_definition(root_chunk.morpheme_seq) + "\n")
 
 
             _ = out_file.write("\n")
@@ -217,11 +250,11 @@ def _main(args: argparse.Namespace):
 
             for prefix_key in sorted(prefixes_dict.keys(), key=lambda affix: (affix.name, affix_ids_by_affix[affix])):
                 prefix = prefixes_dict[prefix_key]
-                _ = out_file.write(affix_full_varname(prefix) + " = " + morpheme_seq_entry(prefix.morpheme_seq) + " ^\n")
+                _ = out_file.write(affix_full_varname(prefix) + " = " + morpheme_seq_definition(prefix.morpheme_seq) + " ^\n")
 
             for suffix_key in sorted(suffixes_dict.keys(), key=lambda affix: (affix.name, affix_ids_by_affix[affix])):
                 suffix = suffixes_dict[suffix_key]
-                _ = out_file.write(affix_full_varname(suffix) + " = ^ " + morpheme_seq_entry(suffix.morpheme_seq) + "\n")
+                _ = out_file.write(affix_full_varname(suffix) + " = ^ " + morpheme_seq_definition(suffix.morpheme_seq) + "\n")
 
 
             n_entries_written = 0
