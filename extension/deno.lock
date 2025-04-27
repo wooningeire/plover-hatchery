@@ -1,0 +1,16 @@
+{
+  "version": "4",
+  "specifiers": {
+    "jsr:@eemeli/yaml@^2.7.1": "2.7.1"
+  },
+  "jsr": {
+    "@eemeli/yaml@2.7.1": {
+      "integrity": "a06ce11988c2fe2136090add47f183a68860d5da2cd6619239a54bf0a364d327"
+    }
+  },
+  "workspace": {
+    "dependencies": [
+      "jsr:@eemeli/yaml@^2.7.1"
+    ]
+  }
+}

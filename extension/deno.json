@@ -1,0 +1,39 @@
+{
+  "imports": {
+    "@eemeli/yaml": "jsr:@eemeli/yaml@^2.7.1"
+  },
+  "tasks": {
+    "build": "deno run --allow-read --allow-env --allow-write ./main.ts"
+  },
+  "displayName": "Hatchery language support",
+  "description": "",
+  "version": "0.0.0",
+  "engines": {
+    "vscode": "^1.99.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "hatchery",
+        "aliases": [
+          "Hatchery dictionary",
+          "hatchery"
+        ],
+        "extensions": [
+          ".hatchery"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "hatchery",
+        "scopeName": "source.hatchery",
+        "path": "./out/hatchery.tmLanguage.json"
+      }
+    ]
+  }
+}
