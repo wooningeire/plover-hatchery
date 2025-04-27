@@ -11,7 +11,7 @@ from ..sopheme.Keysymbol import Keysymbol
 from ..sopheme.Sopheme import Sopheme
 from ..sopheme.Steneme import Steneme
 from .steno_annotations import AsteriskableKey, AnnotatedChord
-from .alignment import AlignmentService, Cell, aligner
+from .alignment import AlignmentService, Cell, Comparable, aligner
 
 _KEYSYMBOL_TO_GRAPHEME_MAPPINGS = {
     tuple(keysymbol.split(" ")): graphemes
@@ -269,23 +269,16 @@ class _Cost(NamedTuple):
     n_chunks: int
 
 
-_NONPHONETIC_KEYSYMBOLS = tuple("*~-.<>{}#=$")
-_STRESS_KEYSYMBOLS = {
-    "*": 1,
-    "~": 2,
-    "-": 3,
-}
-
 @aligner
 class match_keysymbols_to_chars(
     AlignmentService[
         _Cost,
         None,
-        str,
-        str,
-        tuple[str, ...],
-        str,
         tuple[Keysymbol, ...],
+        str,
+        str,
+        str,
+        Keysymbol,
         str,
         Sopheme,
     ],
@@ -293,23 +286,8 @@ class match_keysymbols_to_chars(
 ):
 
     @staticmethod
-    def process_input(transcription: str, translation: str) -> tuple[tuple[Keysymbol, ...], str]:
-        phonetic_keysymbols: list[Keysymbol] = []
-        next_stress = 0
-        for keysymbol in transcription.split(" "):
-            if len(keysymbol) == 0: continue
-
-            if keysymbol in _STRESS_KEYSYMBOLS:
-                next_stress = _STRESS_KEYSYMBOLS[keysymbol]
-
-            if any(ch in keysymbol for ch in _NONPHONETIC_KEYSYMBOLS): continue
-
-            optional = keysymbol.startswith("[") and keysymbol.endswith("]")
-            phonetic_keysymbols.append(Keysymbol(re.sub(r"[\[\]]", "", keysymbol), next_stress, optional))
-
-            next_stress = 0
-
-        return (tuple(phonetic_keysymbols), translation)
+    def process_input(transcription: tuple[Keysymbol, ...], translation: str) -> tuple[tuple[Keysymbol, ...], str]:
+        return (transcription, translation)
     
     @staticmethod
     def initial_cost():

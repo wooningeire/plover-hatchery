@@ -3,6 +3,8 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Any, Generator, NamedTuple, Union, final
 
+from plover_hatchery.lib.sopheme import Keysymbol
+
 
 class MorphemeSeq:
     def __init__(self):
@@ -38,6 +40,14 @@ class MorphemeSeq:
 
 
 @final
+class AffixStressNormalizedKey(NamedTuple):
+    is_suffix: bool
+    name: str
+    phono: tuple[Keysymbol, ...]
+    max_stress: int
+    ortho: str
+
+@final
 class AffixKey(NamedTuple):
     is_suffix: bool
     name: str
@@ -57,10 +67,16 @@ class Affix:
     @property
     def varname(self):
         if self.is_suffix:
-            return f"^{self.morpheme_seq.name}"
+            return f"@^{self.morpheme_seq.name}"
         
-        return f"{self.morpheme_seq.name}^"
+        return f"@{self.morpheme_seq.name}^"
 
+@final
+class RootStressNormalizedKey(NamedTuple):
+    name: str
+    phono: tuple[Keysymbol, ...]
+    max_stress: int
+    ortho: str
 
 @final
 class RootKey(NamedTuple):
@@ -79,7 +95,14 @@ class Root:
 
     @property
     def varname(self):
-        return f"#{self.morpheme_seq.name}"
+        return f"@@{self.morpheme_seq.name}"
+
+@final
+class MorphemeStressNormalizedKey(NamedTuple):
+    name: str
+    phono: tuple[Keysymbol, ...]
+    max_stress: int
+    ortho: str
 
 @final
 class MorphemeKey(NamedTuple):
@@ -109,6 +132,7 @@ class Morpheme:
 @final
 @dataclass(frozen=True)
 class Formatting:
+    parent: "Root | Affix | None"
     name: str
     ortho: str = ""
     @property
@@ -151,29 +175,31 @@ class _Parser:
 
 
     def split_morphology(self):
-        morphemes: list[MorphologyPart] = []
+        parts: list[MorphologyPart] = []
         chunks: list[MorphologyChunk] = []
 
         while self.morphology_index < len(self.morphology):
             if self.morphology_char in "{<>":
-                morphemes.extend(self.__check_formatting())
+                formatting = tuple(self.__check_formatting(None))
+                parts.extend(formatting)
+                chunks.extend(formatting)
 
                 if self.morphology_char == "{":
                     self.__catch_up_transcription_index("{")
                     root = self.__consume_root()
-                    morphemes.extend(root.morpheme_seq.parts)
+                    parts.extend(root.morpheme_seq.parts)
                     chunks.append(root)
 
                 elif self.morphology_char == ">":
                     self.__catch_up_transcription_index(">")
                     suffix = self.__consume_suffix()
-                    morphemes.extend(suffix.morpheme_seq.parts)
+                    parts.extend(suffix.morpheme_seq.parts)
                     chunks.append(suffix)
 
                 elif self.morphology_char == "<":
                     self.__catch_up_transcription_index("<")
                     prefix = self.__consume_prefix()
-                    morphemes.extend(prefix.morpheme_seq.parts)
+                    parts.extend(prefix.morpheme_seq.parts)
                     chunks.append(prefix)
 
                 self.morphology_index_at_last_part = self.morphology_index
@@ -181,7 +207,7 @@ class _Parser:
             
             self.morphology_index += 1
 
-        return Morphology(tuple(morphemes), tuple(chunks))
+        return Morphology(tuple(parts), tuple(chunks))
 
     
     def __catch_up_transcription_index(self, target_chars: str):
@@ -189,9 +215,9 @@ class _Parser:
             self.transcription_index += 1
 
 
-    def __check_formatting(self):
+    def __check_formatting(self, parent: "Root | Affix | None"):
         if self.morphology_index_at_last_part > self.morphology_index:
-            yield Formatting(self.morphology_since_last_part) 
+            yield Formatting(parent, self.morphology_since_last_part) 
 
 
     def __consume_suffix(self):
@@ -241,7 +267,7 @@ class _Parser:
         self.is_morpheme = True
         while True:
             if self.morphology_char == "}":
-                root.morpheme_seq.extend(self.__check_formatting())
+                root.morpheme_seq.extend(self.__check_formatting(root))
 
                 self.__catch_up_transcription_index("}")
                 self.transcription_index += 1
@@ -251,7 +277,7 @@ class _Parser:
             root.morpheme_seq.extend(self.__handle_morpheme_boundary(root))
 
 
-        root.morpheme_seq.extend(self.__check_formatting())
+        root.morpheme_seq.extend(self.__check_formatting(root))
 
         return root
 
@@ -261,7 +287,7 @@ class _Parser:
         if self.morphology_char == "=":
             self.is_morpheme = not self.is_morpheme
             if not self.is_morpheme:
-                yield from self.__check_formatting()
+                yield from self.__check_formatting(parent)
 
             self.__catch_up_transcription_index("=")
             self.transcription_index += 1

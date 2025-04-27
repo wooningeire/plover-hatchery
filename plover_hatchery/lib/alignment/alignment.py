@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Generator, Generic, TypeVar, Mapping, Protocol, Iterable
+from typing import Any, Generator, Generic, SupportsIndex, TypeVar, Mapping, Protocol, Iterable, cast, overload
 from abc import ABC
 
 from ..trie import Trie
@@ -7,30 +7,32 @@ from ..trie import Trie
 _Item = TypeVar("_Item")
 
 class Sliceable(Protocol[_Item]):
-    def __getitem__(self: "Sliceable[_Item]", slice: slice) -> "Sliceable[_Item]":
-        ...
+    @overload
+    def __getitem__(self: "Sliceable[_Item]", key: SupportsIndex, /) -> _Item: ...
+    @overload
+    def __getitem__(self, key: "slice[Any, Any, Any]", /) -> "Sliceable[_Item]": ...
+    def __len__(self: "Sliceable[_Item]") -> int: ...
+    def __iter__(self: "Sliceable[_Item]") -> Iterable[_Item]: ...
 
-    def __len__(self) -> int:
-        ...
-
-    def __iter__(self: "Sliceable[_Item]") -> Iterable[_Item]:
-        ...
+class Comparable(Protocol[_Item]):
+    def __lt__(self: "Comparable[_Item]", other: _Item, /) -> bool: ...
+    def __gt__(self: "Comparable[_Item]", other: _Item, /) -> bool: ...
 
 Cost = TypeVar("Cost")
 MatchData = TypeVar("MatchData")
 InputX = TypeVar("InputX")
 InputY = TypeVar("InputY")
-MappingX = TypeVar("MappingX", bound=Sliceable)
-MappingY = TypeVar("MappingY", bound=Sliceable)
-ItemX = TypeVar("ItemX", bound=Sliceable)
-ItemY = TypeVar("ItemY", bound=Sliceable)
+ItemX = TypeVar("ItemX")
+ItemY = TypeVar("ItemY")
+MappingX = TypeVar("MappingX")
+MappingY = TypeVar("MappingY")
 Match = TypeVar("Match")
 
 @dataclass(frozen=True)
 class Cell(Generic[Cost, MatchData]):
     """A cell in the Needleman–Wunsch alignment matrix; represents an optimal alignment of the first x characters in a translation to the first y keys in an outline."""
 
-    cost: Cost
+    cost: Comparable[Cost]
 
     unmatched_x_start_index: int
     """The index where the sequence of trailing unmatched characters for this alignment beigins. Used during traceback when a match is not found by this cell."""
@@ -47,60 +49,62 @@ class Cell(Generic[Cost, MatchData]):
     match_data: "MatchData | None" = None
     # asterisk_matches: tuple[bool, ...] = ()
 
-    def __lt__(self, cell: "Cell"):
+    def __lt__(self, cell: "Cell[Comparable[Cost], MatchData]") -> bool:
         return self.cost < cell.cost
     
-    def __gt__(self, cell: "Cell"):
+    def __gt__(self, cell: "Cell[Comparable[Cost], MatchData]") -> bool:
         return self.cost > cell.cost
 
 class AlignmentService(Generic[Cost, MatchData, InputX, InputY, MappingX, MappingY, ItemX, ItemY, Match], ABC):
     @staticmethod
-    def process_input(x_input: InputX, y_input: InputY) -> tuple[Sliceable[ItemX], Sliceable[ItemY]]:
-        return (x_input, y_input)
+    def process_input(x_input: InputX, y_input: InputY, /) -> tuple[Sliceable[ItemX], Sliceable[ItemY]]:
+        return (cast(Sliceable[ItemX], x_input), cast(Sliceable[ItemY], y_input))
 
     @staticmethod
-    def initial_cost() -> Cost:
+    def initial_cost() -> Comparable[Cost]:
         ...
 
     @staticmethod
-    def mismatch_cost(mismatch_parent: Cell[Cost, MatchData], increment_x: bool, increment_y: bool) -> Cost:
+    def mismatch_cost(mismatch_parent: Cell[Cost, MatchData], increment_x: bool, increment_y: bool, /) -> Comparable[Cost]:
         ...
 
     @staticmethod
-    def generate_candidate_x_key(candidate_subseq_x: Sliceable[ItemX]) -> MappingX:
-        return candidate_subseq_x
+    def generate_candidate_x_key(candidate_subseq_x: Sliceable[ItemX], /) -> Sliceable[MappingX]:
+        return cast(Sliceable[MappingX], candidate_subseq_x)
     
     @staticmethod
-    def generate_candidate_y_key(candidate_subseq_y: Sliceable[ItemY]) -> MappingY:
-        return candidate_subseq_y
+    def generate_candidate_y_key(candidate_subseq_y: Sliceable[ItemY], /) -> Sliceable[MappingY]:
+        return cast(Sliceable[MappingY], candidate_subseq_y)
         
     @staticmethod
-    def has_mapping(candidate_x_key: MappingX) -> bool:
+    def has_mapping(candidate_x_key: Sliceable[MappingX], /) -> bool:
         ...
     
     @staticmethod
-    def get_mapping_options(candidate_x_key: MappingX) -> Iterable[Sliceable[ItemY]]:
+    def get_mapping_options(candidate_x_key: Sliceable[MappingX], /) -> Iterable[Sliceable[ItemY]]:
         ...
     
     @staticmethod
-    def y_seq_len(candidate_subseq_y: Sliceable[ItemY]) -> int:
+    def y_seq_len(candidate_subseq_y: Sliceable[ItemY], /) -> int:
         return len(candidate_subseq_y)
 
     @staticmethod
-    def is_match(actual_subseq_y: Sliceable[ItemY], candidate_subseq_y: Sliceable[ItemY]) -> bool:
+    def is_match(actual_subseq_y: Sliceable[ItemY], candidate_subseq_y: Sliceable[MappingY], /) -> bool:
         ...
 
     @staticmethod
-    def match_cost(parent: Cell[Cost, MatchData]) -> Cost:
+    def match_cost(parent: Cell[Cost, MatchData], /) -> Comparable[Cost]:
         ...
 
     @staticmethod
-    def match_data(subseq_x: Sliceable[ItemX], subseq_y: Sliceable[ItemY], pre_subseq_x: Sliceable[ItemX], pre_subseq_y: Sliceable[ItemY]) -> MatchData:
+    def match_data(subseq_x: Sliceable[MappingX], subseq_y: Sliceable[MappingY], pre_subseq_x: Sliceable[ItemX], pre_subseq_y: Sliceable[ItemY], /) -> MatchData:
         ...
 
     @staticmethod
-    def construct_match(seq_x: Sliceable[ItemX], seq_y: Sliceable[ItemY], start_cell: Cell[Cost, MatchData], end_cell: Cell[Cost, MatchData], match_data: "MatchData | None") -> Match:
+    def construct_match(seq_x: Sliceable[ItemX], seq_y: Sliceable[ItemY], start_cell: Cell[Cost, MatchData], end_cell: Cell[Cost, MatchData], match_data: "MatchData | None", /) -> Match:
         ...
+
+
 
 
 def aligner(Service: type[AlignmentService[Cost, MatchData, InputX, InputY, MappingX, MappingY, ItemX, ItemY, Match]]):
@@ -115,7 +119,7 @@ def aligner(Service: type[AlignmentService[Cost, MatchData, InputX, InputY, Mapp
 
         seq_x, seq_y = Service.process_input(input_x, input_y)
 
-        def create_mismatch_cell(x: int, y: int, increment_x: bool, increment_y: bool):
+        def create_mismatch_cell(x: int, y: int, increment_x: bool, increment_y: bool) -> Cell[Cost, MatchData]:
             mismatch_parent = matrix[x if increment_x else x + 1][y if increment_y else y + 1]
 
             return Cell(
@@ -186,7 +190,7 @@ def aligner(Service: type[AlignmentService[Cost, MatchData, InputX, InputY, Mapp
 
         # Base row and column
 
-        matrix = [[Cell(Service.initial_cost(), 0, 0, None, 0, 0, False)]]
+        matrix: list[list[Cell[Cost, MatchData]]] = [[Cell(Service.initial_cost(), 0, 0, None, 0, 0, False)]]
 
         for i in range(len(seq_x)):
             matrix.append([find_match(i, -1, True, False)])

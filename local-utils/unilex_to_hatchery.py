@@ -5,6 +5,7 @@ from typing import Any
 from pathlib import Path
 import json
 import os
+import dataclasses
 from dataclasses import dataclass
 import timeit
 import argparse
@@ -13,7 +14,8 @@ from plover import system
 from plover.config import DEFAULT_SYSTEM_NAME
 from plover.registry import registry
 
-from plover_hatchery.lib.alignment.parse_morphology import AffixKey, Formatting, Morpheme, MorphemeKey, MorphemeSeq, Morphology, Root, RootKey
+from plover_hatchery.lib.alignment.parse_morphology import AffixStressNormalizedKey, RootStressNormalizedKey
+
 
 
 
@@ -26,9 +28,9 @@ def _setup_plover():
 
 def _main(args: argparse.Namespace):
     from plover_hatchery.lib.alignment.match_sophemes import match_keysymbols_to_chars
-    from plover_hatchery.lib.alignment.parse_morphology import split_morphology, Affix
+    from plover_hatchery.lib.alignment.parse_morphology import split_morphology, Affix, AffixKey, Formatting, Morpheme, MorphemeKey, MorphemeStressNormalizedKey, MorphemeSeq, Morphology, Root, RootKey
     from plover_hatchery.lib.alignment.match_morphology import match_morphology_to_chars
-    from plover_hatchery.lib.sopheme import Sopheme
+    from plover_hatchery.lib.sopheme import Sopheme, Keysymbol
 
 
     root = Path(os.getcwd())
@@ -60,6 +62,13 @@ def _main(args: argparse.Namespace):
     
     out_path = root / args.out_path
     out_path.parent.mkdir(exist_ok=True, parents=True)
+    
+    if args.failed_out_path is not None:
+        failed_out_path = root / args.failed_out_path
+        failed_out_path.parent.mkdir(exist_ok=True, parents=True)
+    else:
+        failed_out_path = None
+
 
     def generate():
         @dataclass(frozen=True)
@@ -99,20 +108,28 @@ def _main(args: argparse.Namespace):
                 return affix.varname
             return f"{affix.varname}:{affix_ids_by_affix[affix.dict_key]}"
 
-        def morpheme_full_varname(morpheme: Morpheme):
+        def morpheme_full_varname(morpheme: Morpheme):            
             if len(morphemes_by_name[morpheme.name]) == 1:
                 return morpheme.varname
-            return f"{morpheme.varname}:{morpheme_ids_by_morpheme[morpheme.dict_key]}"
+
+            return f"{morpheme.varname}:{morpheme_ids_by_morpheme[morpheme_normalized_keys[morpheme.dict_key]]}"
 
         def morpheme_seq_definition(morpheme_seq: MorphemeSeq):
             return " ".join(code(morpheme) for morpheme in morpheme_seq.parts)
 
         def morpheme_definition(morpheme: Morpheme):
-            sophemes = match_keysymbols_to_chars(morpheme.phono, morpheme.ortho)
+            normalized_key = morpheme_normalized_keys[morpheme.dict_key]
+            sophemes = match_keysymbols_to_chars(normalized_key.phono, morpheme.ortho)
             return " ".join(str(sopheme) for sopheme in sophemes)
 
         def morpheme_code(morpheme: Morpheme):
-            return "{" + morpheme_full_varname(morpheme) + "}"
+            out = "{" + morpheme_full_varname(morpheme) + "}"
+            normalized_key = morpheme_normalized_keys[morpheme.dict_key]
+            if normalized_key.max_stress > 1:
+                out += f"!{normalized_key.max_stress}"
+
+            return out
+
             # if morpheme_n_uses[morpheme.dict_key] > 1:
             #     return "{" + morpheme_full_varname(morpheme) + "}"
             
@@ -128,18 +145,20 @@ def _main(args: argparse.Namespace):
             return formatting_code(part)
 
 
-        morphemes_dict: dict[MorphemeKey, Morpheme] = {}
+        morpheme_normalized_keys: dict[MorphemeKey, MorphemeStressNormalizedKey] = {}
+        morphemes_dict: dict[MorphemeStressNormalizedKey, Morpheme] = {}
         morphemes_by_name: dict[str, list[Morpheme]] = defaultdict(list)
-        morpheme_ids_by_morpheme: dict[MorphemeKey, int] = {}
+        morpheme_ids_by_morpheme: dict[MorphemeStressNormalizedKey, int] = {}
         # morpheme_n_uses: dict[MorphemeKey, int] = defaultdict(lambda: 0)
 
 
+        root_normalized_keys: dict[AffixKey, RootStressNormalizedKey] = {}
         roots_dict: dict[RootKey, Root] = {}
         roots_by_name: dict[str, list[Root]] = defaultdict(list)
         root_ids_by_root: dict[RootKey, int] = {}
         # root_n_uses: dict[RootKey, int] = defaultdict(lambda: 0)
 
-
+        affix_normalized_keys: dict[AffixKey, AffixStressNormalizedKey] = {}
         prefixes_dict: dict[AffixKey, Affix] = {}
         suffixes_dict: dict[AffixKey, Affix] = {}
         entries_list: list[Entry] = []
@@ -149,37 +168,50 @@ def _main(args: argparse.Namespace):
 
         with open(root / args.in_unilex_path, "r", encoding="utf-8") as file:
             n_entries_parsed = 0
+            print()
             while len(line := file.readline()) > 0:
                 if n_entries_parsed % 1000 == 0:
-                    print(f"Parsed {n_entries_parsed}")
+                    print(f"\x1b[FParsed {n_entries_parsed}")
                 n_entries_parsed += 1
 
 
                 try:
-                    translation, _, _, transcription, morphology, _ = line.split(":")
+                    translation, _, _, transcription, morphology_str, _ = line.split(":")
 
 
-                    morphology = split_morphology(transcription, morphology)
+                    morphology = split_morphology(transcription, morphology_str)
                     morphology = match_morphology_to_chars(morphology, translation)
 
                     for part in morphology.parts:
                         if not isinstance(part, Morpheme): continue
 
+                        keysymbols = Keysymbol.parse_seq(part.phono)
+                        new_keysymbols, max_stress = Keysymbol.normalize_stress(keysymbols)
+
+                        part_dict_key = MorphemeStressNormalizedKey(part.name, new_keysymbols, max_stress, part.ortho)
+                        morpheme_normalized_keys[part.dict_key] = part_dict_key
+
                         # morpheme_n_uses[part.dict_key] += 1
-                        if part.dict_key in morphemes_dict: continue
+                        if part_dict_key in morphemes_dict: continue
 
 
                         morpheme_id = len(morphemes_by_name[part.name]) + 1
 
-                        morphemes_dict[part.dict_key] = part
+                        morphemes_dict[part_dict_key] = part
                         morphemes_by_name[part.name].append(part)
-                        morpheme_ids_by_morpheme[part.dict_key] = morpheme_id
+                        morpheme_ids_by_morpheme[part_dict_key] = morpheme_id
 
 
 
                     ignore_entry = False
                     for chunk in morphology.chunks:
                         if isinstance(chunk, Affix):
+                            max_stress = Keysymbol.max_stress_value(
+                                morpheme_normalized_keys[morpheme.dict_key].max_stress
+                                for morpheme in chunk.morpheme_seq.parts
+                                if isinstance(morpheme, Morpheme)
+                            )
+
                             if not chunk.is_suffix and chunk.dict_key not in prefixes_dict:
                                 prefixes_dict[chunk.dict_key] = chunk
                             if chunk.is_suffix and chunk.dict_key not in suffixes_dict:
@@ -216,8 +248,9 @@ def _main(args: argparse.Namespace):
 
                 except Exception as e:
                     import traceback
-                    print(f"failed to add {line.strip()}: {e} ({''.join(traceback.format_tb(e.__traceback__))})")
-                    pass
+                    if failed_out_path is not None:
+                        with open(failed_out_path, "r", encoding="utf-8") as file:
+                            print(f"failed to add {line.strip()}: {e} ({''.join(traceback.format_tb(e.__traceback__))})")
 
 
         with open(out_path, "w+", encoding="utf-8") as out_file:
@@ -234,19 +267,11 @@ def _main(args: argparse.Namespace):
                 morpheme = morphemes_dict[morpheme_key]
                 _ = out_file.write(morpheme_full_varname(morpheme) + " = " + morpheme_definition(morpheme) + "\n")
 
-
-            _ = out_file.write("\n")
-            _ = out_file.write("[roots]\n")
-
             for root_key in sorted(roots_dict.keys(), key=lambda root: (root.name, root_ids_by_root[root])):
                 # if root_n_uses[root_key] == 1: continue
 
                 root_chunk = roots_dict[root_key]
                 _ = out_file.write(root_full_varname(root_chunk) + " = " + morpheme_seq_definition(root_chunk.morpheme_seq) + "\n")
-
-
-            _ = out_file.write("\n")
-            _ = out_file.write("[affixes]\n")
 
             for prefix_key in sorted(prefixes_dict.keys(), key=lambda affix: (affix.name, affix_ids_by_affix[affix])):
                 prefix = prefixes_dict[prefix_key]
@@ -261,9 +286,10 @@ def _main(args: argparse.Namespace):
 
             _ = out_file.write("\n")
             _ = out_file.write("[entries]\n")
+            print()
             for entry in entries_list:
                 if n_entries_written % 1000 == 0:
-                    print(f"Written {n_entries_written}")
+                    print(f"\x1b[FWritten {n_entries_written}")
                 n_entries_written += 1
 
                 _ = out_file.write(str(entry) + "\n")
@@ -286,6 +312,7 @@ if __name__ == "__main__":
     # parser.add_argument("-j", "--in-json-path", "--in-json", help="path to the input JSON dictionary", required=True)  
     parser.add_argument("-u", "--in-unilex-path", "--in-unilex", help="path to the input Unilex lexicon", required=True)
     parser.add_argument("-o", "--out-path", "--out", help="path to output the Hatchery dictionary (to use in Plover, use the `hatchery` file extension)", required=True)
+    parser.add_argument("-f", "--failed-out-path", "--failout", help="path to output the failed entries")
     args = parser.parse_args()
 
     _setup_plover()  

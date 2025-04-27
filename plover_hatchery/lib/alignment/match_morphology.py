@@ -93,7 +93,7 @@ class _match_morphology_to_chars(AlignmentService, ABC):
         match_chars =  translation[start_cell.y:end_cell.y]
 
         if len(match_parts) == 0:
-            return Formatting(match_chars, match_chars)
+            return Formatting(None, match_chars, match_chars)
         
         return dataclasses.replace(match_parts[0], ortho=match_chars)
 
