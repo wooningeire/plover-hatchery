@@ -43,7 +43,7 @@ class MorphemeSeq:
 class AffixStressNormalizedKey(NamedTuple):
     is_suffix: bool
     name: str
-    phono: tuple[Keysymbol, ...]
+    morpheme_normalized_key: "tuple[MorphemeStressNormalizedKey, ...]"
     max_stress: int
     ortho: str
 
@@ -61,20 +61,24 @@ class Affix:
     morpheme_seq: MorphemeSeq = field(default_factory=MorphemeSeq)
 
     @property
+    def is_prefix(self):
+        return not self.is_suffix
+
+    @property
     def dict_key(self):
         return AffixKey(self.is_suffix, self.morpheme_seq.name, self.morpheme_seq.phono, self.morpheme_seq.ortho)
 
     @property
     def varname(self):
         if self.is_suffix:
-            return f"@^{self.morpheme_seq.name}"
+            return f"^{self.morpheme_seq.name}"
         
-        return f"@{self.morpheme_seq.name}^"
+        return f"{self.morpheme_seq.name}^"
 
 @final
 class RootStressNormalizedKey(NamedTuple):
     name: str
-    phono: tuple[Keysymbol, ...]
+    morpheme_normalized_key: "tuple[MorphemeStressNormalizedKey, ...]"
     max_stress: int
     ortho: str
 
@@ -95,7 +99,7 @@ class Root:
 
     @property
     def varname(self):
-        return f"@@{self.morpheme_seq.name}"
+        return f"#{self.morpheme_seq.name}"
 
 @final
 class MorphemeStressNormalizedKey(NamedTuple):

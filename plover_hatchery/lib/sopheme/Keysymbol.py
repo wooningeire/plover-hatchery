@@ -2,6 +2,7 @@ from collections.abc import Iterable
 import dataclasses
 from dataclasses import dataclass
 import re
+from typing import Any, Generator
 
 
 _vowel_symbols = {
@@ -67,8 +68,7 @@ class Keysymbol:
 
     def __str__(self):
         out = self.symbol
-        if self.stress > 0:
-            out += f"!{self.stress}"
+        out += Keysymbol.stress_marker(self.stress)
         if self.optional:
             out += "?"
 
@@ -88,6 +88,14 @@ class Keysymbol:
     def base_symbol(self):
         """Strips brackets and digits from a keysymbol"""
         return _KEYSYMBOL_SUB.sub("", self.symbol.lower())
+
+
+    @staticmethod
+    def stress_marker(stress: int):
+        if stress <= 0:
+            return ""
+        return f"!{stress}"
+
 
 
     @staticmethod
@@ -119,21 +127,29 @@ class Keysymbol:
                 max_stress = stress
         
         return max_stress
+
+    @staticmethod
+    def adjust_stress(stress_values: Iterable[int], max_stress: int) -> Generator[int, None, None]:
+        for stress in stress_values:
+            if stress == 0:
+                yield 0
+            else:
+                yield stress - max_stress + 1
+
+    @staticmethod
+    def adjust_keysymbol_stress(keysymbols: "tuple[Keysymbol, ...]", max_stress: int):
+        if max_stress == 0:
+            return keysymbols
+
+        for keysymbol, stress in zip(keysymbols, Keysymbol.adjust_stress((keysymbol.stress for keysymbol in keysymbols), max_stress)):
+            if stress == 0:
+                yield keysymbol
+            else:
+                yield dataclasses.replace(keysymbol, stress=stress)
+
     
     @staticmethod
     def normalize_stress(keysymbols: "tuple[Keysymbol, ...]") -> "tuple[tuple[Keysymbol, ...], int]":
         max_stress = Keysymbol.max_stress_value(keysymbol.stress for keysymbol in keysymbols)
-
-        if max_stress == 0:
-            new_keysymbols = keysymbols
-        else:
-            new_keysymbols_list: list[Keysymbol] = []
-            for keysymbol in keysymbols:
-                if keysymbol.stress == 0:
-                    new_keysymbols_list.append(keysymbol)
-                else:
-                    new_keysymbols_list.append(dataclasses.replace(keysymbol, stress=keysymbol.stress - max_stress + 1))
-
-            new_keysymbols = tuple(new_keysymbols_list)
-
+        new_keysymbols = tuple(Keysymbol.adjust_keysymbol_stress(keysymbols, max_stress))
         return (new_keysymbols, max_stress)
