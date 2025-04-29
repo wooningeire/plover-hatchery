@@ -130,7 +130,7 @@ class match_chars_to_chords(AlignmentService, ABC):
         return candidate_x_key in _GRAPHEME_TO_STENO_MAPPINGS
 
     @staticmethod
-    def get_mappings(candidate_x_key: str):
+    def get_mapping_options(candidate_x_key: str):
         return _GRAPHEME_TO_STENO_MAPPINGS[candidate_x_key]
     
     @staticmethod
