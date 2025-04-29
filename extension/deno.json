@@ -1,9 +1,11 @@
 {
   "imports": {
-    "@eemeli/yaml": "jsr:@eemeli/yaml@^2.7.1"
+    "@eemeli/yaml": "jsr:@eemeli/yaml@^2.7.1",
+    "@std/fs": "jsr:@std/fs@^1.0.17"
   },
   "tasks": {
-    "build": "deno run --allow-read --allow-env --allow-write ./main.ts"
+    "build": "deno run --allow-read --allow-env --allow-write ./main.ts",
+    "package": "vsce package"
   },
   "displayName": "Hatchery language support",
   "description": "",

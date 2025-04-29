@@ -1,3 +1,9 @@
 {
-    "python.languageServer": "None"
+    "python.languageServer": "None",
+    "github.copilot.enable": {
+        "*": false,
+        "plaintext": false,
+        "markdown": false,
+        "scminput": false
+    }
 }

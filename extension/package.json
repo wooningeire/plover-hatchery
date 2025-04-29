@@ -26,9 +26,25 @@
     "grammars": [
       {
         "language": "hatchery",
+        "scopeName": "meta.key.injection.hatchery",
+        "path": "./out/hatchery.key.injection.tmLanguage.json",
+        "injectTo": ["source.hatchery"]
+      },
+      {
+        "language": "hatchery",
+        "scopeName": "meta.sopheme.injection.hatchery",
+        "path": "./out/hatchery.sopheme.injection.tmLanguage.json",
+        "injectTo": ["source.hatchery"]
+      },
+      {
+        "language": "hatchery",
         "scopeName": "source.hatchery",
-        "path": "./out/hatchery.tmLanguage.json"
+        "path": "./out/hatchery.file.tmLanguage.json"
       }
     ]
+  },
+  
+  "devDependencies": {
+    "@vscode/vsce": "^3.3.2"
   }
 }

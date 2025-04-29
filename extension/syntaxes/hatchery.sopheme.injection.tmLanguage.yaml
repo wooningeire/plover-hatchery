@@ -1,0 +1,118 @@
+$schema: https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json
+
+name: Hatchery dictionary injected entry
+scopeName: meta.sopheme.injection.hatchery
+
+patterns:
+  - { include: "#sopheme-seqs" }
+
+
+repository:
+  sopheme-seqs:
+    patterns:
+      - name: meta.sopheme-seq.hatchery
+        match: "(.*)(?: (.*))?"
+        captures:
+          1:
+            patterns:
+              - { include: "#sophemes" }
+              - { include: "#transclusions" }
+          2:
+            patterns:
+              - { include: "#sopheme-seqs" }
+
+  sophemes:
+    patterns:
+      - name: meta.sopheme.hatchery
+        match: ([^ {}]*)?(\.)(\(.*\)|\S*)?
+        captures:
+          1: { name: string.ortho.hatchery }
+          2: { name: punctuation.separator.sopheme.hatchery }
+          3:
+            patterns:
+              - { include: "#phonos" }
+
+  phonos:
+    patterns:
+      - name: meta.sopheme.phono.hatchery
+        match: (\()(.*)(\))
+        captures:
+          1: { name: punctuation.separator.sopheme.phono.begin.hatchery }
+          2:
+            patterns:
+              - { include: "#keysymbol-seqs" }
+          3: { name: punctuation.separator.sopheme.phono.end.hatchery }
+      - { include: "#keysymbols" }
+
+  keysymbol-seqs:
+    patterns:
+      - name: meta.sopheme.phono.keysymbol_seq.hatchery
+        match: "(\\S+)(?: (.*))?"
+        captures:
+          1:
+            patterns:
+              - { include: "#keysymbols" }
+          2:
+            patterns:
+              - { include: "#keysymbol-seqs" }
+
+
+  keysymbols:
+    patterns:
+      - name: meta.sopheme.phono.keysymbol.hatchery
+        match: ([^ !?]+)(![123]?)?(\?)?
+        captures:
+          1: { name: keyword.hatchery }
+          2:
+            patterns:
+              - { include: "#stresses" }
+          3: { name: punctuation.optional.hatchery }
+
+
+  stresses:
+    patterns:
+      - name: meta.stress.hatchery
+        match: (!)([123])?
+        captures:
+          1: { name: punctuation.stress.hatchery }
+          2: { name: constant.numeric.stress.hatchery }
+
+
+  transclusions:
+    patterns:
+      - name: meta.transclusion.hatchery
+        match: (\{)(\S*)(\})(\S+)?
+        captures:
+          1: { name: punctuation.transclusion.begin.hatchery }
+          2:
+            patterns:
+              - { include: "#keys" }
+          3: { name: punctuation.transclusion.end.hatchery }
+          4:
+            patterns:
+              - { include: "#stresses" }
+
+  keys:
+    patterns:
+      - { include: "#ids" }
+      - name: meta.key.hatchery
+        match: ([@#^])([^ @#^]+)
+        captures:
+          1: { name: storage.hatchery }
+          2:
+            patterns:
+              - { include: "#ids" }
+      - name: meta.key.hatchery
+        match: ([^ @#^]+)(\^)
+        captures:
+          1:
+            patterns:
+              - { include: "#ids" }
+          2: { name: storage.hatchery }
+          
+  ids:
+    patterns:
+      - name: meta.id.hatchery
+        match: ([^ @#^!?.\[\]()]+)
+        captures:
+          1: { name: variable.hatchery }
