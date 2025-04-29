@@ -1,0 +1,3 @@
+class Sophone:
+    name: str
+    def __init__(self, name: str) -> None: ...
