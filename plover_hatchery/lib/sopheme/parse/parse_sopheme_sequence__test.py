@@ -1,9 +1,9 @@
-from plover_hatchery.lib.sopheme.parse import parse_sopheme_sequence
+from plover_hatchery.lib.sopheme.parse import parse_entry_definition
 from plover_hatchery.lib.sopheme.Sopheme import Sopheme, Keysymbol
 
 
 def _check_parsing_is_reversible(sopheme_seq: str):
-    assert sopheme_seq == Sopheme.format_seq(parse_sopheme_sequence(sopheme_seq))
+    assert sopheme_seq == " ".join(str(entity) for entity in parse_entry_definition(sopheme_seq))
 
 
 def test__parse_sopheme_sequence__single_sopheme():

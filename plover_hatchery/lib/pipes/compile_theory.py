@@ -1,11 +1,15 @@
+from plover_hatchery.lib.sopheme.Sopheme import Sopheme
+
+
 from collections import defaultdict
 from collections.abc import Iterable
-from typing import cast, TypeVar, Generic, Any, Protocol, Callable, final
+from typing import Generator, cast, TypeVar, Generic, Any, Protocol, Callable, final
 from dataclasses import dataclass
 
 from plover.steno import Stroke
 
-from plover_hatchery.lib.sopheme import Sopheme, SophemeSeq
+from plover_hatchery.lib.sopheme import Sopheme, SophemeSeq, parse_entry_definition
+from plover_hatchery.lib.sopheme.parse.parse_sopheme_sequence import Transclusion
 
 from ..trie import  NondeterministicTrie
 from .Hook import Hook
@@ -58,7 +62,7 @@ def compile_theory(
         plugins_map[plugin.id] = plugin.initialize(get_plugin_api=get_plugin_api, base_hooks=hooks)
 
 
-    def build_lookup(entries: Iterable[str]):
+    def build_lookup(entry_lines: Iterable[tuple[str, str]]):
         states: dict[int, Any] = {}
         for plugin_id, handler in hooks.build_lookup.ids_handlers():
             states[plugin_id] = handler()
@@ -73,37 +77,57 @@ def compile_theory(
         translations: list[str] = []
         reverse_translations: dict[str, list[int]] = defaultdict(lambda: [])
 
-        for i, line in enumerate(entries):
+
+        entries: "dict[str, tuple[Transclusion | Sopheme, ...]]" = {}
+
+        def resolve_sophemes(definition: "tuple[Transclusion | Sopheme, ...]", visited: set[str]) -> Generator[Sopheme, None, None]:
+            for entity in definition:
+                if isinstance(entity, Sopheme):
+                    yield entity
+                    continue
+                    
+                if entity.target_varname in visited:
+                    raise Exception("Circular dependency")
+
+                yield from resolve_sophemes(entries[entity.target_varname], visited | {entity.target_varname})
+
+        for i, (varname, definition_str) in enumerate(entry_lines):
             if i % 1000 == 0:
                 print(f"hatched {i}")
 
-            translations.append("")
-
             try:
-                sophemes = tuple(Sopheme.parse_seq(line.strip()))
+                entries[varname] = tuple(parse_entry_definition(definition_str.strip()))
                 n_passed_parses += 1
-
-                try:
-                    entry_id = len(translations) - 1
-
-                    add_entry(states, trie, sophemes, entry_id)
-
-                    translation = Sopheme.get_translation(sophemes)
-                    translations[-1] = translation
-                    reverse_translations[translation].append(entry_id)
-
-                    n_passed_additions += 1
-                except Exception as e:
-                    # import traceback
-                    # print(f"failed to add {line.strip()}: {e} ({''.join(traceback.format_tb(e.__traceback__))})")
-                    pass
             except Exception as e:
-                # print(f"failed to parse {line.strip()}: {e}")
+                print(f"failed to parse {definition_str.strip()}: {e}")
                 pass
 
             n_entries += 1
         # while len(line := file.readline()) > 0:
         #     _add_entry(trie, Sopheme.parse_seq())
+
+        for varname, definition in entries.items():
+            if any(varname.startswith(modifier) for modifier in "@#^") or varname.endswith("^"):
+                continue
+
+            translations.append("")
+
+            try:
+                sophemes = tuple(resolve_sophemes(definition, {varname}))
+
+                entry_id = len(translations) - 1
+
+                add_entry(states, trie, sophemes, entry_id)
+
+                translation = Sopheme.get_translation(sophemes)
+                translations[-1] = translation
+                reverse_translations[translation].append(entry_id)
+
+                n_passed_additions += 1
+            except Exception as e:
+                # import traceback
+                # print(f"failed to add {line.strip()}: {e} ({''.join(traceback.format_tb(e.__traceback__))})")
+                pass
 
         n_failed_additions = n_entries - n_passed_additions
         n_failed_parses = n_entries - n_passed_parses

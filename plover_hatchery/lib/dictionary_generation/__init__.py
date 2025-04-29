@@ -1,10 +1,9 @@
-from plover_hatchery.lib.sopheme.Keysymbol import Keysymbol
-
-
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Generator, Generic, TypeVar, final, overload
+
+import toml
 
 from plover_hatchery.lib.alignment.match_sophemes import match_keysymbols_to_chars
 from plover_hatchery.lib.alignment.parse_morphology import AffixStressNormalizedKey, RootStressNormalizedKey, split_morphology, Affix, AffixKey, Formatting, Morpheme, MorphemeKey, MorphemeStressNormalizedKey, MorphemeSeq, Morphology, Root, RootKey
@@ -153,7 +152,7 @@ class _UnilexHatcheryConverter:
 
         return Keysymbol.stress_marker(key_max_stress - parent_max_stress + 1)
 
-    def __final_entry_line(self, entry: _FinalEntry):
+    def __final_entry_definition(self, entry: _FinalEntry):
         entry_parts: list[str] = []
         for chunk in entry.morphology.chunks:
             if isinstance(chunk, Formatting):
@@ -173,7 +172,7 @@ class _UnilexHatcheryConverter:
 
                 continue
             
-        return entry.translation + " = " + " ".join(entry_parts)
+        return " ".join(entry_parts)
 
 
     def generate(self, in_path: Path, out_path: Path, failures_out_path: "Path | None"):
@@ -273,31 +272,30 @@ class _UnilexHatcheryConverter:
                 _ = failures_file.write(failures_str)
             
 
-        out_str = """[meta]
-hatchery_format_version = 0.0.0
+        out_dict = {
+            "meta": {
+                "hatchery-format-version": "0.0.0",
+            },
+            "morphemes": {},
+            "entries": {},
+        }
 
-[morphemes]
-"""
 
         for _, morpheme in sorted(self.__morphemes.by_normalized_key.items(), key=lambda item: (item[0].name, self.__morphemes.ids[item[0]])):
             # if morpheme_n_uses[morpheme_key] == 1: continue
-            out_str += self.__morpheme_full_varname(morpheme) + " = " + self.__morpheme_definition(morpheme) + "\n"
+            out_dict["morphemes"][self.__morpheme_full_varname(morpheme)] = self.__morpheme_definition(morpheme)
 
         for root_key, root in sorted(self.__roots.by_normalized_key.items(), key=lambda item: (item[0].name, self.__roots.ids[item[0]])):
             # if root_n_uses[root_key] == 1: continue
-            out_str += self.__root_full_varname(root) + " = " + self.__morpheme_seq_definition(root.morpheme_seq, root_key.max_stress) + "\n"
+            out_dict["morphemes"][self.__root_full_varname(root)] = self.__morpheme_seq_definition(root.morpheme_seq, root_key.max_stress)
 
         for prefix_key, prefix in sorted(self.__prefixes.by_normalized_key.items(), key=lambda item: (item[0].name, self.__prefixes.ids[item[0]])):
-            out_str += self.__affix_full_varname(prefix) + " = " + self.__morpheme_seq_definition(prefix.morpheme_seq, prefix_key.max_stress) + " ^\n"
+            out_dict["morphemes"][self.__affix_full_varname(prefix)] = self.__morpheme_seq_definition(prefix.morpheme_seq, prefix_key.max_stress)
 
         for suffix_key, suffix in sorted(self.__suffixes.by_normalized_key.items(), key=lambda item: (item[0].name, self.__suffixes.ids[item[0]])):
-            out_str += self.__affix_full_varname(suffix) + " = ^ " + self.__morpheme_seq_definition(suffix.morpheme_seq, suffix_key.max_stress) + "\n"
+            out_dict["morphemes"][self.__affix_full_varname(suffix)] = self.__morpheme_seq_definition(suffix.morpheme_seq, suffix_key.max_stress)
 
 
-
-        out_str += """
-[entries]
-"""
         print()
         n_entries_written = 0
         for entry in entries_list:
@@ -305,11 +303,11 @@ hatchery_format_version = 0.0.0
                 print(f"\x1b[FWritten {n_entries_written}")
             n_entries_written += 1
 
-            out_str += self.__final_entry_line(entry) + "\n"
+            out_dict["entries"][entry.translation] = self.__final_entry_definition(entry)
             
 
         with open(out_path, "w+", encoding="utf-8") as out_file:
-            _ = out_file.write(out_str)
+            toml.dump(out_dict, out_file)
 
 def generate(in_path: Path, out_path: Path, failures_out_path: "Path | None"):
     return _UnilexHatcheryConverter().generate(in_path, out_path, failures_out_path)

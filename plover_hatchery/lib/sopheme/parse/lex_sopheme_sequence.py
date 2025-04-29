@@ -38,12 +38,16 @@ class _Lexer:
 def lex_sopheme_sequence(seq: str):
     lexer = _Lexer()
 
+    tokens: list[Token] = []
+
     for char in seq:
         if char == " ":
-            yield from lexer.step(char, TokenType.WHITESPACE)
-        elif char.isalnum() or char in "-@":
-            yield from lexer.step(char, TokenType.CHARS)
+            tokens.extend(lexer.step(char, TokenType.WHITESPACE))
+        elif char.isalnum() or char in "-@#^'":
+            tokens.extend(lexer.step(char, TokenType.CHARS))
         else:
-            yield from lexer.step(char, TokenType.SYMBOL)
+            tokens.extend(lexer.step(char, TokenType.SYMBOL))
     
-    yield lexer.step_eol()
+    tokens.append(lexer.step_eol())
+
+    return tuple(tokens)

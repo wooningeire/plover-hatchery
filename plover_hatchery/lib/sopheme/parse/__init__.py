@@ -1,1 +1,1 @@
-from .parse_sopheme_sequence import parse_sopheme_sequence
+from .parse_sopheme_sequence import parse_entry_definition

@@ -24,11 +24,6 @@ class Sopheme:
     @staticmethod
     def format_seq(sophemes: "Iterable[Sopheme]"):
         return " ".join(str(sopheme) for sopheme in sophemes)
-    
-    @staticmethod
-    def parse_seq(sophemes_str: str) -> "Generator[Sopheme, None, None]":
-        from .parse import parse_sopheme_sequence
-        return parse_sopheme_sequence(sophemes_str)
 
     @staticmethod
     def get_translation(sophemes: "Iterable[Sopheme]"):

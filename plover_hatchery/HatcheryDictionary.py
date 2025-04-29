@@ -4,6 +4,8 @@ from plover.steno import Stroke
 from plover.steno_dictionary import StenoDictionary
 import plover.log
 
+from plover_hatchery.lib.dictionary_reading import all_entries
+
 class HatcheryDictionary(StenoDictionary):
     readonly = True
 
@@ -19,12 +21,15 @@ class HatcheryDictionary(StenoDictionary):
 
     def _load(self, filepath: str):
         from .lib.theory_presets.amphitheory import theory
+        from .lib.dictionary_reading import read_hatchery_dictionary
 
-        with open(filepath, "r", encoding="utf-8") as file:
-            lookup = theory.build_lookup(entries=file)
 
-            self.__maybe_lookup = lookup.lookup
-            self.__maybe_reverse_lookup = lookup.reverse_lookup
+        dictionary = read_hatchery_dictionary(filepath)
+
+        lookup = theory.build_lookup(entry_lines=all_entries(dictionary))
+
+        self.__maybe_lookup = lookup.lookup
+        self.__maybe_reverse_lookup = lookup.reverse_lookup
             
 
     def __getitem__(self, stroke_stenos: tuple[str, ...]) -> str:

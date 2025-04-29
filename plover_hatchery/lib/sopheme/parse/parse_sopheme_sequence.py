@@ -1,5 +1,6 @@
-from enum import Enum, auto
-from typing import Any, Generator
+from dataclasses import dataclass
+import dataclasses
+from typing import TYPE_CHECKING, Generic, NamedTuple, TypeVar
 from plover_hatchery.lib.sopheme.Sopheme import Sopheme
 
 from ..Sopheme import Sopheme
@@ -7,293 +8,197 @@ from ..Keysymbol import Keysymbol
 from .lex_sopheme_sequence import Token, TokenType, lex_sopheme_sequence
 
 
+@dataclass(frozen=True)
+class _TokenCursor:
+    tokens: tuple[Token, ...]
+    current_token_index: int
 
-class _ParserState(Enum):
-    DONE_SOPHEME = auto()
-    DONE_ORTHO = auto()
-    DONE_DOT = auto()
-    DONE_KEYSYMBOL_GROUP_START_MARKER = auto()
-    DONE_KEYSYMBOL_CHARS = auto()
-    DONE_KEYSYMBOL_STRESS_MARKER = auto()
-    DONE_KEYSYMBOL_STRESS_VALUE = auto()
-    DONE_KEYSYMBOL_OPTIONAL_MARKER = auto()
-    DONE_KEYSYMBOL = auto()
-    DONE_PHONO = auto()
+    @property
+    def token(self):
+        return self.at(self.current_token_index)
 
+    def at(self, index: int):
+        if 0 <= index < len(self.tokens):
+            return self.tokens[index]
+        return Token(TokenType.WHITESPACE, "")
 
-class _Parser:
-    def __init__(self):
-        self.__state = _ParserState.DONE_SOPHEME
-
-        self.__parentheses_level = 0
-
-        self.__has_active_sopheme = False
-        self.__current_sopheme_chars = ""
-        self.__current_sopheme_keysymbols: list[Keysymbol] = []
-
-        self.__has_active_keysymbol = False
-        self.__current_keysymbol_chars = ""
-        self.__current_keysymbol_stress = 0
-        self.__current_keysymbol_optional = False
-
-
-    def __complete_sopheme(self):
-        assert self.__has_active_sopheme
-
-        sopheme = Sopheme(self.__current_sopheme_chars, tuple(self.__current_sopheme_keysymbols))
-        
-        self.__has_active_sopheme = False
-        self.__current_sopheme_chars = ""
-        self.__current_sopheme_keysymbols = []
-
-        return sopheme
+    def moved_to(self, index: int):
+        return dataclasses.replace(self, current_token_index=index)
     
+    def moved_by(self, increment: int):
+        return dataclasses.replace(self, current_token_index=self.current_token_index + increment)
+
+    def next(self):
+        return self.moved_by(1)
+
+    @property
+    def token_is_dot(self):
+        return self.token.type == TokenType.SYMBOL and self.token.value == "."
+
+    @property
+    def done(self):
+        return self.current_token_index >= len(self.tokens)
+
+    def __repr__(self):
+        out_str = "\n"
+        out_str += "".join(token.value for token in self.tokens) + "\n"
+        out_str += "".join("." + ("~" * (len(token.value) - 1)) for token in self.tokens[:self.current_token_index]) + ("^") + "\n"
+        out_str += repr(self.token) + "\n"
+        return out_str
+
+
+class ParserException(Exception):
+    pass
+
+
+T = TypeVar("T")
+if TYPE_CHECKING:
+    class _ParseResult(NamedTuple, Generic[T]):
+        value: T
+        end_cursor: _TokenCursor
+else:
+    class _ParseResult(NamedTuple):
+        value: T
+        end_cursor: _TokenCursor
+
+@dataclass(frozen=True)
+class Transclusion:
+    target_varname: str
+    stress: int = 0
+
+
+def consume_stress(cursor: _TokenCursor):
+    if cursor.token.type is not TokenType.SYMBOL or cursor.token.value != "!":
+        return _ParseResult(0, cursor)
+
+    stress = 1
+    cursor = cursor.next()
+
+    if cursor.token.type is TokenType.CHARS and cursor.token.value.isnumeric():
+        stress = int(cursor.token.value)
+        cursor = cursor.next()
     
-    def __complete_keysymbol(self):
-        assert self.__has_active_keysymbol
+    return _ParseResult(stress, cursor)
+    
 
-        keysymbol = Keysymbol(self.__current_keysymbol_chars, self.__current_keysymbol_stress, self.__current_keysymbol_optional)
-        self.__current_sopheme_keysymbols.append(keysymbol)
+def consume_keysymbol(cursor: _TokenCursor):
+    if cursor.token.type is not TokenType.CHARS:
+        raise ParserException("Expected a keysymbol identifier here", cursor)
 
-        self.__has_active_keysymbol = False
-        self.__current_keysymbol_chars = ""
-        self.__current_keysymbol_stress = 0
-        self.__current_keysymbol_optional = False
+    chars = cursor.token.value
+    cursor = cursor.next()
+
+    stress, cursor = consume_stress(cursor)
+    
+    if cursor.token.type is not TokenType.SYMBOL or cursor.token.value != "?":
+        return _ParseResult(Keysymbol(chars, stress), cursor)
 
     
-    def __complete_keysymbol_or_sopheme(self):
-        self.__complete_keysymbol()
+    cursor = cursor.next()
 
-        if self.__parentheses_level > 0:
-            self.__state = _ParserState.DONE_KEYSYMBOL
-        else: 
-            yield self.__complete_sopheme()
-
-            self.__state = _ParserState.DONE_SOPHEME
+    return _ParseResult(Keysymbol(chars, stress, True), cursor)
 
 
-    def __complete_keysymbol_group(self):
-        assert self.__parentheses_level > 0
+def consume_sopheme_ortho(cursor: _TokenCursor):
+    if cursor.token.type is TokenType.CHARS:
+        return _ParseResult(cursor.token.value, cursor.moved_by(1))
 
-        self.__state = _ParserState.DONE_PHONO
-        self.__parentheses_level -= 1
-        
+    if cursor.token_is_dot:
+        return _ParseResult("", cursor)
 
-    def consume(self, token: Token):
-        if self.__state is _ParserState.DONE_SOPHEME:
-            self.__consume_done_sopheme(token)
-        elif self.__state is _ParserState.DONE_ORTHO:
-            yield from self.__consume_done_ortho(token)
-        elif self.__state is _ParserState.DONE_DOT:
-            yield from self.__consume_done_dot(token)
-        elif self.__state is _ParserState.DONE_KEYSYMBOL_GROUP_START_MARKER:
-            self.__consume_done_keysymbol_group_start_marker(token)
-        elif self.__state is _ParserState.DONE_KEYSYMBOL_CHARS:
-            yield from self.__consume_done_keysymbol_chars(token)
-        elif self.__state is _ParserState.DONE_KEYSYMBOL_STRESS_MARKER:
-            self.__consume_done_keysymbol_stress_marker(token)
-        elif self.__state is _ParserState.DONE_KEYSYMBOL_STRESS_VALUE:
-            yield from self.__consume_done_keysymbol_stress_value(token)
-        elif self.__state is _ParserState.DONE_KEYSYMBOL_OPTIONAL_MARKER:
-            yield from self.__consume_done_keysymbol_optional_marker(token)
-        elif self.__state is _ParserState.DONE_KEYSYMBOL:
-            self.__consume_done_keysymbol(token)
-        elif self.__state is _ParserState.DONE_PHONO:
-            yield from self.__consume_done_phono(token)
-        else:
-            raise TypeError()
-
-                
-    def __consume_done_sopheme(self, token: Token):
-        if token.type is TokenType.CHARS:
-            self.__state = _ParserState.DONE_ORTHO
-            self.__current_sopheme_chars = token.value
-            self.__has_active_sopheme = True
-
-        elif token.type is TokenType.SYMBOL:
-            if token.value == ".":
-                self.__state = _ParserState.DONE_DOT
-
-                self.__has_active_sopheme = True
-            
-            else:
-                raise ValueError()
+    raise ParserException("Expected a sopheme orthography here", cursor)
 
 
-        elif token.type is TokenType.WHITESPACE:
-            ...
-
-        else:
-            raise TypeError()
-
-        
-            
-    def __consume_done_ortho(self, token: Token):
-        if token.type is TokenType.SYMBOL:
-            if token.value == ".":
-                self.__state = _ParserState.DONE_DOT
-
-            else:
-                raise ValueError()
-
-        elif token.type is TokenType.WHITESPACE:
-
-            yield self.__complete_sopheme()
-
-            self.__state = _ParserState.DONE_SOPHEME
-
-        else:
-            raise TypeError()
-            
-
-
-    def __consume_done_dot(self, token: Token):
-        if token.type is TokenType.CHARS:
-            self.__state = _ParserState.DONE_KEYSYMBOL_CHARS
-            self.__current_keysymbol_chars = token.value
-            self.__has_active_keysymbol = True
-
-        elif token.type is TokenType.SYMBOL:
-            if token.value == "(":
-                self.__state = _ParserState.DONE_KEYSYMBOL_GROUP_START_MARKER
-                self.__parentheses_level += 1
-            
-            else:
-                raise ValueError()
-
-        elif token.type is TokenType.WHITESPACE:
-            yield self.__complete_sopheme()
-
-            self.__state = _ParserState.DONE_SOPHEME
-
-        else:
-            raise TypeError()
-
-
-    def __consume_done_keysymbol_group_start_marker(self, token: Token):
-        if token.type is TokenType.CHARS:
-            self.__state = _ParserState.DONE_KEYSYMBOL_CHARS
-            self.__current_keysymbol_chars = token.value
-            self.__has_active_keysymbol = True
-
-        elif token.type is TokenType.SYMBOL:
-            if token.value == ")":
-                self.__complete_keysymbol_group()
-            
-            else:
-                raise ValueError()
-        
-        elif token.type is TokenType.WHITESPACE:
-            ...
-
-        else:
-            raise TypeError()
-                
-
-    def __consume_done_keysymbol_chars(self, token: Token):
-        if token.type is TokenType.SYMBOL:
-            if token.value == "!":
-                self.__state = _ParserState.DONE_KEYSYMBOL_STRESS_MARKER
-
-            elif token.value == "?":
-                self.__state = _ParserState.DONE_KEYSYMBOL_OPTIONAL_MARKER
-                self.__current_keysymbol_optional = True
-
-            elif token.value == ")":
-                self.__complete_keysymbol()
-                self.__complete_keysymbol_group()
-            
-            else:
-                raise ValueError()
-        
-        elif token.type is TokenType.WHITESPACE:
-            yield from self.__complete_keysymbol_or_sopheme()
-
-        else:
-            raise TypeError()
-        
-
-    def __consume_done_keysymbol_stress_marker(self, token: Token):
-        if token.type is TokenType.CHARS:
-            self.__state = _ParserState.DONE_KEYSYMBOL_STRESS_VALUE
-            self.__current_keysymbol_stress = int(token.value)
-            assert 1 <= self.__current_keysymbol_stress <= 3
-        
-        else:
-            raise TypeError()
-        
-    def __consume_done_keysymbol_stress_value(self, token: Token) -> Generator[Sopheme, None, None]:
-        if token.type is TokenType.SYMBOL:
-            if token.value == "?":
-                self.__state = _ParserState.DONE_KEYSYMBOL_OPTIONAL_MARKER
-                self.__current_keysymbol_optional = True
-
-            elif token.value == ")":
-                self.__complete_keysymbol()
-                self.__complete_keysymbol_group()
-
-        elif token.type is TokenType.WHITESPACE:
-            yield from self.__complete_keysymbol_or_sopheme()
-
-        else:
-            raise TypeError()
+def consume_sopheme_dot(cursor: _TokenCursor):
+    if cursor.token_is_dot:
+        return _ParseResult(None, cursor.next())
     
-    def __consume_done_keysymbol_optional_marker(self, token: Token) -> Generator[Sopheme, None, None]:
-        if token.type is TokenType.SYMBOL:
-            if token.value == ")":
-                self.__complete_keysymbol()
-                self.__complete_keysymbol_group()
+    raise ParserException("Expected a dot here", cursor)
 
-        elif token.type is TokenType.WHITESPACE:
-            yield from self.__complete_keysymbol_or_sopheme()
 
-        else:
-            raise TypeError()
+def consume_sopheme_phono(cursor: _TokenCursor):
+    if cursor.token.type is TokenType.CHARS:
+        keysymbol, new_cursor = consume_keysymbol(cursor)
+        return _ParseResult((keysymbol,), new_cursor)
 
-    def __consume_done_keysymbol(self, token: Token):
-        if token.type is TokenType.CHARS:
-            self.__state = _ParserState.DONE_KEYSYMBOL_CHARS
-            self.__current_keysymbol_chars = token.value
-            self.__has_active_keysymbol = True
+    if cursor.token.type is TokenType.SYMBOL and cursor.token.value == "(":
+        cursor = cursor.next()
 
-        elif token.type is TokenType.SYMBOL:
-            if token.value == ")":
-                self.__complete_keysymbol_group()
-            
-            else:
-                raise ValueError()
-        
-        elif token.type is TokenType.WHITESPACE:
-            ...
+        keysymbols: list[Keysymbol] = []
+        while cursor.token.type is not TokenType.SYMBOL or cursor.token.value != ")":
+            keysymbol, cursor = consume_keysymbol(cursor)
+            keysymbols.append(keysymbol)
 
-        else:
-            raise TypeError()
-        
-    def __consume_done_phono(self, token: Token):
-        if token.type is TokenType.WHITESPACE:
-            yield self.__complete_sopheme()
-            
-            self.__state = _ParserState.DONE_SOPHEME
+            if cursor.token.type is TokenType.WHITESPACE:
+                cursor = cursor.next()
 
-        else:
-            raise TypeError()
+        cursor = cursor.next()
+
+        return _ParseResult(tuple(keysymbols), cursor)
+
+    if cursor.token.type is TokenType.WHITESPACE:
+        return _ParseResult((), cursor)
     
-    def consume_eol(self):
-        if self.__parentheses_level > 0:
-            raise ValueError()
-        
-        if self.__has_active_keysymbol:
-            self.__complete_keysymbol()
-        
-        if self.__has_active_sopheme:
-            yield self.__complete_sopheme()
+    raise ParserException("Expected a sopheme phonology here", cursor)
+
+def consume_sopheme(cursor: _TokenCursor):
+    ortho, cursor = consume_sopheme_ortho(cursor)
+    _, cursor = consume_sopheme_dot(cursor)
+    phono, cursor = consume_sopheme_phono(cursor)
+
+    return _ParseResult(Sopheme(ortho, phono), cursor)
 
 
+def consume_transclusion(cursor: _TokenCursor):
+    if cursor.token.type is not TokenType.SYMBOL or cursor.token.value != "{":
+        raise ParserException("Expected a transclusion here", cursor)
 
-def parse_sopheme_sequence(seq: str) -> Generator[Sopheme, None, None]:
-    parser = _Parser()
+    cursor = cursor.next()
 
-    for token in lex_sopheme_sequence(seq):
-        yield from parser.consume(token)
+    if cursor.token.type is not TokenType.CHARS:
+        raise ParserException("Expected a variable name here", cursor)
+    
+    varname = cursor.token.value
+    cursor = cursor.next()
 
-    yield from parser.consume_eol()
+    if cursor.token.type is not TokenType.SYMBOL or cursor.token.value != "}":
+        raise ParserException("Expected a closing brace here", cursor)
+
+    stress, cursor = consume_stress(cursor)
+
+    return _ParseResult(Transclusion(varname, stress), cursor)
+
+
+def consume_entity(cursor: _TokenCursor):
+    try:
+        return consume_transclusion(cursor)
+    except ParserException: pass
+
+    try:
+        return consume_sopheme(cursor)
+    except ParserException: pass
+
+    raise ParserException("Expected an entity here", cursor)
+
+
+def parse_line(tokens: tuple[Token, ...]):
+    cursor = _TokenCursor(tokens, 0)
+
+    if cursor.done:
+        return
+
+    while True:
+        entity, cursor = consume_entity(cursor)
+        yield entity
+
+        if cursor.done:
+            break
+
+        if cursor.token.type is TokenType.WHITESPACE:
+            cursor = cursor.next()
+        else:
+            raise ParserException("Expected whitespace here", cursor)
+
+
+def parse_entry_definition(seq: str):
+    return parse_line(lex_sopheme_sequence(seq))
