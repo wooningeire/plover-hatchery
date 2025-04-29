@@ -1,4 +1,4 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Any, Generator, NamedTuple, Union, final
@@ -6,6 +6,7 @@ from typing import Any, Generator, NamedTuple, Union, final
 from plover_hatchery.lib.sopheme import Keysymbol
 
 
+@final
 class MorphemeSeq:
     def __init__(self):
         self.parts: "list[Morpheme | Formatting]" = []
@@ -75,6 +76,9 @@ class Affix:
         
         return f"{self.morpheme_seq.name}^"
 
+    def parts(self):
+        yield from self.morpheme_seq.parts
+
 @final
 class RootStressNormalizedKey(NamedTuple):
     name: str
@@ -100,6 +104,9 @@ class Root:
     @property
     def varname(self):
         return f"#{self.morpheme_seq.name}"
+
+    def parts(self):
+        yield from self.morpheme_seq.parts
 
 @final
 class MorphemeStressNormalizedKey(NamedTuple):
@@ -142,6 +149,9 @@ class Formatting:
     @property
     def phono(self):
         return ""
+
+    def parts(self):
+        yield from ()
 
 
 MorphologyPart = Union[Formatting, Morpheme]

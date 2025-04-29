@@ -8,6 +8,7 @@ import toml
 from plover_hatchery.lib.alignment.match_sophemes import match_keysymbols_to_chars
 from plover_hatchery.lib.alignment.parse_morphology import AffixStressNormalizedKey, RootStressNormalizedKey, split_morphology, Affix, AffixKey, Formatting, Morpheme, MorphemeKey, MorphemeStressNormalizedKey, MorphemeSeq, Morphology, Root, RootKey
 from plover_hatchery.lib.alignment.match_morphology import match_morphology_to_chars
+from plover_hatchery.lib.dictionary.HatcheryDictionaryContents import HatcheryDictionaryContents
 from plover_hatchery.lib.sopheme import Sopheme, Keysymbol
 
 _Item = TypeVar("_Item")
@@ -272,7 +273,7 @@ class _UnilexHatcheryConverter:
                 _ = failures_file.write(failures_str)
             
 
-        out_dict = {
+        out_dict: HatcheryDictionaryContents = {
             "meta": {
                 "hatchery-format-version": "0.0.0",
             },
@@ -309,5 +310,5 @@ class _UnilexHatcheryConverter:
         with open(out_path, "w+", encoding="utf-8") as out_file:
             toml.dump(out_dict, out_file)
 
-def generate(in_path: Path, out_path: Path, failures_out_path: "Path | None"):
+def generate_from_unilex(in_path: Path, out_path: Path, failures_out_path: "Path | None"):
     return _UnilexHatcheryConverter().generate(in_path, out_path, failures_out_path)

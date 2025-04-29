@@ -98,7 +98,7 @@ AU OU OI
     "ir": "EE",
     "@@r": as_spelled,
     "er": "E",
-    "eir": "E",
+    "eir": "AA",
     "ur": "U",
     "i@": as_spelled,
 })

@@ -137,9 +137,10 @@ class Keysymbol:
                 yield stress - max_stress + 1
 
     @staticmethod
-    def adjust_keysymbol_stress(keysymbols: "tuple[Keysymbol, ...]", max_stress: int):
+    def adjust_keysymbol_stress(keysymbols: "tuple[Keysymbol, ...]", max_stress: int) -> "Generator[Keysymbol, None, None]":
         if max_stress == 0:
-            return keysymbols
+            yield from keysymbols
+            return
 
         for keysymbol, stress in zip(keysymbols, Keysymbol.adjust_stress((keysymbol.stress for keysymbol in keysymbols), max_stress)):
             if stress == 0:

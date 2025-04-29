@@ -4,8 +4,6 @@ from plover.steno import Stroke
 from plover.steno_dictionary import StenoDictionary
 import plover.log
 
-from plover_hatchery.lib.dictionary_reading import all_entries
-
 class HatcheryDictionary(StenoDictionary):
     readonly = True
 
@@ -21,7 +19,7 @@ class HatcheryDictionary(StenoDictionary):
 
     def _load(self, filepath: str):
         from .lib.theory_presets.amphitheory import theory
-        from .lib.dictionary_reading import read_hatchery_dictionary
+        from .lib.dictionary import read_hatchery_dictionary, all_entries
 
 
         dictionary = read_hatchery_dictionary(filepath)

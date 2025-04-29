@@ -71,6 +71,7 @@ def compile_theory(
         trie: NondeterministicTrie[str, int] = NondeterministicTrie()
 
         n_entries = 0
+        n_addable_entries = 0
         n_passed_parses = 0
         n_passed_additions = 0
 
@@ -99,18 +100,23 @@ def compile_theory(
                 entries[varname] = tuple(parse_entry_definition(definition_str.strip()))
                 n_passed_parses += 1
             except Exception as e:
-                print(f"failed to parse {definition_str.strip()}: {e}")
+                # print(f"failed to parse {definition_str.strip()}: {e}")
                 pass
 
             n_entries += 1
         # while len(line := file.readline()) > 0:
         #     _add_entry(trie, Sopheme.parse_seq())
 
-        for varname, definition in entries.items():
+        for i, (varname, definition) in enumerate(entries.items()):
+            if i % 1000 == 0:
+                print(f"checked/wrote {i}")
+
             if any(varname.startswith(modifier) for modifier in "@#^") or varname.endswith("^"):
                 continue
 
             translations.append("")
+
+            n_addable_entries += 1
 
             try:
                 sophemes = tuple(resolve_sophemes(definition, {varname}))
@@ -129,13 +135,14 @@ def compile_theory(
                 # print(f"failed to add {line.strip()}: {e} ({''.join(traceback.format_tb(e.__traceback__))})")
                 pass
 
-        n_failed_additions = n_entries - n_passed_additions
+        n_failed_additions = n_addable_entries - n_passed_additions
         n_failed_parses = n_entries - n_passed_parses
 
         print(f"""
-Hatched {n_entries} entries
-    {n_failed_additions} ({n_failed_additions / n_entries * 100:.2f}%) total failed additions
-    ({n_failed_parses} ({n_failed_parses / n_entries * 100:.2f}%) failed parsing)
+Parsed {n_entries} entries
+    ({n_failed_parses} ({n_failed_parses / n_entries * 100:.2f}%) failed)
+Added {n_addable_entries} entries
+    ({n_failed_additions} ({f"{n_failed_additions / n_addable_entries * 100:.2f}" if n_addable_entries > 0 else "nan"}%) failed)
 """)
 
         # print(trie)
@@ -145,6 +152,8 @@ Hatched {n_entries} entries
 
         def true_reverse_lookup(translation: str):
             return reverse_lookup(states, trie, translation, reverse_translations)
+
+        # print(true_reverse_lookup("airworthiest"))
 
         return TheoryLookup(true_lookup, true_reverse_lookup)
         

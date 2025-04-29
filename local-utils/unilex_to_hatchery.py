@@ -18,7 +18,7 @@ def _setup_plover():
 
 
 def _main(args: argparse.Namespace):
-    from plover_hatchery.lib.dictionary_generation import generate
+    from plover_hatchery.lib.dictionary import generate_from_unilex
 
     root = Path(os.getcwd())
 
@@ -35,7 +35,7 @@ def _main(args: argparse.Namespace):
 
 
     print(f"Generating entries…")
-    duration = timeit.timeit(lambda: generate(in_path, out_path, failures_out_path), number=1)
+    duration = timeit.timeit(lambda: generate_from_unilex(in_path, out_path, failures_out_path), number=1)
     print(f"Finished (took {duration} s)")
 
 if __name__ == "__main__":

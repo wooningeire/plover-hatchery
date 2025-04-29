@@ -43,7 +43,7 @@ def lex_sopheme_sequence(seq: str):
     for char in seq:
         if char == " ":
             tokens.extend(lexer.step(char, TokenType.WHITESPACE))
-        elif char.isalnum() or char in "-@#^'":
+        elif char.isalnum() or char in "-@#^':":
             tokens.extend(lexer.step(char, TokenType.CHARS))
         else:
             tokens.extend(lexer.step(char, TokenType.SYMBOL))

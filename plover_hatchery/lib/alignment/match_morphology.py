@@ -14,6 +14,7 @@ _MORPHEME_ALTERNATIVES = {
     for name, options in {
         "ise": "ise ize",
         "able": "able ible abil ibil",
+        "y": "i",
     }.items()
 }
 

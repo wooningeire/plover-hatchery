@@ -164,6 +164,8 @@ def consume_transclusion(cursor: _TokenCursor):
     if cursor.token.type is not TokenType.SYMBOL or cursor.token.value != "}":
         raise ParserException("Expected a closing brace here", cursor)
 
+    cursor = cursor.next()
+    
     stress, cursor = consume_stress(cursor)
 
     return _ParseResult(Transclusion(varname, stress), cursor)

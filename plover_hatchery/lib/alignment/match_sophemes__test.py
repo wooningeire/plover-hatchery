@@ -1,4 +1,4 @@
-def test__match_sophemes__baseline():
+def test__match_keysymbols_to_chars__baseline():
     from plover_hatchery.lib.alignment.match_sophemes import match_keysymbols_to_chars
     from plover_hatchery.lib.sopheme import Keysymbol
 
@@ -12,7 +12,7 @@ def test__match_sophemes__baseline():
         == "z.z y.ae!1 g.g o.ou t.t e."
     )
 
-def test__match_sophemes__keysymbol_cluster_with_gap():
+def test__match_keysymbols_to_chars__keysymbol_cluster_with_gap():
     from plover_hatchery.lib.alignment.match_sophemes import match_keysymbols_to_chars
     from plover_hatchery.lib.sopheme import Keysymbol
 
