@@ -23,7 +23,7 @@ T = TypeVar("T")
 @final
 class TheoryHooks:
     class OnBuildLookup(Protocol):
-        def __call__(self) -> Any: ...
+        def __call__(self, *, trie: NondeterministicTrie[str, int]) -> Any: ...
     class AddEntry(Protocol):
         def __call__(self, *, trie: NondeterministicTrie[str, int], sophemes: SophemeSeq, entry_id: int) -> None: ...
     class Lookup(Protocol):
@@ -63,12 +63,13 @@ def compile_theory(
 
 
     def build_lookup(entry_lines: Iterable[tuple[str, str]]):
+        trie: NondeterministicTrie[str, int] = NondeterministicTrie()
+
+
         states: dict[int, Any] = {}
         for plugin_id, handler in hooks.build_lookup.ids_handlers():
-            states[plugin_id] = handler()
+            states[plugin_id] = handler(trie=trie)
 
-
-        trie: NondeterministicTrie[str, int] = NondeterministicTrie()
 
         n_entries = 0
         n_addable_entries = 0

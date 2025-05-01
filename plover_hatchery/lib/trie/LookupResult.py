@@ -11,5 +11,6 @@ V = TypeVar("V")
 @dataclass
 class LookupResult(Generic[V]):
     translation: V
+    translation_id: int
     cost: float
     transitions: tuple[TransitionKey, ...]

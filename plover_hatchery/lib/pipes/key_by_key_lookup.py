@@ -2,8 +2,11 @@
 from collections import defaultdict
 from collections.abc import Iterable
 from typing import Protocol, final
+
 from plover.steno import Stroke
 
+from plover_hatchery.lib.trie.NondeterministicTrie import NondeterministicTrie
+from plover_hatchery.lib.trie.TriePath import TriePath
 from plover_hatchery.lib.config import TRIE_STROKE_BOUNDARY_KEY
 from plover_hatchery.lib.pipes.Hook import Hook
 from plover_hatchery.lib.pipes.Plugin import GetPluginApi, Plugin, define_plugin
@@ -13,12 +16,26 @@ from plover_hatchery.lib.pipes.lookup_result_filtering import lookup_result_filt
 from plover_hatchery.lib.trie import LookupResult, NondeterministicTrie, TransitionKey, TriePath
 
 
+@final
+class KeyByKeyLookupApi:
+    class CheckTraverse(Protocol):
+        def __call__(
+            self,
+            *,
+            trie: NondeterministicTrie[str, int],
+            existing_trie_path: TriePath,
+            new_transition: TransitionKey,
+        ) -> bool: ...
+
+    check_traverse = Hook(CheckTraverse)
+
+
 def key_by_key_lookup(
     *,
     cycle_on: "str | None"=None,
     debug_on: "str | None"="",
     prohibit_strokes: Iterable[str]=(),
-) -> Plugin[None]:
+) -> Plugin[KeyByKeyLookupApi]:
     cycler_stroke = Stroke.from_steno(cycle_on) if cycle_on is not None else None
     debug_stroke = Stroke.from_steno(debug_on) if debug_on is not None else None
 
@@ -29,6 +46,25 @@ def key_by_key_lookup(
     def plugin(get_plugin_api: GetPluginApi, base_hooks: TheoryHooks, **_):
         banks_info = get_plugin_api(declare_banks)
         filtering_api = get_plugin_api(lookup_result_filtering)
+
+
+        hooks = KeyByKeyLookupApi()
+
+        
+        def traverse_handler(trie: NondeterministicTrie[str, int], existing_trie_path: TriePath, new_transition: TransitionKey):
+            return all(
+                handler(
+                    trie=trie,
+                    existing_trie_path=existing_trie_path,
+                    new_transition=new_transition,
+                )
+                for handler in hooks.check_traverse.handlers()
+            )
+
+
+        @base_hooks.build_lookup.listen(key_by_key_lookup)
+        def _(trie: NondeterministicTrie[str, int], **_):
+            trie.on_check_traverse(traverse_handler)
 
 
         @base_hooks.lookup.listen(key_by_key_lookup)
@@ -149,7 +185,7 @@ def key_by_key_lookup(
             return translations[choices[n_variation % len(choices)].translation]
 
 
-        return None
+        return hooks
 
 
     return plugin

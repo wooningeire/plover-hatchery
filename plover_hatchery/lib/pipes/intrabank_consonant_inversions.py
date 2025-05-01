@@ -1,9 +1,11 @@
+from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any, final
 
 from plover.steno import Stroke
 
 from plover_hatchery.lib.config import TRIE_STROKE_BOUNDARY_KEY
+from plover_hatchery.lib.pipes import key_by_key_lookup
 from plover_hatchery.lib.pipes.Plugin import Plugin, GetPluginApi, define_plugin
 from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
 from plover_hatchery.lib.pipes.declare_banks import declare_banks
@@ -12,7 +14,7 @@ from plover_hatchery.lib.pipes.lookup_result_filtering import lookup_result_filt
 from plover_hatchery.lib.sopheme import SophemeSeq
 from plover_hatchery.lib.sopheme.SophemeSeq import SophemeSeqPhoneme
 from plover_hatchery.lib.trie import LookupResult, NondeterministicTrie, TriePath
-from plover_hatchery.lib.trie.Transition import TransitionCostInfo, TransitionKey
+from plover_hatchery.lib.trie.Transition import TransitionCostInfo, TransitionCostKey, TransitionKey
 from .banks import BanksState, banks
 
 
@@ -22,6 +24,7 @@ def intrabank_consonant_inversions() -> Plugin[None]:
         banks_info = get_plugin_api(declare_banks)
         banks_api = get_plugin_api(banks)
         filtering_api = get_plugin_api(lookup_result_filtering)
+        lookup_api = get_plugin_api(key_by_key_lookup)
 
         """
         Idea: For each consonant source node, create a loop from it to itself for each consonant chord thereafter.
@@ -46,8 +49,11 @@ def intrabank_consonant_inversions() -> Plugin[None]:
         @final
         @dataclass
         class GlobalState:
-            loop_transitions_to_phonemes: dict[TransitionKey, SophemeSeqPhoneme] = field(default_factory=dict)
-            pass_transitions_to_phonemes: dict[TransitionKey, SophemeSeqPhoneme] = field(default_factory=dict)
+            loop_transitions_to_phonemes: dict[TransitionCostKey, SophemeSeqPhoneme] = field(default_factory=dict)
+            pass_transitions_to_phonemes: dict[TransitionCostKey, SophemeSeqPhoneme] = field(default_factory=dict)
+
+            pass_transitions_to_satisfying_loop_transitions: dict[TransitionKey, set[TransitionKey]] = field(default_factory=lambda: defaultdict(set))
+            loop_transitions_to_similar_loop_transitions: dict[TransitionKey, set[TransitionKey]] = field(default_factory=lambda: defaultdict(set))
 
         global_state: GlobalState
 
@@ -70,27 +76,53 @@ def intrabank_consonant_inversions() -> Plugin[None]:
             state.nodes.append(PhonemeNodes(banks_state.current_phoneme, banks_state.left_srcs, banks_state.right_srcs))
 
 
+            satisfying_loop_transitions: set[TransitionKey] = set()
+
             for node_data in state.nodes:
                 for src in node_data.left_srcs:
+                    cost = src.cost
+                    if node_data.phoneme != banks_state.current_phoneme:
+                        cost += 50
+
+
                     for chord in banks_api.left_chords(banks_state.current_phoneme):
-                        left_transitions = banks_state.trie.link_chain(src.node, src.node, chord.keys(), TransitionCostInfo(50, banks_state.entry_id))
-                        global_state.loop_transitions_to_phonemes[left_transitions[0]] = banks_state.current_phoneme
+                        left_transitions = banks_state.trie.link_chain(src.node, src.node, chord.keys(), TransitionCostInfo(cost, banks_state.entry_id))
+
+                        global_state.loop_transitions_to_phonemes[TransitionCostKey(left_transitions[0], banks_state.entry_id)] = banks_state.current_phoneme
+                        satisfying_loop_transitions.add(left_transitions[0])
+                        global_state.loop_transitions_to_similar_loop_transitions[left_transitions[0]] = satisfying_loop_transitions
 
                 for src in node_data.right_srcs:
+                    cost = src.cost
+                    if node_data.phoneme != banks_state.current_phoneme:
+                        cost += 50
+
+
                     for chord in banks_api.right_chords(banks_state.current_phoneme):
-                        right_transitions = banks_state.trie.link_chain(src.node, src.node, chord.keys(), TransitionCostInfo(50, banks_state.entry_id))
-                        global_state.loop_transitions_to_phonemes[right_transitions[0]] = banks_state.current_phoneme
+                        right_transitions = banks_state.trie.link_chain(src.node, src.node, chord.keys(), TransitionCostInfo(cost, banks_state.entry_id))
+
+                        global_state.loop_transitions_to_phonemes[TransitionCostKey(right_transitions[0], banks_state.entry_id)] = banks_state.current_phoneme
+                        satisfying_loop_transitions.add(right_transitions[0])
+                        global_state.loop_transitions_to_similar_loop_transitions[right_transitions[0]] = satisfying_loop_transitions
 
 
             if left_node is not None:
                 for src in banks_state.left_srcs:
                     transition = banks_state.trie.link(src.node, left_node, None, TransitionCostInfo(src.cost, banks_state.entry_id))
-                    global_state.pass_transitions_to_phonemes[transition] = banks_state.current_phoneme
+
+                    global_state.pass_transitions_to_phonemes[TransitionCostKey(transition, banks_state.entry_id)] = banks_state.current_phoneme
+                    global_state.pass_transitions_to_satisfying_loop_transitions[transition] |= satisfying_loop_transitions
 
             if right_node is not None:
                 for src in banks_state.right_srcs:
                     transition = banks_state.trie.link(src.node, right_node, None, TransitionCostInfo(src.cost, banks_state.entry_id))
-                    global_state.pass_transitions_to_phonemes[transition] = banks_state.current_phoneme
+
+                    global_state.pass_transitions_to_phonemes[TransitionCostKey(transition, banks_state.entry_id)] = banks_state.current_phoneme
+                    global_state.pass_transitions_to_satisfying_loop_transitions[transition] |= satisfying_loop_transitions
+
+            
+            for transition in satisfying_loop_transitions:
+                global_state.loop_transitions_to_similar_loop_transitions[transition] |= satisfying_loop_transitions
 
 
 
@@ -99,6 +131,40 @@ def intrabank_consonant_inversions() -> Plugin[None]:
             if banks_state.current_phoneme is not None and banks_state.current_phoneme.keysymbol.optional: return
             state.nodes = []
 
+
+        def check_pass_is_allowed(trie: NondeterministicTrie[str, int], existing_trie_path: TriePath, new_transition: TransitionKey):
+            if new_transition not in global_state.pass_transitions_to_satisfying_loop_transitions: return True
+
+            loop_transitions = global_state.pass_transitions_to_satisfying_loop_transitions[new_transition]
+
+            for transition in reversed(existing_trie_path.transitions):
+                if transition.key_id is not None and trie.get_key(transition.key_id) == TRIE_STROKE_BOUNDARY_KEY:
+                    break
+
+                if transition in loop_transitions:
+                    return True
+
+            return False
+        
+
+        def check_loop_is_not_repeated(existing_trie_path: TriePath, new_transition: TransitionKey):
+            if new_transition not in global_state.loop_transitions_to_similar_loop_transitions: return True
+
+            similar_loop_transitions = global_state.loop_transitions_to_similar_loop_transitions[new_transition]
+
+            for transition in existing_trie_path.transitions:
+                if transition in similar_loop_transitions:
+                    return False
+
+            return True
+
+
+        @lookup_api.check_traverse.listen(intrabank_consonant_inversions)
+        def _(trie: NondeterministicTrie[str, int], existing_trie_path: TriePath, new_transition: TransitionKey, **_):
+            return (
+                check_pass_is_allowed(trie, existing_trie_path, new_transition)
+                and check_loop_is_not_repeated(existing_trie_path, new_transition)
+            )
 
         @final
         @dataclass
@@ -170,14 +236,14 @@ def intrabank_consonant_inversions() -> Plugin[None]:
                 return True
 
 
-            def check_transition(self, transition: TransitionKey, trie: NondeterministicTrie[str, int]):
-                if transition.key_id is None:
-                    phoneme = global_state.pass_transitions_to_phonemes.get(transition)
+            def check_transition(self, cost_key: TransitionCostKey, trie: NondeterministicTrie[str, int]):
+                if cost_key.transition.key_id is None:
+                    phoneme = global_state.pass_transitions_to_phonemes.get(cost_key)
                     if phoneme is not None and phoneme not in self.__all_seen_phonemes:
                         return False
 
                 else:
-                    key = trie.get_key(transition.key_id)
+                    key = trie.get_key(cost_key.transition.key_id)
 
                     if key == TRIE_STROKE_BOUNDARY_KEY:
                         return self.validate_and_start_new_bank()
@@ -186,7 +252,7 @@ def intrabank_consonant_inversions() -> Plugin[None]:
                     if self.is_left_bank and len(key_stroke & ~banks_info.left) > 0:
                         return self.validate_and_start_new_bank()
 
-                    phoneme = global_state.loop_transitions_to_phonemes.get(transition)
+                    phoneme = global_state.loop_transitions_to_phonemes.get(cost_key)
                     if phoneme is not None:
                         # print("hit phoneme", phoneme)
                         self.__current_bank_phonemes.append(phoneme)
@@ -220,7 +286,7 @@ def intrabank_consonant_inversions() -> Plugin[None]:
 
             # print("checking")
             for transition in lookup_result.transitions:
-                if not filtering_state.check_transition(transition, trie):
+                if not filtering_state.check_transition(TransitionCostKey(transition, lookup_result.translation_id), trie):
                     return False
 
             return filtering_state.final_validate()

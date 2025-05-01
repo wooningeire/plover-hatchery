@@ -1,7 +1,7 @@
 from collections import defaultdict
 from collections.abc import Generator, Iterable
 from plover_hatchery.lib.trie.Transition import TransitionKey
-from typing import TYPE_CHECKING, Any, Generator, Generic, TypeVar, final
+from typing import TYPE_CHECKING, Any, Generator, Generic, Protocol, TypeVar, final
 
 from .Transition import TransitionKey, TransitionCostInfo, TransitionCostKey
 from .LookupResult import LookupResult
@@ -18,6 +18,15 @@ if TYPE_CHECKING:
 else:
     _Key = Generic
     _KeyId = "int | None"
+
+class OnTraverse(Protocol[_KeyVar, _Translation]):
+    def __call__(
+        self,
+        trie: "NondeterministicTrie[_KeyVar, _Translation]",
+        existing_trie_path: TriePath,
+        new_transition: TransitionKey,
+        /,
+    ) -> bool: ...
 
 @final
 class NondeterministicTrie(Generic[_KeyVar, _Translation]):
@@ -41,6 +50,8 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
         self.__keys_list: list[_KeyVar] = []
 
         self.__used_nodes_by_translation: dict[int, set[int]] = defaultdict(set)
+
+        self.__on_try_traverse: list[OnTraverse[_KeyVar, _Translation]] = []
 
 
     def follow(self, src_node_id: int, key: _Key[_KeyVar], cost_info: TransitionCostInfo[_Translation]):
@@ -98,6 +109,15 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
 
         return TriePath(current_node, tuple(transitions))
 
+
+    def __call_try_traverse_handlers(self, trie_path: TriePath, transition: TransitionKey):
+        return all(handler(self, trie_path, transition) for handler in self.__on_try_traverse)
+            
+
+    def on_check_traverse(self, handler: OnTraverse[_KeyVar, _Translation]):
+        self.__on_try_traverse.append(handler)
+
+
     def traverse(self, src_node_paths: Iterable[TriePath], key: _KeyVar) -> Generator[TriePath, None, None]:
         """
         Gets the destination nodes obtained by following all existing transitions associated with the given key from the given set of
@@ -117,8 +137,11 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
                 continue
 
             for transition_index, dst_node_id in enumerate(self.__transitions[path.dst_node_id][key_id]):
+                transition_key = TransitionKey(path.dst_node_id, key_id, transition_index)
+                if not self.__call_try_traverse_handlers(path, transition_key): continue
+
                 yield from self.__dfs_empty_transitions(
-                    TriePath(dst_node_id, path.transitions + (TransitionKey(path.dst_node_id, key_id, transition_index),)),
+                    TriePath(dst_node_id, path.transitions + (transition_key,)),
                     set(),
                 )
 
@@ -149,6 +172,8 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
             transition_key = TransitionKey(src_node_path.dst_node_id, None, transition_index)
             if transition_key in visited_transitions:
                 continue
+
+            if not self.__call_try_traverse_handlers(src_node_path, transition_key): continue
 
             yield from self.__dfs_empty_transitions(
                 TriePath(dst_node_id, src_node_path.transitions + (transition_key,)),
@@ -221,24 +246,26 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
             if not is_valid_path:
                 continue
 
-            yield (self.__translations_list[translation_id], cumsum_cost)
+            yield (translation_id, cumsum_cost)
 
 
     def get_translations_and_costs(self, node_paths: Iterable[TriePath]):
         for path in node_paths:
-            for translation, cost in self.get_translations_and_costs_single(path.dst_node_id, path.transitions):
-                yield LookupResult(translation, cost, path.transitions)
+            for translation_id, cost in self.get_translations_and_costs_single(path.dst_node_id, path.transitions):
+                yield LookupResult(self.__translations_list[translation_id], translation_id, cost, path.transitions)
 
 
     def get_translations_and_min_costs(self, node_paths: Iterable[TriePath]):
-        min_cost_results: dict[_Translation, tuple[float, tuple[TransitionKey, ...]]] = {}
+        min_cost_results: dict[_Translation, tuple[int, float, tuple[TransitionKey, ...]]] = {}
         for path in node_paths:
-            for translation, cost in self.get_translations_and_costs_single(path.dst_node_id, path.transitions):
-                if cost >= min_cost_results.get(translation, (float("inf"), None))[0]: continue
-                min_cost_results[translation] = (cost, path.transitions)
+            for translation_id, cost in self.get_translations_and_costs_single(path.dst_node_id, path.transitions):
+                translation = self.__translations_list[translation_id]
 
-        for translation, (cost, transitions) in min_cost_results.items():
-            yield LookupResult(translation, cost, transitions)
+                if cost >= min_cost_results.get(translation, (float("inf"), None))[0]: continue
+                min_cost_results[translation] = (translation_id, cost, path.transitions)
+
+        for translation, (translation_id, cost, transitions) in min_cost_results.items():
+            yield LookupResult(translation, translation_id, cost, transitions)
     
     
     def transition_has_key(self, transition: TransitionKey, key: _Key[_KeyVar]):
@@ -417,95 +444,6 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
             return "(ε)"
 
         return str(self.__keys_list[key_id])
-
-    # def __transfer_node_and_descendants_if_necessary(
-    #     self: "NondeterministicTrie[str, int]",
-    #     new_trie: "NondeterministicTrie[str, int]",
-    #     orig_node_id: int,
-    #     new_node_mapping: dict[int, int],
-    #     current_stroke: Stroke,
-    #     visited_nodes: set[int],
-    #     translated_nodes: set[int],
-    #     key_ids_to_keys: dict[int, str],
-    # ) -> bool:
-    #     if orig_node_id in visited_nodes:
-    #         return orig_node_id in new_node_mapping
-    #     visited_nodes.add(orig_node_id)
-
-
-    #     new_node_id: Optional[int] = new_node_mapping.get(orig_node_id)
-    #     if orig_node_id not in translated_nodes:
-    #         translated_nodes.add(orig_node_id)
-
-    #         translation = self.get_translation_single(orig_node_id)
-    #         if translation is not None:
-    #             new_node_id = new_trie.__create_new_node()
-    #             new_trie.set_translation(new_node_id, translation)
-    #             new_node_mapping[orig_node_id] = new_node_id
-
-    #     for key_id, dst_nodes in self.__nodes[orig_node_id].items():
-    #         if key_id == self.__keys[TRIE_STROKE_BOUNDARY_KEY]:
-    #             new_stroke = Stroke.from_keys(())
-    #         elif key_id == self.__keys[TRIE_LINKER_KEY]:
-    #             new_stroke = LINKER_CHORD
-    #         else:
-    #             new_key_stroke = Stroke.from_steno(key_ids_to_keys[key_id])
-    #             if not can_add_stroke_on(current_stroke, new_key_stroke):
-    #                 # The new stroke would violate steno order if it continued off the current stroke
-    #                 continue
-
-    #             new_stroke = current_stroke + new_key_stroke
-
-    #         for dst_node in set(dst_nodes):
-    #             if not self.__transfer_node_and_descendants_if_necessary(new_trie, dst_node, new_node_mapping, new_stroke, visited_nodes, translated_nodes, key_ids_to_keys): continue
-                
-    #             if new_node_id is None:
-    #                 new_node_id = new_trie.__create_new_node()
-    #                 new_node_mapping[orig_node_id] = new_node_id
-    #             new_trie.link(new_node_id, new_node_mapping[dst_node], key_ids_to_keys[key_id])
-
-    #     return new_node_id is not None
-    
-
-# class ReadonlyNondeterministicTrie(Generic[K, V]):
-#     """A readonly variant of `NondeterministicTrie` that reduces memory usage"""
-
-#     ROOT = 0
-
-#     def __init__(self, nodes: list[dict[int, list[int]]], translations: dict[int, V], keys: dict[K, int]):
-#         self.__nodes: dict[tuple[int, int], tuple[int, ...]] = {
-#             (src_node, key): tuple(dst_nodes)
-#             for src_node, transitions in enumerate(nodes)
-#             for key, dst_nodes in transitions.items()
-#         }
-#         self.__translations: dict[int, V] = translations
-#         self.__keys: dict[K, int] = keys
-
-#     def get_dst_nodes(self, src_nodes: set[int], key: K):
-#         key_id = self.__keys.get(key)
-#         if key_id is None:
-#             return set()
-        
-#         return set(
-#             node
-#             for src_node in src_nodes
-#             for node in self.__nodes.get((src_node, key_id), ())
-#         )
-    
-#     def get_dst_nodes_chain(self, src_nodes: set[int], keys: tuple[K, ...]):
-#         current_nodes = src_nodes
-#         for key in keys:
-#             current_nodes = self.get_dst_nodes(current_nodes, key)
-#             if len(current_nodes) == 0:
-#                 return current_nodes
-#         return current_nodes
-    
-#     def get_translation(self, nodes: set[int]):
-#         for node in nodes:
-#             translation = self.__translations.get(node)
-#             if translation is not None:
-#                 return translation
-#         return None
 
     def profile(self):
 #         from pympler.asizeof import asizeof
