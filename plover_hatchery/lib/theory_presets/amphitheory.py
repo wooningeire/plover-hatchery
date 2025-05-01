@@ -84,7 +84,7 @@ AU OU OI
     "u": "U",
     "uu": "UU",
     "iu": "UU",
-    "ei": "AA",
+    "ei": "AA E",
     "ee": "AA",
     "ai": "II",
     "ae": "II",
@@ -98,7 +98,7 @@ AU OU OI
     "ir": "EE",
     "@@r": as_spelled,
     "er": "E",
-    "eir": "AA",
+    "eir": "AA E",
     "ur": "U",
     "i@": as_spelled,
 })
@@ -414,5 +414,5 @@ theory = compile_theory(
         base_cost=2,
     ),
 
-    # consonant_inversions(),
+    intrabank_consonant_inversions(),
 )

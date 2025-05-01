@@ -27,6 +27,14 @@ class SophemeSeq:
 
         return None
 
+    def first_consonant(self):
+        phoneme = self.first_phoneme()
+
+        while phoneme is not None and not phoneme.keysymbol.is_consonant:
+            phoneme = phoneme.next()
+        
+        return phoneme
+
 
     def last_phoneme(self):
         new_sopheme_index = len(self.sophemes) - 1

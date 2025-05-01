@@ -6,7 +6,7 @@ from typing import final
 
 from plover.steno import Stroke
 
-from plover_hatchery.lib.trie import TriePath, TransitionKey
+from plover_hatchery.lib.trie import Transition, TriePath, TransitionKey
 
 from ..trie import NondeterministicTrie, TransitionCostInfo
 
@@ -44,7 +44,7 @@ def join_on_strokes(
     strokes: Iterable[Stroke],
     entry_id: int,
 ):
-    """Join all src_nodes along any stroke path"""
+    """Given a set of source nodes and a set of strokes, creates a common destination node from those source nodes when following any of the strokes."""
 
     products = product(src_nodes, strokes)
 
@@ -73,6 +73,11 @@ def link_join_on_strokes(
     strokes: Iterable[Stroke],
     entry_id: int,
 ):
+    """
+    Given a set of source nodes, a set of strokes, and a destination node, links all source nodes to the given destination node when following any of the strokes.
+    Creates a new destination node if it is None.
+    """
+
     if dst_node is None:
         return join_on_strokes(trie, src_nodes, strokes, entry_id)
 
@@ -87,6 +92,8 @@ def link_join_on_strokes(
 
 
 def tuplify(node: "int | None", cost: int=0):
+    """Returns a tuple containing the node if it exists, or an empty tuple otherwise."""
+
     if node is None:
         return ()
     return (NodeSrc(node, cost),)

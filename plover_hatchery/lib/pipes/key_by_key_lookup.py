@@ -1,4 +1,5 @@
 
+from collections import defaultdict
 from collections.abc import Iterable
 from typing import Protocol, final
 from plover.steno import Stroke
@@ -32,8 +33,7 @@ def key_by_key_lookup(
 
         @base_hooks.lookup.listen(key_by_key_lookup)
         def _(trie: NondeterministicTrie[str, int], stroke_stenos: tuple[str, ...], translations: list[str], **_) -> "str | None":
-            # plover.log.debug("")
-            # plover.log.debug("new lookup")
+            # print()
 
             current_nodes = [TriePath(trie.ROOT, ())]
             n_variation = 0
@@ -75,9 +75,8 @@ def key_by_key_lookup(
 
                 # Traverse stroke boundaries
                 if i > 0:
-                    # plover.log.debug(current_nodes)
-                    # plover.log.debug(TRIE_STROKE_BOUNDARY_KEY)
                     current_nodes = list(trie.traverse(current_nodes, TRIE_STROKE_BOUNDARY_KEY))
+                    # print(TRIE_STROKE_BOUNDARY_KEY, tuple(node.dst_node_id for node in current_nodes))
                     if len(current_nodes) == 0:
                         return None
 
@@ -86,12 +85,15 @@ def key_by_key_lookup(
 
                 for positionless_key in positionless.keys():
                     current_nodes.extend(trie.traverse_chain(current_nodes, positionless_key))
+                    # print(positionless_key, tuple(node.dst_node_id for node in current_nodes))
 
 
                 for key in (left_bank_consonants + vowels + right_bank_consonants).keys():
                     current_nodes = list(trie.traverse(current_nodes, key))
+                    # print(key, tuple(node.dst_node_id for node in current_nodes))
                     for positionless_key in positionless.keys():
                         current_nodes.extend(trie.traverse_chain(current_nodes, positionless_key))
+                        # print(positionless_key, tuple(node.dst_node_id for node in current_nodes))
 
                     if len(current_nodes) == 0:
                         return None
@@ -102,6 +104,7 @@ def key_by_key_lookup(
             validated_lookup_results: list[LookupResult[int]] = []
             outline_for_filtering = outline[:filtering_end_index]
             for lookup_result in lookup_results:
+                # print(lookup_result.translation)
                 if not filtering_api.should_keep(lookup_result, trie, outline_for_filtering):
                     continue
 
@@ -110,8 +113,17 @@ def key_by_key_lookup(
 
             if len(validated_lookup_results) == 0: return None
 
-            
-            translation_choices = sorted(validated_lookup_results, key=lambda result: result.cost)
+
+            # filter duplicates
+            min_costs: dict[int, float] = defaultdict(lambda: float("inf"))
+            min_cost_results: dict[int, LookupResult[int]] = {}
+            for result in validated_lookup_results:
+                if result.cost >= min_costs[result.translation]: continue
+                min_costs[result.translation] = result.cost
+                min_cost_results[result.translation] = result
+
+
+            translation_choices = sorted(min_cost_results.values(), key=lambda result: result.cost)
 
             
             if debug:

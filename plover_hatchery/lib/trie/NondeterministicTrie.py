@@ -138,10 +138,7 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
         return current_nodes
 
     
-    def __dfs_empty_transitions(self, src_node_path: TriePath, visited_nodes: set[int]) -> Generator[TriePath, None, None]:
-        if src_node_path.dst_node_id in visited_nodes:
-            return
-
+    def __dfs_empty_transitions(self, src_node_path: TriePath, visited_transitions: set[TransitionKey]) -> Generator[TriePath, None, None]:
         yield src_node_path
 
         transitions = self.__transitions[src_node_path.dst_node_id]
@@ -149,9 +146,13 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
             return
 
         for transition_index, dst_node_id in enumerate(self.__transitions[src_node_path.dst_node_id][None]):
+            transition_key = TransitionKey(src_node_path.dst_node_id, None, transition_index)
+            if transition_key in visited_transitions:
+                continue
+
             yield from self.__dfs_empty_transitions(
-                TriePath(dst_node_id, src_node_path.transitions + (TransitionKey(src_node_path.dst_node_id, None, transition_index),)),
-                visited_nodes | {src_node_path.dst_node_id},
+                TriePath(dst_node_id, src_node_path.transitions + (transition_key,)),
+                visited_transitions | {transition_key},
             )
     
 
@@ -224,14 +225,21 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
 
 
     def get_translations_and_costs(self, node_paths: Iterable[TriePath]):
+        for path in node_paths:
+            for translation, cost in self.get_translations_and_costs_single(path.dst_node_id, path.transitions):
+                yield LookupResult(translation, cost, path.transitions)
+
+
+    def get_translations_and_min_costs(self, node_paths: Iterable[TriePath]):
         min_cost_results: dict[_Translation, tuple[float, tuple[TransitionKey, ...]]] = {}
         for path in node_paths:
             for translation, cost in self.get_translations_and_costs_single(path.dst_node_id, path.transitions):
-                if cost >= min_cost_results.get(translation, (float("inf"), -1))[0]: continue
+                if cost >= min_cost_results.get(translation, (float("inf"), None))[0]: continue
                 min_cost_results[translation] = (cost, path.transitions)
 
         for translation, (cost, transitions) in min_cost_results.items():
             yield LookupResult(translation, cost, transitions)
+    
     
     def transition_has_key(self, transition: TransitionKey, key: _Key[_KeyVar]):
         if key is None:

@@ -186,6 +186,9 @@ def alternate_chords(
                     else:
                         transition_index += 1
 
+                    if transition_index < 0 or transition_index >= len(lookup_result.transitions):
+                        return Stroke.from_integer(0)
+
                     adjacent_key_id = lookup_result.transitions[transition_index].key_id
 
                 adjacent_key_steno = trie.get_key(adjacent_key_id)

@@ -18,6 +18,7 @@ from .linker_chord import linker_chord
 from .key_by_key_lookup import key_by_key_lookup
 from .path_traversal_reverse_lookup import path_traversal_reverse_lookup
 from .lookup_result_filtering import lookup_result_filtering
+from .intrabank_consonant_inversions import intrabank_consonant_inversions
 
 from .Theory import Theory
 from .compile_theory import compile_theory
