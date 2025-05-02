@@ -64,6 +64,7 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
         translation_id = self.__get_translation_id_else_create(cost_info.translation)
 
 
+        # Reuse a node if it already exists and has not been used by this translation
         transitions = self.__transitions[src_node_id]
         if key_id in transitions:
             for transition_index, dst_node_id in enumerate(transitions[key_id]):
@@ -74,6 +75,7 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
                 self.__assign_transition_cost(src_node_id, key_id, transition_index, cost_info)
                 return TriePath(dst_node_id, (TransitionKey(src_node_id, key_id, transition_index),))
         
+        # Create a new node
         new_node_id = self.__create_new_node()
         self.__used_nodes_by_translation[translation_id].add(new_node_id)
         if key_id in transitions:
@@ -414,7 +416,7 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
             
             for node in reverse_translations[translation]:
                 for transitions_reversed, cost in dfs(node, self.__translations[translation], (), 0, {node}):
-                    yield LookupResult(translation, cost, tuple(reversed(transitions_reversed)))
+                    yield LookupResult(translation, self.__translations[translation], cost, tuple(reversed(transitions_reversed)))
         
         return get_sequences
 

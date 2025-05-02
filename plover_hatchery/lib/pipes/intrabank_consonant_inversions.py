@@ -27,26 +27,23 @@ def intrabank_consonant_inversions() -> Plugin[None]:
         lookup_api = get_plugin_api(key_by_key_lookup)
 
         """
-        Idea: For each past consonant source node, create a link ("skip transition") from it to the newest consonant destination node with the current phoneme.
+        
+
+        Idea (SLOW LOOKUP): For each past consonant source node, create a link ("skip transition") from it to the newest consonant destination node with the current phoneme.
         Then create a loop ("loop transition") from the destination node to itself for each of the past consonant phonemes.
 
-        Idea (SLOW LOOKUP): For each consonant source node, create a loop from it to itself for each consonant chord thereafter.
+        Idea (SLOWER LOOKUP): For each consonant source node, create a loop from it to itself for each consonant chord thereafter.
         Replace the original consonant transitions with epsilon ("pass") transitions that may only be traversed
         if that consonant has been traversed in a previous node's loop.
         """
 
 
         @final
-        @dataclass(frozen=True)
-        class PhonemeNodes:
-            phoneme: SophemeSeqPhoneme
-            left_srcs: tuple[NodeSrc, ...]
-            right_srcs: tuple[NodeSrc, ...]
-
-        @final
         @dataclass
         class ConsonantInversionsState:
-            nodes: list[PhonemeNodes] = field(default_factory=list)
+            inversion_branch_left_src_nodes: list[NodeSrc] = field(default_factory=list)
+            inversion_branch_right_src_nodes: list[NodeSrc] = field(default_factory=list)
+            past_phonemes: list[SophemeSeqPhoneme] = field(default_factory=list)
 
 
         @final
@@ -75,40 +72,82 @@ def intrabank_consonant_inversions() -> Plugin[None]:
             if banks_state.current_phoneme is None: return
 
 
+            inversion_branch_left_paths = join_on_strokes(banks_state.trie, state.inversion_branch_left_src_nodes, banks_api.left_chords(banks_state.current_phoneme), banks_state.entry_id)
+            inversion_branch_right_paths = join_on_strokes(banks_state.trie, state.inversion_branch_right_src_nodes, banks_api.right_chords(banks_state.current_phoneme), banks_state.entry_id)
 
-            for node_data in state.nodes:
-                if left_node is not None:
-                    # Create skip transition
-                    paths = link_join_on_strokes(banks_state.trie, node_data.left_srcs, left_node, banks_api.left_chords(banks_state.current_phoneme), banks_state.entry_id)
-                    for seq in paths.transition_seqs:
-                        global_state.transitions_to_phonemes[TransitionCostKey(seq.transitions[0], banks_state.entry_id)] = banks_state.current_phoneme
-
-                    # Create loop transition
-                    for chord in banks_api.left_chords(node_data.phoneme):
-                        transitions = banks_state.trie.link_chain(left_node, left_node, chord.keys(), TransitionCostInfo(50, banks_state.entry_id))
-                        global_state.transitions_to_phonemes[TransitionCostKey(transitions[0], banks_state.entry_id)] = node_data.phoneme
+            for seq in inversion_branch_left_paths.transition_seqs:
+                global_state.transitions_to_phonemes[TransitionCostKey(seq.transitions[0], banks_state.entry_id)] = banks_state.current_phoneme
+            for seq in inversion_branch_right_paths.transition_seqs:
+                global_state.transitions_to_phonemes[TransitionCostKey(seq.transitions[0], banks_state.entry_id)] = banks_state.current_phoneme
 
 
-                if right_node is not None:
-                    # Create skip transition
-                    paths = link_join_on_strokes(banks_state.trie, node_data.right_srcs, right_node, banks_api.right_chords(banks_state.current_phoneme), banks_state.entry_id)
-                    for seq in paths.transition_seqs:
-                        global_state.transitions_to_phonemes[TransitionCostKey(seq.transitions[0], banks_state.entry_id)] = banks_state.current_phoneme
+
+            left_inversion_branch_node = inversion_branch_left_paths.dst_node_id
+            right_inversion_branch_node = inversion_branch_right_paths.dst_node_id
+
+            for phoneme in state.past_phonemes:
+                if left_inversion_branch_node is not None:
+                    for chord in banks_api.left_chords(phoneme):
+                        transitions = banks_state.trie.link_chain(left_inversion_branch_node, left_inversion_branch_node, chord.keys(), TransitionCostInfo(50, banks_state.entry_id))
+                        global_state.transitions_to_phonemes[TransitionCostKey(transitions[0], banks_state.entry_id)] = phoneme
+                        
+                        if left_node is not None:
+                            transitions = banks_state.trie.link_chain(left_inversion_branch_node, left_node, chord.keys(), TransitionCostInfo(50, banks_state.entry_id))
+                            global_state.transitions_to_phonemes[TransitionCostKey(transitions[0], banks_state.entry_id)] = phoneme
+
+                if right_inversion_branch_node is not None:
+                    for chord in banks_api.right_chords(phoneme):
+                        transitions = banks_state.trie.link_chain(right_inversion_branch_node, right_inversion_branch_node, chord.keys(), TransitionCostInfo(50, banks_state.entry_id))
+                        global_state.transitions_to_phonemes[TransitionCostKey(transitions[0], banks_state.entry_id)] = phoneme
+                        
+                        if right_node is not None:
+                            transitions = banks_state.trie.link_chain(right_inversion_branch_node, right_node, chord.keys(), TransitionCostInfo(50, banks_state.entry_id))
+                            global_state.transitions_to_phonemes[TransitionCostKey(transitions[0], banks_state.entry_id)] = phoneme
+
+
+
+            # for node_data in state.nodes:
+            #     if left_node is not None:
+            #         # Create skip transition
+            #         paths = link_join_on_strokes(banks_state.trie, node_data.left_srcs, left_node, banks_api.left_chords(banks_state.current_phoneme), banks_state.entry_id)
+            #         for seq in paths.transition_seqs:
+            #             global_state.transitions_to_phonemes[TransitionCostKey(seq.transitions[0], banks_state.entry_id)] = banks_state.current_phoneme
+
+            #         # Create loop transition
+            #         for chord in banks_api.left_chords(node_data.phoneme):
+            #             transitions = banks_state.trie.link_chain(left_node, left_node, chord.keys(), TransitionCostInfo(50, banks_state.entry_id))
+            #             global_state.transitions_to_phonemes[TransitionCostKey(transitions[0], banks_state.entry_id)] = node_data.phoneme
+
+
+            #     if right_node is not None:
+            #         # Create skip transition
+            #         paths = link_join_on_strokes(banks_state.trie, node_data.right_srcs, right_node, banks_api.right_chords(banks_state.current_phoneme), banks_state.entry_id)
+            #         for seq in paths.transition_seqs:
+            #             global_state.transitions_to_phonemes[TransitionCostKey(seq.transitions[0], banks_state.entry_id)] = banks_state.current_phoneme
                 
-                    # Create loop transition
-                    for chord in banks_api.right_chords(node_data.phoneme):
-                        transitions = banks_state.trie.link_chain(right_node, right_node, chord.keys(), TransitionCostInfo(50, banks_state.entry_id))
-                        global_state.transitions_to_phonemes[TransitionCostKey(transitions[0], banks_state.entry_id)] = node_data.phoneme
+            #         # Create loop transition
+            #         for chord in banks_api.right_chords(node_data.phoneme):
+            #             transitions = banks_state.trie.link_chain(right_node, right_node, chord.keys(), TransitionCostInfo(50, banks_state.entry_id))
+            #             global_state.transitions_to_phonemes[TransitionCostKey(transitions[0], banks_state.entry_id)] = node_data.phoneme
                 
+
+
+            state.past_phonemes.append(banks_state.current_phoneme)
+            state.inversion_branch_left_src_nodes.extend(banks_state.left_srcs)
+            state.inversion_branch_right_src_nodes.extend(banks_state.right_srcs)
+
+            if left_inversion_branch_node is not None:
+                state.inversion_branch_left_src_nodes.append(NodeSrc(left_inversion_branch_node))
+
+            if right_inversion_branch_node is not None:
+                state.inversion_branch_right_src_nodes.append(NodeSrc(right_inversion_branch_node))
+
 
             # The transitions from the banks plugin serve as skip transitions
             for seq in left_paths.transition_seqs:
                 global_state.transitions_to_phonemes[TransitionCostKey(seq.transitions[0], banks_state.entry_id)] = banks_state.current_phoneme
             for seq in right_paths.transition_seqs:
                 global_state.transitions_to_phonemes[TransitionCostKey(seq.transitions[0], banks_state.entry_id)] = banks_state.current_phoneme
-
-
-            state.nodes.append(PhonemeNodes(banks_state.current_phoneme, banks_state.left_srcs, banks_state.right_srcs))
 
             # satisfying_loop_transitions: set[TransitionKey] = set()
 
@@ -163,7 +202,9 @@ def intrabank_consonant_inversions() -> Plugin[None]:
         @banks_api.before_complete_vowel.listen(intrabank_consonant_inversions)
         def _(state: ConsonantInversionsState, banks_state: BanksState, **_):
             if banks_state.current_phoneme is not None and banks_state.current_phoneme.keysymbol.optional: return
-            state.nodes = []
+            state.inversion_branch_left_src_nodes = []
+            state.inversion_branch_right_src_nodes = []
+            state.past_phonemes = []
 
 
         # def check_pass_is_allowed(trie: NondeterministicTrie[str, int], existing_trie_path: TriePath, new_transition: TransitionKey):
