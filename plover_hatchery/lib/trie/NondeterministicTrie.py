@@ -1,19 +1,22 @@
 from collections import defaultdict
 from collections.abc import Generator, Iterable
+from dataclasses import dataclass
+import dataclasses
+from itertools import product
 from plover_hatchery.lib.trie.Transition import TransitionKey
 from typing import TYPE_CHECKING, Any, Generator, Generic, Protocol, TypeVar, final
 
 from .Transition import TransitionKey, TransitionCostInfo, TransitionCostKey
 from .LookupResult import LookupResult
-from .TriePath import TriePath
+from .TriePath import TriePath, JoinedTransitionSeq, JoinedTriePaths
 
 
 _KeyVar = TypeVar("_KeyVar")
 _Translation = TypeVar("_Translation")
 
 if TYPE_CHECKING:
-    _Key = _KeyVar | None
-    _KeyId = int | None
+    _Key = "_KeyVar | None"
+    _KeyId = "int | None"
     """None for epsilon (empty) transitions."""
 else:
     _Key = Generic
@@ -27,6 +30,18 @@ class OnTraverse(Protocol[_KeyVar, _Translation]):
         new_transition: TransitionKey,
         /,
     ) -> bool: ...
+
+
+@final
+@dataclass(frozen=True)
+class NodeSrc:
+    node: int
+    cost: int = 0
+
+    @staticmethod
+    def increment_costs(srcs: "Iterable[NodeSrc]", cost_change: int):
+        for src in srcs:
+            yield dataclasses.replace(src, cost=src.cost + cost_change)
 
 @final
 class NondeterministicTrie(Generic[_KeyVar, _Translation]):
@@ -110,6 +125,44 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
             transitions.append(path_addend.transitions[0])
 
         return TriePath(current_node, tuple(transitions))
+
+
+    def join(
+        self,
+        src_nodes: Iterable[NodeSrc],
+        keys_iter: Iterable[_KeyVar],
+        translation: _Translation,
+    ):
+        return self.join_chain(src_nodes, ((key,) for key in keys_iter), translation)
+
+
+    def join_chain(
+        self,
+        src_nodes: Iterable[NodeSrc],
+        keys_iter: Iterable[tuple[_KeyVar, ...]],
+        translation: _Translation,
+    ):
+        """Given a set of source nodes and a set of keys, creates a common destination node from those source nodes when following any of the keys."""
+
+        products = product(src_nodes, keys_iter)
+
+        try:
+            first_src, first_keys = next(products)
+        except StopIteration:
+            return JoinedTriePaths(None, ())
+
+        transition_seqs: list[JoinedTransitionSeq] = []
+        
+        first_path = self.follow_chain(first_src.node, first_keys, TransitionCostInfo(first_src.cost, translation))
+        
+        transition_seqs.append(JoinedTransitionSeq(first_path.transitions))
+        
+        for src, keys in products:
+            transitions = self.link_chain(src.node, first_path.dst_node_id, keys, TransitionCostInfo(src.cost, translation))
+            transition_seqs.append(JoinedTransitionSeq(transitions))
+
+        return JoinedTriePaths(first_path.dst_node_id, tuple(transition_seqs))
+
 
 
     def __call_try_traverse_handlers(self, trie_path: TriePath, transition: TransitionKey):

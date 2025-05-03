@@ -1,3 +1,4 @@
+from plover_hatchery.lib.pipes.types import EntryIndex
 from plover_hatchery.lib.sopheme.Sopheme import Sopheme
 
 
@@ -23,13 +24,13 @@ T = TypeVar("T")
 @final
 class TheoryHooks:
     class OnBuildLookup(Protocol):
-        def __call__(self, *, trie: NondeterministicTrie[str, int]) -> Any: ...
+        def __call__(self) -> Any: ...
     class AddEntry(Protocol):
-        def __call__(self, *, trie: NondeterministicTrie[str, int], sophemes: SophemeSeq, entry_id: int) -> None: ...
+        def __call__(self, sophemes: SophemeSeq, entry_id: EntryIndex) -> None: ...
     class Lookup(Protocol):
-        def __call__(self, *, trie: NondeterministicTrie[str, int], stroke_stenos: tuple[str, ...], translations: list[str]) -> "str | None": ...
+        def __call__(self, stroke_stenos: tuple[str, ...], translations: list[str]) -> "str | None": ...
     class ReverseLookup(Protocol):
-        def __call__(self, *, trie: NondeterministicTrie[str, int], translation: str, reverse_translations: dict[str, list[int]]) -> Iterable[tuple[str, ...]]: ...
+        def __call__(self, translation: str, reverse_translations: dict[str, list[int]]) -> Iterable[tuple[str, ...]]: ...
     
 
     build_lookup = Hook(OnBuildLookup)
@@ -63,12 +64,9 @@ def compile_theory(
 
 
     def build_lookup(entry_lines: Iterable[tuple[str, str]]):
-        trie: NondeterministicTrie[str, int] = NondeterministicTrie()
-
-
         states: dict[int, Any] = {}
         for plugin_id, handler in hooks.build_lookup.ids_handlers():
-            states[plugin_id] = handler(trie=trie)
+            states[plugin_id] = handler()
 
 
         n_entries = 0
@@ -77,7 +75,7 @@ def compile_theory(
         n_passed_additions = 0
 
         translations: list[str] = []
-        reverse_translations: dict[str, list[int]] = defaultdict(lambda: [])
+        reverse_translations: dict[str, list[EntryIndex]] = defaultdict(lambda: [])
 
 
         entries: "dict[str, tuple[Transclusion | Sopheme, ...]]" = {}
@@ -122,9 +120,9 @@ def compile_theory(
             try:
                 sophemes = tuple(resolve_sophemes(definition, {varname}))
 
-                entry_id = len(translations) - 1
+                entry_id = EntryIndex(len(translations) - 1)
 
-                add_entry(states, trie, sophemes, entry_id)
+                add_entry(states, sophemes, entry_id)
 
                 translation = Sopheme.get_translation(sophemes)
                 translations[-1] = translation
@@ -149,35 +147,35 @@ Added {n_addable_entries} entries
         # print(trie)
 
         def true_lookup(stroke_stenos: tuple[str, ...]):
-            return lookup(states, trie, stroke_stenos, translations)
+            return lookup(states, stroke_stenos, translations)
 
         def true_reverse_lookup(translation: str):
-            return reverse_lookup(states, trie, translation, reverse_translations)
+            return reverse_lookup(states, translation, reverse_translations)
 
         # print(true_reverse_lookup("airworthiest"))
 
         return TheoryLookup(true_lookup, true_reverse_lookup)
         
 
-    def add_entry(states: dict[int, Any], trie: NondeterministicTrie[str, int], sophemes: Iterable[Sopheme], entry_id: int):
+    def add_entry(states: dict[int, Any], sophemes: Iterable[Sopheme], entry_id: EntryIndex):
         for plugin_id, handler in hooks.add_entry.ids_handlers():
-            handler(trie=trie, sophemes=SophemeSeq(tuple(sophemes)), entry_id=entry_id)
+            handler(sophemes=SophemeSeq(tuple(sophemes)), entry_id=entry_id)
 
 
-    def lookup(states: dict[int, Any], trie: NondeterministicTrie[str, int], stroke_stenos: tuple[str, ...], translations: list[str]) -> "str | None":
+    def lookup(states: dict[int, Any], stroke_stenos: tuple[str, ...], translations: list[str]) -> "str | None":
         for plugin_id, handler in hooks.lookup.ids_handlers():
-            result = handler(trie=trie, stroke_stenos=stroke_stenos, translations=translations)
+            result = handler(stroke_stenos=stroke_stenos, translations=translations)
             if result is not None:
                 return result
         
         return None
 
 
-    def reverse_lookup(states: dict[int, Any], trie: NondeterministicTrie[str, int], translation: str, reverse_translations: dict[str, list[int]]) -> list[tuple[str, ...]]:
+    def reverse_lookup(states: dict[int, Any], translation: str, reverse_translations: dict[str, list[int]]) -> list[tuple[str, ...]]:
         results: list[tuple[str, ...]] = []
 
         for plugin_id, handler in hooks.reverse_lookup.ids_handlers():
-            results.extend(handler(trie=trie, translation=translation, reverse_translations=reverse_translations))
+            results.extend(handler(translation=translation, reverse_translations=reverse_translations))
         
         return results
 

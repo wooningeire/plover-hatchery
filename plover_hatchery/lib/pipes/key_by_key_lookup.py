@@ -134,8 +134,9 @@ def key_by_key_lookup(
                     if len(current_nodes) == 0:
                         return None
 
-                    
-            lookup_results = trie.get_translations_and_costs(current_nodes)
+            lookup_results = tuple(trie.get_translations_and_costs(current_nodes))
+
+            print("/".join(stroke.rtfcre for stroke in outline), "ended with", len(current_nodes), "nodes and", len(lookup_results), "results")
 
             validated_lookup_results: list[LookupResult[int]] = []
             outline_for_filtering = outline[:filtering_end_index]
