@@ -2,7 +2,7 @@
 
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Any, Callable, final
+from typing import Any, Callable, Iterable, final
 
 from plover.steno import Stroke
 
@@ -19,7 +19,7 @@ from plover_hatchery.lib.pipes.types import Soph, EntryIndex
 class SophBasedTrieConstructionApi:
     trie: NondeterministicTrie[Soph, EntryIndex]
 
-def soph_trie(map_phoneme_to_soph: Callable[[SophemeSeqPhoneme], Soph], sophs_to_chords_dict: dict[str, str]) -> Plugin[SophBasedTrieConstructionApi]:
+def soph_trie(map_phoneme_to_soph: Callable[[SophemeSeqPhoneme], Iterable[Soph]], sophs_to_chords_dict: dict[str, str]) -> Plugin[SophBasedTrieConstructionApi]:
     @define_plugin(soph_trie)
     def plugin(get_plugin_api: GetPluginApi, base_hooks: TheoryHooks, **_):
         trie: NondeterministicTrie[Soph, EntryIndex] = NondeterministicTrie()
@@ -34,9 +34,9 @@ def soph_trie(map_phoneme_to_soph: Callable[[SophemeSeqPhoneme], Soph], sophs_to
 
 
             for phoneme in sophemes.phonemes():
-                soph = map_phoneme_to_soph(phoneme)
+                sophs = map_phoneme_to_soph(phoneme)
 
-                paths = trie.join(src_nodes, (soph,), entry_id)
+                paths = trie.join(src_nodes, sophs, entry_id)
                 if paths.dst_node_id is not None:
                     new_src_nodes.append(NodeSrc(paths.dst_node_id))
 
@@ -117,7 +117,6 @@ def soph_trie(map_phoneme_to_soph: Callable[[SophemeSeqPhoneme], Soph], sophs_to
 
 
             def __run_lookup(self):
-                print()
                 state = LookupState()
 
                 for stroke_index, stroke in enumerate(self.__outline):
@@ -136,7 +135,6 @@ def soph_trie(map_phoneme_to_soph: Callable[[SophemeSeqPhoneme], Soph], sophs_to
 
                 outline_for_filtering = self.__outline[:self.__filtering_end_index]
                 for lookup_result in self.__run_lookup():
-                    print(lookup_result.translation)
                     if lookup_result.cost >= min_costs[lookup_result.translation]: continue
                     # if not filtering_api.should_keep(lookup_result, trie, outline_for_filtering):
                     #     continue

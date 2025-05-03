@@ -30,7 +30,7 @@ class TheoryHooks:
     class Lookup(Protocol):
         def __call__(self, stroke_stenos: tuple[str, ...], translations: list[str]) -> "str | None": ...
     class ReverseLookup(Protocol):
-        def __call__(self, translation: str, reverse_translations: dict[str, list[int]]) -> Iterable[tuple[str, ...]]: ...
+        def __call__(self, translation: str, reverse_translations: dict[str, list[EntryIndex]]) -> Iterable[tuple[str, ...]]: ...
     
 
     build_lookup = Hook(OnBuildLookup)
@@ -40,7 +40,7 @@ class TheoryHooks:
 
 
 def compile_theory(
-    *plugins: Plugin[Any],
+    plugin_generator: Callable[[], Generator[Plugin[Any], Any, None]],
 ):
     hooks = TheoryHooks()
 
@@ -56,11 +56,19 @@ def compile_theory(
         
         return cast(T, plugins_map[plugin_id])
 
+    try:
+        plugins = plugin_generator()
+        plugin = next(plugins)
+        while True:
+            if plugin.id in plugins_map: raise ValueError("duplicate plugin")
 
-    for plugin in plugins:
-        if plugin.id in plugins_map: raise ValueError("duplicate plugin")
+            plugin_api = plugin.initialize(get_plugin_api=get_plugin_api, base_hooks=hooks)
 
-        plugins_map[plugin.id] = plugin.initialize(get_plugin_api=get_plugin_api, base_hooks=hooks)
+            plugins_map[plugin.id] = plugin_api
+            plugin = plugins.send(plugin_api)
+
+    except StopIteration:
+        pass
 
 
     def build_lookup(entry_lines: Iterable[tuple[str, str]]):
@@ -171,7 +179,7 @@ Added {n_addable_entries} entries
         return None
 
 
-    def reverse_lookup(states: dict[int, Any], translation: str, reverse_translations: dict[str, list[int]]) -> list[tuple[str, ...]]:
+    def reverse_lookup(states: dict[int, Any], translation: str, reverse_translations: dict[str, list[EntryIndex]]) -> list[tuple[str, ...]]:
         results: list[tuple[str, ...]] = []
 
         for plugin_id, handler in hooks.reverse_lookup.ids_handlers():
