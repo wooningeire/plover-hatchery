@@ -12,7 +12,7 @@ from plover_hatchery.lib.pipes.Hook import Hook
 from plover_hatchery.lib.pipes.Plugin import GetPluginApi, Plugin, define_plugin
 from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
 from plover_hatchery.lib.pipes.declare_banks import declare_banks
-from plover_hatchery.lib.pipes.lookup_result_filtering import lookup_result_filtering
+from plover_hatchery.lib.pipes.lookup_result_filter import lookup_result_filter
 from plover_hatchery.lib.trie import LookupResult, NondeterministicTrie, TransitionKey, TriePath
 
 
@@ -45,7 +45,7 @@ def key_by_key_lookup(
     @define_plugin(key_by_key_lookup)
     def plugin(get_plugin_api: GetPluginApi, base_hooks: TheoryHooks, **_):
         banks_info = get_plugin_api(declare_banks)
-        filtering_api = get_plugin_api(lookup_result_filtering)
+        filtering_api = get_plugin_api(lookup_result_filter)
 
 
         hooks = KeyByKeyLookupApi()

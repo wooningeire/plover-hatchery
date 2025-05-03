@@ -4,6 +4,8 @@ from plover_hatchery.lib.pipes import *
 def theory():
     yield floating_keys("*")
 
+    yield lookup_result_filter()
+
 
     def map_phonemes(phoneme: SophemeSeqPhoneme):
         as_spelled = ""
@@ -13,6 +15,8 @@ def theory():
             as_spelled = "OU"
         elif any(part in phoneme.sopheme.chars for part in ("oi", "oy")):
             as_spelled = "OI"
+        elif any(part in phoneme.sopheme.chars for part in ("ai", "ay")):
+            as_spelled = "AA"
         elif any(part in phoneme.sopheme.chars for part in ("ew",)):
             as_spelled = "UU"
         elif any(part in phoneme.sopheme.chars for part in ("ei",)):
@@ -111,7 +115,6 @@ def theory():
 
 
     yield soph_trie(map_phonemes, {
-        "A": "A",
         "B": "PW -B",
         "CH": "KH -FP",
         "D": "TK -D",
@@ -119,11 +122,11 @@ def theory():
         "G": "TKPW -G",
         "H": "H",
         "J": "SKWR -PBLG",
+        "K": "K -BG",
+        "L": "HR -L",
         "M": "PH -PL",
         "N": "TPH -PB",
         "NG": "TPH -PBG",
-        "K": "K -BG",
-        "L": "HR -L",
         "P": "P -P",
         "R": "R -R",
         "S": "S -S",
@@ -150,3 +153,24 @@ def theory():
         "OI": "OEU",
         "OU": "OU",
     })
+
+
+
+    yield optional_middle_vowels()
+
+
+    def if_phoneme_maps_to(soph_values: str):
+        sophs = set(Soph(value) for value in soph_values.split())
+        def check(phoneme: SophemeSeqPhoneme):
+            return any(soph in sophs for soph in map_phonemes(phoneme))
+
+        return check
+
+
+    yield optional_middle_consonants(
+        make_optional_if=if_phoneme_maps_to("Y W"),
+    )
+
+    yield optional_unstressed_middle_consonants(
+        make_optional_if=if_phoneme_maps_to("R N L"),
+    )

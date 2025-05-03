@@ -2,6 +2,7 @@ from collections.abc import Callable
 import dataclasses
 from typing import Protocol
 from plover_hatchery.lib.pipes.Plugin import GetPluginApi, Plugin, define_plugin
+from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
 from plover_hatchery.lib.pipes.consonants_vowels_enumeration import consonants_vowels_enumeration
 from plover_hatchery.lib.sopheme import Keysymbol, Sopheme, SophemeSeq, SophemeSeqPhoneme
 
@@ -22,11 +23,8 @@ def create_optionalizer_with_user_condition(
         make_optional_if: BaseOptionalizePredicate,
     ) -> Plugin[None]:
         @define_plugin(optionalizer_plugin)
-        def plugin(get_plugin_api: GetPluginApi, **_):
-            enumeration_api = get_plugin_api(consonants_vowels_enumeration)
-            
-
-            @enumeration_api.process_sopheme_seq.listen(optionalizer_plugin)
+        def plugin(base_hooks: TheoryHooks, **_):
+            @base_hooks.process_sopheme_seq.listen(optionalizer_plugin)
             def _(sopheme_seq: SophemeSeq, **_):
                 for sopheme, phonemes in sopheme_seq.phonemes_by_sopheme():
                     keysymbols: list[Keysymbol] = []
@@ -55,11 +53,8 @@ def create_optionalizer(
 ):
     def optionalizer_plugin() -> Plugin[None]:
         @define_plugin(optionalizer_plugin)
-        def plugin(get_plugin_api: GetPluginApi, **_):
-            enumeration_api = get_plugin_api(consonants_vowels_enumeration)
-            
-
-            @enumeration_api.process_sopheme_seq.listen(optionalizer_plugin)
+        def plugin(base_hooks: TheoryHooks, **_):
+            @base_hooks.process_sopheme_seq.listen(optionalizer_plugin)
             def _(sopheme_seq: SophemeSeq, **_):
                 for sopheme, phonemes in sopheme_seq.phonemes_by_sopheme():
                     keysymbols: list[Keysymbol] = []

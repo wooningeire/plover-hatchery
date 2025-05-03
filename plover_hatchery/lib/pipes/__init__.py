@@ -17,7 +17,7 @@ from .clusters import consonant_clusters, vowel_clusters
 from .linker_chord import linker_chord
 from .key_by_key_lookup import key_by_key_lookup
 from .path_traversal_reverse_lookup import path_traversal_reverse_lookup
-from .lookup_result_filtering import lookup_result_filtering
+from .lookup_result_filter import lookup_result_filter
 from .intrabank_consonant_inversions import intrabank_consonant_inversions
 from .floating_keys import floating_keys
 from .soph_trie import soph_trie

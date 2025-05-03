@@ -24,7 +24,9 @@ T = TypeVar("T")
 @final
 class TheoryHooks:
     class OnBuildLookup(Protocol):
-        def __call__(self) -> Any: ...
+        def __call__(self) -> None: ...
+    class ProcessSophemeSeq(Protocol):
+        def __call__(self, *, sopheme_seq: SophemeSeq) -> Iterable[Sopheme]: ...
     class AddEntry(Protocol):
         def __call__(self, sophemes: SophemeSeq, entry_id: EntryIndex) -> None: ...
     class Lookup(Protocol):
@@ -34,6 +36,7 @@ class TheoryHooks:
     
 
     build_lookup = Hook(OnBuildLookup)
+    process_sopheme_seq = Hook(ProcessSophemeSeq)
     add_entry = Hook(AddEntry)
     lookup = Hook(Lookup)
     reverse_lookup = Hook(ReverseLookup)
@@ -52,7 +55,7 @@ def compile_theory(
             try:
                 plugins_map[plugin_id] = plugin_factory().initialize(get_plugin_api=get_plugin_api, base_hooks=hooks)
             except TypeError:
-                raise ValueError("Plugin is missing dependency that has required settings")
+                raise ValueError(f"Plugin is missing dependency {plugin_factory.__name__} that has required settings")
         
         return cast(T, plugins_map[plugin_id])
 
@@ -165,9 +168,16 @@ Added {n_addable_entries} entries
         return TheoryLookup(true_lookup, true_reverse_lookup)
         
 
+    def process_sopheme_seq(sopheme_seq: SophemeSeq):
+        for plugin_id, handler in hooks.process_sopheme_seq.ids_handlers():
+            sopheme_seq = SophemeSeq(tuple(handler(sopheme_seq=sopheme_seq)))
+        return sopheme_seq
+
+
     def add_entry(states: dict[int, Any], sophemes: Iterable[Sopheme], entry_id: EntryIndex):
+        new_sophemes = process_sopheme_seq(SophemeSeq(tuple(sophemes)))
         for plugin_id, handler in hooks.add_entry.ids_handlers():
-            handler(sophemes=SophemeSeq(tuple(sophemes)), entry_id=entry_id)
+            handler(sophemes=new_sophemes, entry_id=entry_id)
 
 
     def lookup(states: dict[int, Any], stroke_stenos: tuple[str, ...], translations: list[str]) -> "str | None":

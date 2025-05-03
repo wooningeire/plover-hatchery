@@ -88,9 +88,6 @@ def soph_trie(map_phoneme_to_soph: Callable[[SophemeSeqPhoneme], Iterable[Soph]]
                 self.__key_index = 0
 
             def consume_key(self, key: str, stroke: Stroke):
-                floaters = stroke & floating_keys_api.floaters
-
-
                 # Continue the ongoing trie traversals
                 new_node_indices: list[OngoingTrieNode] = []
                 new_possible_sophs: list[TriePath] = []

@@ -6,7 +6,7 @@ from plover.steno import Stroke
 from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
 from plover_hatchery.lib.pipes.declare_banks import declare_banks
 from plover_hatchery.lib.pipes.join import tuplify
-from plover_hatchery.lib.pipes.lookup_result_filtering import lookup_result_filtering
+from plover_hatchery.lib.pipes.lookup_result_filter import lookup_result_filter
 from plover_hatchery.lib.trie import Trie, TransitionKey
 from plover_hatchery.lib.trie.LookupResult import LookupResult
 from plover_hatchery.lib.trie.NondeterministicTrie import NondeterministicTrie
@@ -30,7 +30,7 @@ def linker_chord(
     def plugin(get_plugin_api: GetPluginApi, **_):
         banks_info = get_plugin_api(declare_banks)
         banks_hooks = get_plugin_api(banks)
-        filtering_api = get_plugin_api(lookup_result_filtering)
+        filtering_api = get_plugin_api(lookup_result_filter)
 
         @dataclass
         @final
@@ -88,7 +88,7 @@ def linker_chord(
             state.newest_post_linker_node = None
 
 
-        @filtering_api.determine_should_keep.listen(linker_chord)
+        @filtering_api.check_should_keep.listen(linker_chord)
         def _(outline: tuple[Stroke, ...], **_):
             for i, stroke in enumerate(outline):
                 if i == 0: continue

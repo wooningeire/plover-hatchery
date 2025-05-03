@@ -11,7 +11,7 @@ from plover.steno import Stroke
 from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
 from plover_hatchery.lib.pipes.declare_banks import declare_banks
 from plover_hatchery.lib.pipes.key_by_key_lookup import key_by_key_lookup
-from plover_hatchery.lib.pipes.lookup_result_filtering import lookup_result_filtering
+from plover_hatchery.lib.pipes.lookup_result_filter import lookup_result_filter
 from plover_hatchery.lib.sopheme import SophemeSeqPhoneme
 from plover_hatchery.lib.trie import LookupResult, NondeterministicTrie, Trie, TriePath
 from plover_hatchery.lib.trie.Transition import TransitionKey
@@ -37,7 +37,7 @@ def alternate_chords(
     def plugin(get_plugin_api: GetPluginApi, base_hooks: TheoryHooks, **_):
         banks_api = get_plugin_api(banks)
         banks_info = get_plugin_api(declare_banks)
-        filtering_api = get_plugin_api(lookup_result_filtering)
+        filtering_api = get_plugin_api(lookup_result_filter)
 
 
         @final
@@ -134,7 +134,7 @@ def alternate_chords(
             transition_indices: tuple[int, ...]
 
 
-        @filtering_api.determine_should_keep.listen(alternate_chords)
+        @filtering_api.check_should_keep.listen(alternate_chords)
         def _(lookup_result: LookupResult[int], trie: NondeterministicTrie[str, int], **_):
             # Return true iff, for every alt chord path taken, any of the main chords were unusable
 

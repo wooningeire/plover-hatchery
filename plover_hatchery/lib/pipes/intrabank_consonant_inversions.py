@@ -10,7 +10,7 @@ from plover_hatchery.lib.pipes.Plugin import Plugin, GetPluginApi, define_plugin
 from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
 from plover_hatchery.lib.pipes.declare_banks import declare_banks
 from plover_hatchery.lib.pipes.join import JoinedTriePaths, NodeSrc, join_on_strokes, link_join_on_strokes
-from plover_hatchery.lib.pipes.lookup_result_filtering import lookup_result_filtering
+from plover_hatchery.lib.pipes.lookup_result_filter import lookup_result_filter
 from plover_hatchery.lib.sopheme import SophemeSeq
 from plover_hatchery.lib.sopheme.SophemeSeq import SophemeSeqPhoneme
 from plover_hatchery.lib.trie import LookupResult, NondeterministicTrie, TriePath
@@ -23,7 +23,7 @@ def intrabank_consonant_inversions() -> Plugin[None]:
     def plugin(get_plugin_api: GetPluginApi, base_hooks: TheoryHooks, **_):
         banks_info = get_plugin_api(declare_banks)
         banks_api = get_plugin_api(banks)
-        filtering_api = get_plugin_api(lookup_result_filtering)
+        filtering_api = get_plugin_api(lookup_result_filter)
         lookup_api = get_plugin_api(key_by_key_lookup)
 
         """
@@ -347,7 +347,7 @@ def intrabank_consonant_inversions() -> Plugin[None]:
                 return self.__next_phoneme_to_validate is None
 
 
-        @filtering_api.determine_should_keep.listen(intrabank_consonant_inversions)
+        @filtering_api.check_should_keep.listen(intrabank_consonant_inversions)
         def _(lookup_result: LookupResult[int], trie: NondeterministicTrie[str, int], **_):
             filtering_state = Filterer()
 

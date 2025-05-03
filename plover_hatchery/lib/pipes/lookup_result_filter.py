@@ -9,24 +9,26 @@ from plover_hatchery.lib.trie import LookupResult, NondeterministicTrie
 
 
 @final
-class LookupResultFilteringApi:
-    class DetermineShouldKeep(Protocol):
+class LookupResultFilterApi:
+    class CheckShouldKeep(Protocol):
         def __call__(self, *, lookup_result: LookupResult[int], trie: NondeterministicTrie[str, int], outline: tuple[Stroke, ...]) -> bool: ...
     
-    determine_should_keep = Hook(DetermineShouldKeep)
+    check_should_keep = Hook(CheckShouldKeep)
 
     def should_keep(self, lookup_result: LookupResult[int], trie: NondeterministicTrie[str, int], outline: tuple[Stroke, ...]):
-        for handler in self.determine_should_keep.handlers():
+        for handler in self.check_should_keep.handlers():
             if not handler(lookup_result=lookup_result, trie=trie, outline=outline):
                 return False
         
         return True
 
 
-def lookup_result_filtering() -> Plugin[LookupResultFilteringApi]:
-    @define_plugin(lookup_result_filtering)
+def lookup_result_filter() -> Plugin[LookupResultFilterApi]:
+    """Provides a common interface between plugins for filtering lookup results."""
+
+    @define_plugin(lookup_result_filter)
     def plugin(**_):
-        api = LookupResultFilteringApi()
+        api = LookupResultFilterApi()
 
         return api
 

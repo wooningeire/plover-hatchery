@@ -2,7 +2,7 @@ from collections.abc import Callable, Iterable
 
 from plover.steno import Stroke
 
-from plover_hatchery.lib.pipes.lookup_result_filtering import lookup_result_filtering
+from plover_hatchery.lib.pipes.lookup_result_filter import lookup_result_filter
 from plover_hatchery.lib.trie import LookupResult
 from plover_hatchery.lib.trie.Transition import TransitionKey
 
@@ -18,7 +18,7 @@ def path_traversal_reverse_lookup() -> Plugin[None]:
     @define_plugin(path_traversal_reverse_lookup)
     def plugin(get_plugin_api: GetPluginApi, base_hooks: TheoryHooks, **_):
         banks_info = get_plugin_api(declare_banks)
-        filtering_api = get_plugin_api(lookup_result_filtering)
+        filtering_api = get_plugin_api(lookup_result_filter)
 
 
         reverse_lookups: dict[int, Callable[[int], Iterable[LookupResult[int]]]] = {}
