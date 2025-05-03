@@ -7,6 +7,7 @@ from typing import Any, Callable, Iterable, final
 from plover.steno import Stroke
 
 from plover_hatchery.lib.pipes.Plugin import GetPluginApi, Plugin, define_plugin
+from plover_hatchery.lib.pipes.floating_keys import floating_keys
 from plover_hatchery.lib.sopheme import SophemeSeq, SophemeSeqPhoneme
 from plover_hatchery.lib.trie import LookupResult, NondeterministicTrie, NodeSrc, Trie, TriePath
 from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
@@ -22,6 +23,9 @@ class SophBasedTrieConstructionApi:
 def soph_trie(map_phoneme_to_soph: Callable[[SophemeSeqPhoneme], Iterable[Soph]], sophs_to_chords_dict: dict[str, str]) -> Plugin[SophBasedTrieConstructionApi]:
     @define_plugin(soph_trie)
     def plugin(get_plugin_api: GetPluginApi, base_hooks: TheoryHooks, **_):
+        floating_keys_api = get_plugin_api(floating_keys)
+
+
         trie: NondeterministicTrie[Soph, EntryIndex] = NondeterministicTrie()
 
         api = SophBasedTrieConstructionApi(trie)
@@ -50,16 +54,26 @@ def soph_trie(map_phoneme_to_soph: Callable[[SophemeSeqPhoneme], Iterable[Soph]]
                 trie.set_translation(src.node, entry_id)
 
 
-        chords_to_sophs: Trie[str, list[Soph]] = Trie()
+        @dataclass(frozen=True)
+        class SophResult:
+            soph: Soph
+            required_floaters: Stroke
+
+
+        chords_to_sophs: Trie[str, list[SophResult]] = Trie()
         for soph_value, chords_steno in sophs_to_chords_dict.items():
             soph = Soph(soph_value)
             for chord_steno in chords_steno.split():
-                dst_node = chords_to_sophs.follow_chain(chords_to_sophs.ROOT, Stroke.from_steno(chord_steno).keys())
+                chord_rest, chord_floaters = floating_keys_api.split(Stroke.from_steno(chord_steno))
+                result = SophResult(soph, chord_floaters)
+
+
+                dst_node = chords_to_sophs.follow_chain(chords_to_sophs.ROOT, chord_rest.keys())
                 sophs = chords_to_sophs.get_translation(dst_node)
                 if sophs is None:
-                    chords_to_sophs.set_translation(dst_node, [soph])
+                    chords_to_sophs.set_translation(dst_node, [result])
                 else:
-                    sophs.append(soph)
+                    sophs.append(result)
 
 
         @dataclass(frozen=True)
@@ -73,7 +87,10 @@ def soph_trie(map_phoneme_to_soph: Callable[[SophemeSeqPhoneme], Iterable[Soph]]
                 self.__chords_to_sophs_node_indices: list[OngoingTrieNode] = [OngoingTrieNode(chords_to_sophs.ROOT, 0)]
                 self.__key_index = 0
 
-            def consume_key(self, key: str):
+            def consume_key(self, key: str, stroke: Stroke):
+                floaters = stroke & floating_keys_api.floaters
+
+
                 # Continue the ongoing trie traversals
                 new_node_indices: list[OngoingTrieNode] = []
                 new_possible_sophs: list[TriePath] = []
@@ -84,12 +101,14 @@ def soph_trie(map_phoneme_to_soph: Callable[[SophemeSeqPhoneme], Iterable[Soph]]
                     new_node_indices.append(OngoingTrieNode(dst_node, trie_node.src_key_index))
 
 
-                    sophs = chords_to_sophs.get_translation(dst_node)
-                    if sophs is None: continue
+                    soph_results = chords_to_sophs.get_translation(dst_node)
+
+                    if soph_results is None: continue
 
 
-                    for soph in sophs:
-                        new_possible_sophs.extend(trie.traverse(self.__possible_soph_paths[trie_node.src_key_index], soph))
+                    for result in soph_results:
+                        if result.required_floaters not in stroke: continue
+                        new_possible_sophs.extend(trie.traverse(self.__possible_soph_paths[trie_node.src_key_index], result.soph))
 
 
                 # Add a root node so the next key triggers a new traversal starting from the root
@@ -123,8 +142,8 @@ def soph_trie(map_phoneme_to_soph: Callable[[SophemeSeqPhoneme], Iterable[Soph]]
                     if stroke_index > 0:
                         state.finish_stroke()
 
-                    for key in stroke.keys():
-                        state.consume_key(key)
+                    for key in stroke - floating_keys_api.floaters:
+                        state.consume_key(key, stroke)
 
                 return state.get_lookup_results()
 

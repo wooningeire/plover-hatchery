@@ -1,8 +1,10 @@
 from plover_hatchery.lib.pipes import *
-from plover_hatchery.lib.pipes.types import Soph
 
 @compile_theory
 def theory():
+    yield floating_keys("*")
+
+
     def map_phonemes(phoneme: SophemeSeqPhoneme):
         as_spelled = ""
         if any(part in phoneme.sopheme.chars for part in ("aw", "au")):

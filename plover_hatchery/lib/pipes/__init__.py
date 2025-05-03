@@ -19,6 +19,7 @@ from .key_by_key_lookup import key_by_key_lookup
 from .path_traversal_reverse_lookup import path_traversal_reverse_lookup
 from .lookup_result_filtering import lookup_result_filtering
 from .intrabank_consonant_inversions import intrabank_consonant_inversions
+from .floating_keys import floating_keys
 from .soph_trie import soph_trie
 
 from .Theory import Theory
@@ -28,3 +29,4 @@ from .SophoneType import SophoneType, Sophone
 from .iter_helpers import *
 from .phoneme_conditions import *
 from .stroke_conditions import *
+from .types import *
