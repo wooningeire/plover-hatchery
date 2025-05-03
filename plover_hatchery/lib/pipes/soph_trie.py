@@ -2,10 +2,11 @@
 
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Any, Callable, Iterable, final
+from typing import Any, Callable, Iterable, Protocol, final
 
 from plover.steno import Stroke
 
+from plover_hatchery.lib.pipes.Hook import Hook
 from plover_hatchery.lib.pipes.Plugin import GetPluginApi, Plugin, define_plugin
 from plover_hatchery.lib.pipes.floating_keys import floating_keys
 from plover_hatchery.lib.sopheme import SophemeSeq, SophemeSeqPhoneme
@@ -16,11 +17,24 @@ from plover_hatchery.lib.pipes.types import Soph, EntryIndex
 
 
 @final
-@dataclass(frozen=True)
-class SophBasedTrieConstructionApi:
+@dataclass
+class SophTrieApi:
+    class ValidateOutline(Protocol):
+        def __call__(self, *, outline: tuple[Stroke, ...]) -> bool: ...
+    class ProcessOutline(Protocol):
+        def __call__(self, *, outline: tuple[Stroke, ...]) -> tuple[Stroke, ...]: ...
+    class ValidateLookupResult(Protocol):
+        def __call__(self, *, lookup_result: LookupResult[EntryIndex], trie: NondeterministicTrie[Soph, EntryIndex], outline: tuple[Stroke, ...]) -> bool: ...
+            
+
     trie: NondeterministicTrie[Soph, EntryIndex]
 
-def soph_trie(map_phoneme_to_soph: Callable[[SophemeSeqPhoneme], Iterable[Soph]], sophs_to_chords_dict: dict[str, str]) -> Plugin[SophBasedTrieConstructionApi]:
+    validate_outline = Hook(ValidateOutline)
+    process_outline = Hook(ProcessOutline)
+    validate_lookup_result = Hook(ValidateLookupResult)
+
+
+def soph_trie(map_phoneme_to_soph: Callable[[SophemeSeqPhoneme], Iterable[Soph]], sophs_to_chords_dict: dict[str, str]) -> Plugin[SophTrieApi]:
     @define_plugin(soph_trie)
     def plugin(get_plugin_api: GetPluginApi, base_hooks: TheoryHooks, **_):
         floating_keys_api = get_plugin_api(floating_keys)
@@ -28,8 +42,13 @@ def soph_trie(map_phoneme_to_soph: Callable[[SophemeSeqPhoneme], Iterable[Soph]]
 
         trie: NondeterministicTrie[Soph, EntryIndex] = NondeterministicTrie()
 
-        api = SophBasedTrieConstructionApi(trie)
+        api = SophTrieApi(trie)
 
+
+
+        ### Lookup building #############################################################
+        # We construct a nondeterministic trie whose transitions are sophs, gathered from an entry's phonemes.
+        # The translations are the translations of each sopheme sequence.
 
         @base_hooks.add_entry.listen(soph_trie)
         def _(sophemes: SophemeSeq, entry_id: EntryIndex, **_):
@@ -54,6 +73,12 @@ def soph_trie(map_phoneme_to_soph: Callable[[SophemeSeqPhoneme], Iterable[Soph]]
                 trie.set_translation(src.node, entry_id)
 
 
+
+        ### Chord -> soph mapping ######################################################
+        # We build a trie whose transitions are keys in strokes, so we can lookup the different possible Sophs each
+        # chord could map to. We also track the required floaters in the chord so we can check if a user's stroke
+        # contains them before allowing a soph to be used, should its chord have a floater (e.g., *T for th).
+
         @dataclass(frozen=True)
         class SophResult:
             soph: Soph
@@ -76,12 +101,20 @@ def soph_trie(map_phoneme_to_soph: Callable[[SophemeSeqPhoneme], Iterable[Soph]]
                     sophs.append(result)
 
 
+
+        ### Lookup ######################################################################
+        # We go key by key in the user's outline. For each key, check all possible configurations of sophs that the
+        # outline could represent, traversing the nondeterministic soph trie as soon as sophs are found.
+        # After consuming all the keys, find the translation with the lowest cost.
+
         @dataclass(frozen=True)
         class OngoingTrieNode:
             trie_node: int
             src_key_index: int
 
         class LookupState:
+            """Manages the key-by-key iteration phase of lookup."""
+
             def __init__(self):
                 self.__possible_soph_paths: list[list[TriePath]] = [[TriePath(0, ())]]
                 self.__chords_to_sophs_node_indices: list[OngoingTrieNode] = [OngoingTrieNode(chords_to_sophs.ROOT, 0)]
@@ -118,7 +151,7 @@ def soph_trie(map_phoneme_to_soph: Callable[[SophemeSeqPhoneme], Iterable[Soph]]
 
             
             def finish_stroke(self):
-                # We don't want traversals to bleed across strokes, so reset them
+                # We don't want chords to bleed across strokes, so reset them
                 self.__chords_to_sophs_node_indices = [OngoingTrieNode(chords_to_sophs.ROOT, self.__key_index)]
 
             
@@ -127,8 +160,10 @@ def soph_trie(map_phoneme_to_soph: Callable[[SophemeSeqPhoneme], Iterable[Soph]]
 
             
         class LookupRunner:
-            def __init__(self, stroke_stenos: tuple[str, ...]):
-                self.__outline = tuple(Stroke.from_steno(steno) for steno in stroke_stenos)
+            """Manages lookup results after they have been found by the LookupState."""
+
+            def __init__(self, outline: tuple[Stroke, ...]):
+                self.__outline = outline
                 self.__filtering_end_index = len(self.__outline)
 
 
@@ -152,8 +187,12 @@ def soph_trie(map_phoneme_to_soph: Callable[[SophemeSeqPhoneme], Iterable[Soph]]
                 outline_for_filtering = self.__outline[:self.__filtering_end_index]
                 for lookup_result in self.__run_lookup():
                     if lookup_result.cost >= min_costs[lookup_result.translation]: continue
-                    # if not filtering_api.should_keep(lookup_result, trie, outline_for_filtering):
-                    #     continue
+
+                    if not all(
+                        handler(lookup_result=lookup_result, trie=trie, outline=outline_for_filtering)
+                        for handler in api.validate_lookup_result.handlers()
+                    ):
+                        continue
 
                     min_costs[lookup_result.translation] = lookup_result.cost
                     min_cost_results[lookup_result.translation] = lookup_result
@@ -170,9 +209,20 @@ def soph_trie(map_phoneme_to_soph: Callable[[SophemeSeqPhoneme], Iterable[Soph]]
 
         @base_hooks.lookup.listen(soph_trie)
         def _(stroke_stenos: tuple[str, ...], translations: list[str], **_) -> "str | None":
+            outline = tuple(Stroke.from_steno(steno) for steno in stroke_stenos)
+            if len(outline[-1]) == 0: return None # TODO
+
+            if not all(
+                handler(outline=outline)
+                for handler in api.validate_outline.handlers()
+            ):
+                return None
+
+            for handler in api.process_outline.handlers():
+                outline = handler(outline=outline)
             
             
-            translation_choices = LookupRunner(stroke_stenos).get_translation_choices()
+            translation_choices = LookupRunner(outline).get_translation_choices()
             n_variation = 0
 
             # if debug:
@@ -191,8 +241,6 @@ def soph_trie(map_phoneme_to_soph: Callable[[SophemeSeqPhoneme], Iterable[Soph]]
             #         return nth_variation(translation_choices, n_variation, translations)
 
             # return nth_variation(translation_choices, n_variation + 1, translations) if len(translation_choices) > 1 else None
-
-            # return ",".join()
 
         return api
 

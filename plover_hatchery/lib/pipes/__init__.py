@@ -21,6 +21,7 @@ from .lookup_result_filter import lookup_result_filter
 from .intrabank_consonant_inversions import intrabank_consonant_inversions
 from .floating_keys import floating_keys
 from .soph_trie import soph_trie
+from .amphitheory_outlines import amphitheory_outlines
 
 from .Theory import Theory
 from .compile_theory import compile_theory

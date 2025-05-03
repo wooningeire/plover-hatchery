@@ -204,3 +204,26 @@ def parse_line(tokens: tuple[Token, ...]):
 
 def parse_entry_definition(seq: str):
     return parse_line(lex_sopheme_sequence(seq))
+
+
+def parse_sopheme_seq_line(tokens: tuple[Token, ...]):
+    cursor = _TokenCursor(tokens, 0)
+
+    if cursor.done:
+        return
+
+    while True:
+        sopheme, cursor = consume_sopheme(cursor)
+        yield sopheme
+
+        if cursor.done:
+            break
+
+        if cursor.token.type is TokenType.WHITESPACE:
+            cursor = cursor.next()
+        else:
+            raise ParserException("Expected whitespace here", cursor)
+
+
+def parse_sopheme_seq(seq: str):
+    return parse_sopheme_seq_line(lex_sopheme_sequence(seq))

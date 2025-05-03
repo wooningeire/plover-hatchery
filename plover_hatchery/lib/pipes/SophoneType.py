@@ -6,7 +6,7 @@ from collections.abc import Iterable, Generator
 from plover.steno import Stroke
 
 from plover_hatchery.lib.sopheme import Sopheme, SophemeSeqPhoneme
-from plover_hatchery.lib.sopheme.parse.parse_sopheme_sequence import parse_entry_definition
+from plover_hatchery.lib.sopheme.parse.parse_sopheme_sequence import parse_entry_definition, parse_sopheme_seq
 
 
 @final
@@ -135,7 +135,7 @@ class SophoneType:
 
     def mapper_to_sophemes(self, mappings: dict[str, str]):
         def parse_sopheme(sopheme_str: str):
-            return next(parse_entry_definition(sopheme_str))
+            return next(parse_sopheme_seq(sopheme_str))
 
 
         chords = {

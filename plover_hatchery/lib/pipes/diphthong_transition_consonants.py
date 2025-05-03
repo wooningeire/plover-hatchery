@@ -1,6 +1,7 @@
 from typing import Callable
 from collections.abc import Iterable
 
+from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
 from plover_hatchery.lib.pipes.consonants_vowels_enumeration import consonants_vowels_enumeration
 from plover_hatchery.lib.sopheme import Keysymbol, SophemeSeq, SophemeSeqPhoneme
 
@@ -62,11 +63,8 @@ def diphthong_transition_consonants(
     keysymbols_by_first_vowel: Callable[[SophemeSeqPhoneme], Iterable[Sopheme]],
 ) -> Plugin[None]:
         @define_plugin(diphthong_transition_consonants)
-        def plugin(get_plugin_api: GetPluginApi, **_):
-            enumeration_api = get_plugin_api(consonants_vowels_enumeration)
-
-
-            @enumeration_api.process_sopheme_seq.listen(diphthong_transition_consonants)
+        def plugin(base_hooks: TheoryHooks, **_):
+            @base_hooks.process_sopheme_seq.listen(diphthong_transition_consonants)
             def _(sopheme_seq: SophemeSeq, **_):
                 prev_phoneme_if_was_vowel = None
 
