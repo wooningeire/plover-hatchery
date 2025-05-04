@@ -192,6 +192,9 @@ def theory():
     yield amphitheory_outlines()
 
 
+    # yield initial_vowel_chord("@")
+
+
     yield optional_middle_vowels()
 
 

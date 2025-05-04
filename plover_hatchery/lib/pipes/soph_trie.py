@@ -2,7 +2,7 @@
 
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Any, Callable, Iterable, Protocol, final
+from typing import Any, Callable, Iterable, NamedTuple, Protocol, final
 
 from plover.steno import Stroke
 
@@ -16,6 +16,11 @@ from plover_hatchery.lib.pipes.types import Soph, EntryIndex
 
 
 
+@dataclass(frozen=True)
+class SophChordAssociation:
+    soph: Soph
+    chord: Stroke
+
 @final
 @dataclass
 class SophTrieApi:
@@ -24,7 +29,14 @@ class SophTrieApi:
     class ProcessOutline(Protocol):
         def __call__(self, *, outline: tuple[Stroke, ...]) -> tuple[Stroke, ...]: ...
     class ValidateLookupResult(Protocol):
-        def __call__(self, *, lookup_result: LookupResult[EntryIndex], trie: NondeterministicTrie[Soph, EntryIndex], outline: tuple[Stroke, ...]) -> bool: ...
+        def __call__(
+            self,
+            *,
+            lookup_result: LookupResult[EntryIndex],
+            trie: NondeterministicTrie[Soph, EntryIndex],
+            outline: tuple[Stroke, ...],
+            sophs_and_chords_used: tuple[SophChordAssociation, ...],
+        ) -> bool: ...
             
 
     trie: NondeterministicTrie[Soph, EntryIndex]
@@ -79,27 +91,85 @@ def soph_trie(map_phoneme_to_soph: Callable[[SophemeSeqPhoneme], Iterable[Soph]]
         # chord could map to. We also track the required floaters in the chord so we can check if a user's stroke
         # contains them before allowing a soph to be used, should its chord have a floater (e.g., *T for th).
 
-        @dataclass(frozen=True)
-        class SophResult:
-            soph: Soph
-            required_floaters: Stroke
+
+        class ChordToSophSearcher:
+            def __init__(self, sophs_to_chords_dict: dict[str, str]):
+                self.__chords_to_sophs: Trie[str, list[ChordToSophSearcher.Result]] = Trie()
+
+                for soph_value, chords_steno in sophs_to_chords_dict.items():
+                    soph = Soph(soph_value)
+                    for chord_steno in chords_steno.split():
+                        chord_rest, chord_floaters = floating_keys_api.split(Stroke.from_steno(chord_steno))
+                        result = ChordToSophSearcher.Result(soph, chord_floaters)
 
 
-        chords_to_sophs: Trie[str, list[SophResult]] = Trie()
-        for soph_value, chords_steno in sophs_to_chords_dict.items():
-            soph = Soph(soph_value)
-            for chord_steno in chords_steno.split():
-                chord_rest, chord_floaters = floating_keys_api.split(Stroke.from_steno(chord_steno))
-                result = SophResult(soph, chord_floaters)
+                        dst_node = self.__chords_to_sophs.follow_chain(self.__chords_to_sophs.ROOT, chord_rest.keys())
+                        sophs = self.__chords_to_sophs.get_translation(dst_node)
+                        if sophs is None:
+                            self.__chords_to_sophs.set_translation(dst_node, [result])
+                        else:
+                            sophs.append(result)
 
 
-                dst_node = chords_to_sophs.follow_chain(chords_to_sophs.ROOT, chord_rest.keys())
-                sophs = chords_to_sophs.get_translation(dst_node)
-                if sophs is None:
-                    chords_to_sophs.set_translation(dst_node, [result])
-                else:
-                    sophs.append(result)
+            @dataclass(frozen=True)
+            class Result:
+                soph: Soph
+                required_floaters: Stroke
 
+
+            def begin_search(self):
+                return ChordToSophSearcher.Session(self)
+
+
+            @property
+            def chords_to_sophs(self):
+                return self.__chords_to_sophs
+
+
+            class Session:
+                class Item(NamedTuple):
+                    soph_reult: "ChordToSophSearcher.Result"
+                    chord_starting_key_index: int
+
+
+                def __init__(self, chord_finder: "ChordToSophSearcher"):
+                    self.__chord_finder = chord_finder
+                    self.__node_data_for_chords_to_sophs_lookup: list[ChordToSophSearchNode] = [ChordToSophSearchNode(chord_finder.chords_to_sophs.ROOT, 0)]
+                    self.__current_key_index = 0
+
+
+                def possible_sophs_after_consuming(self, key: str):
+                    # Continue the ongoing trie traversals
+                    new_node_indices: list[ChordToSophSearchNode] = []
+                    for trie_node in self.__node_data_for_chords_to_sophs_lookup:
+                        dst_node = self.__chord_finder.chords_to_sophs.traverse(trie_node.trie_node, key)
+                        if dst_node is None: continue
+
+                        new_node_indices.append(ChordToSophSearchNode(dst_node, trie_node.chord_starting_key_index))
+
+                        soph_results = self.__chord_finder.chords_to_sophs.get_translation(dst_node)
+
+                        if soph_results is None: continue
+
+
+                        for soph_result in soph_results:
+                            yield ChordToSophSearcher.Session.Item(soph_result, trie_node.chord_starting_key_index)
+
+
+                    # Add a root node so the next key triggers a new traversal starting from the root
+                    new_node_indices.append(ChordToSophSearchNode(chord_finder.chords_to_sophs.ROOT, self.__current_key_index + 1))
+
+
+                    self.__node_data_for_chords_to_sophs_lookup = new_node_indices
+                    self.__current_key_index += 1
+
+                
+                def finish_stroke(self):
+                    # We don't want chords to bleed across strokes, so reset them
+                    self.__node_data_for_chords_to_sophs_lookup = [ChordToSophSearchNode(self.__chord_finder.chords_to_sophs.ROOT, self.__current_key_index)]
+
+
+        chord_finder = ChordToSophSearcher(sophs_to_chords_dict)
 
 
         ### Lookup ######################################################################
@@ -108,96 +178,151 @@ def soph_trie(map_phoneme_to_soph: Callable[[SophemeSeqPhoneme], Iterable[Soph]]
         # After consuming all the keys, find the translation with the lowest cost.
 
         @dataclass(frozen=True)
-        class OngoingTrieNode:
+        class ChordToSophSearchNode:
             trie_node: int
-            src_key_index: int
+            chord_starting_key_index: int
 
-        class LookupState:
+            
+                
+        @dataclass(frozen=True)
+        class SophChordAssociationWithUnresolvedChord:
+            soph: Soph
+            chord_start_key_index: int
+            required_floaters: Stroke
+
+
+        @dataclass(frozen=True)
+        class SophLookupPath:
+
+
+            trie_path: TriePath = TriePath(0, ())
+            sophs_and_chords_used: tuple[SophChordAssociationWithUnresolvedChord, ...] = ()
+
+        class SophPathFinder:
             """Manages the key-by-key iteration phase of lookup."""
 
+
             def __init__(self):
-                self.__possible_soph_paths: list[list[TriePath]] = [[TriePath(0, ())]]
-                self.__chords_to_sophs_node_indices: list[OngoingTrieNode] = [OngoingTrieNode(chords_to_sophs.ROOT, 0)]
-                self.__key_index = 0
+                self.__possible_soph_paths: list[list[SophLookupPath]] = [[SophLookupPath()]]
+                self.__chord_search = chord_finder.begin_search()
+                self.__consumed_keys: list[str] = []
 
-            def consume_key(self, key: str, stroke: Stroke):
-                # Continue the ongoing trie traversals
-                new_node_indices: list[OngoingTrieNode] = []
-                new_possible_sophs: list[TriePath] = []
-                for trie_node in self.__chords_to_sophs_node_indices:
-                    dst_node = chords_to_sophs.traverse(trie_node.trie_node, key)
-                    if dst_node is None: continue
+            def __consume_key(self, key: str, stroke: Stroke):
+                new_possible_sophs: list[SophLookupPath] = []
 
-                    new_node_indices.append(OngoingTrieNode(dst_node, trie_node.src_key_index))
+                for soph_result, chord_start_key_index in self.__chord_search.possible_sophs_after_consuming(key):
+                    if soph_result.required_floaters not in stroke: continue
 
-
-                    soph_results = chords_to_sophs.get_translation(dst_node)
-
-                    if soph_results is None: continue
-
-
-                    for result in soph_results:
-                        if result.required_floaters not in stroke: continue
-                        new_possible_sophs.extend(trie.traverse(self.__possible_soph_paths[trie_node.src_key_index], result.soph))
-
-
-                # Add a root node so the next key triggers a new traversal starting from the root
-                new_node_indices.append(OngoingTrieNode(chords_to_sophs.ROOT, self.__key_index + 1))
-
+                    for path in self.__possible_soph_paths[chord_start_key_index]:
+                        new_possible_sophs.extend(
+                            SophLookupPath(
+                                new_trie_path,
+                                path.sophs_and_chords_used + (SophChordAssociationWithUnresolvedChord(soph_result.soph, chord_start_key_index, soph_result.required_floaters),)
+                            )
+                            for new_trie_path in trie.traverse((path.trie_path,), soph_result.soph)
+                        )
 
                 self.__possible_soph_paths.append(new_possible_sophs)
-                self.__chords_to_sophs_node_indices = new_node_indices
-                self.__key_index += 1
-
+                self.__consumed_keys.append(key)
             
-            def finish_stroke(self):
-                # We don't want chords to bleed across strokes, so reset them
-                self.__chords_to_sophs_node_indices = [OngoingTrieNode(chords_to_sophs.ROOT, self.__key_index)]
 
-            
-            def get_lookup_results(self):
-                return trie.get_translations_and_costs(self.__possible_soph_paths[-1])
-
-            
-        class LookupRunner:
-            """Manages lookup results after they have been found by the LookupState."""
-
-            def __init__(self, outline: tuple[Stroke, ...]):
-                self.__outline = outline
-                self.__filtering_end_index = len(self.__outline)
+            def __finish_stroke(self):
+                self.__chord_search.finish_stroke()
 
 
-            def __run_lookup(self):
-                state = LookupState()
+            def __get_final_paths(self):
+                return self.__possible_soph_paths[-1]
 
-                for stroke_index, stroke in enumerate(self.__outline):
+
+            @staticmethod
+            def get_paths_from_outline(outline: tuple[Stroke, ...]):
+                soph_path_finder = SophPathFinder()
+                consumed_keys: list[str] = []
+
+                for stroke_index, stroke in enumerate(outline):
                     if stroke_index > 0:
-                        state.finish_stroke()
+                        soph_path_finder.__finish_stroke()
 
                     for key in stroke - floating_keys_api.floaters:
-                        state.consume_key(key, stroke)
+                        soph_path_finder.__consume_key(key, stroke)
+                        consumed_keys.append(key)
 
-                return state.get_lookup_results()
+                return soph_path_finder.__get_final_paths(), consumed_keys
 
 
-            def get_translation_choices(self):
-                min_costs: dict[EntryIndex, float] = defaultdict(lambda: float("inf"))
-                min_cost_results: dict[EntryIndex, LookupResult[EntryIndex]] = {}
+        class LookupRunner:
+            """Manages lookup results after they have been found by a lookup session."""
 
-                outline_for_filtering = self.__outline[:self.__filtering_end_index]
-                for lookup_result in self.__run_lookup():
-                    if lookup_result.cost >= min_costs[lookup_result.translation]: continue
 
-                    if not all(
-                        handler(lookup_result=lookup_result, trie=trie, outline=outline_for_filtering)
-                        for handler in api.validate_lookup_result.handlers()
-                    ):
-                        continue
+            class LookupResultWithAssociations(NamedTuple):
+                lookup_result: LookupResult[EntryIndex]
+                sophs_and_chords_used: tuple[SophChordAssociation, ...]
 
-                    min_costs[lookup_result.translation] = lookup_result.cost
-                    min_cost_results[lookup_result.translation] = lookup_result
 
-                return sorted(min_cost_results.values(), key=lambda result: result.cost)
+            @staticmethod
+            def __resolve_soph_chord_associations(associations: tuple[SophChordAssociationWithUnresolvedChord, ...], outline_keys: list[str]):
+                for i, association in enumerate(associations):
+                    if i < len(associations) - 1:
+                        next_association = associations[i + 1]
+                        yield SophChordAssociation(
+                            association.soph,
+                            Stroke.from_steno(outline_keys[association.chord_start_key_index:next_association.chord_start_key_index]) + association.required_floaters
+                        )
+
+                    else:
+                        yield SophChordAssociation(
+                            association.soph,
+                            Stroke.from_steno(outline_keys[association.chord_start_key_index:]) + association.required_floaters
+                        )
+
+
+            @staticmethod
+            def __items_from_soph_path_result(final_path: SophLookupPath, consumed_keys: list[str]):
+                for lookup_result in trie.get_translations_and_costs((final_path.trie_path,)):
+                    yield lookup_result, LookupRunner.__resolve_soph_chord_associations(final_path.sophs_and_chords_used, consumed_keys)
+
+
+            @staticmethod
+            def get_processed_lookup_results(outline: tuple[Stroke, ...]):
+                final_paths, consumed_keys = SophPathFinder.get_paths_from_outline(outline)
+                for final_path in final_paths:
+                    yield from LookupRunner.__items_from_soph_path_result(final_path, consumed_keys)
+                    
+
+
+
+
+        class MinTranslationBuilder:
+            def __init__(self):
+                self.__min_costs: dict[EntryIndex, float] = defaultdict(lambda: float("inf"))
+                self.__min_cost_results: dict[EntryIndex, LookupResult[EntryIndex]] = {}
+
+
+            def __record_lookup_result_if_has_min_cost(self, lookup_result: LookupResult[EntryIndex], sophs_and_chords_used: Iterable[SophChordAssociation], outline_for_filtering: tuple[Stroke, ...]):
+                if lookup_result.cost >= self.__min_costs[lookup_result.translation]: return
+
+                if not all(
+                    handler(lookup_result=lookup_result, trie=trie, outline=outline_for_filtering, sophs_and_chords_used=tuple(sophs_and_chords_used))
+                    for handler in api.validate_lookup_result.handlers()
+                ):
+                    return
+
+                self.__min_costs[lookup_result.translation] = lookup_result.cost
+                self.__min_cost_results[lookup_result.translation] = lookup_result
+
+
+            def __get_sorted_min_translations(self):
+                return sorted(self.__min_cost_results.values(), key=lambda result: result.cost)
+
+
+            @staticmethod
+            def build(outline: tuple[Stroke, ...], outline_for_filtering: tuple[Stroke, ...]):
+                builder = MinTranslationBuilder()
+                for lookup_result, sophs_and_chords_used in LookupRunner.get_processed_lookup_results(outline):
+                    builder.__record_lookup_result_if_has_min_cost(lookup_result, sophs_and_chords_used, outline_for_filtering)
+                
+                return builder.__get_sorted_min_translations()
+
 
 
 
@@ -222,7 +347,7 @@ def soph_trie(map_phoneme_to_soph: Callable[[SophemeSeqPhoneme], Iterable[Soph]]
                 outline = handler(outline=outline)
             
             
-            translation_choices = LookupRunner(outline).get_translation_choices()
+            translation_choices = MinTranslationBuilder().build(outline, outline)
             n_variation = 0
 
             # if debug:
