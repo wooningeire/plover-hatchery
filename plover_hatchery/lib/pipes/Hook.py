@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from typing import TypeVar, Generic, Callable, Any, cast
 
 from .Plugin import Plugin
@@ -22,6 +23,32 @@ class HookObj(Generic[T]):
     
     def ids_handlers(self):
         return self.__handlers.items()
+
+    def states_handlers(self, states: dict[int, Any]):
+        for plugin_id, handler in self.ids_handlers():
+            yield states.get(plugin_id), handler
+
+    
+    def emit_and_store_outputs(self, **kwargs):
+        return_values: dict[int, Any] = {}
+
+        for plugin_id, handler in self.ids_handlers():
+            return_values[plugin_id] = handler(**kwargs)
+
+        return return_values
+
+
+    def emit_and_validate(self, validate: Callable[[Iterable[Any]], bool]=all, **kwargs):
+        return validate(handler(**kwargs) for handler in self.handlers())
+
+
+    def emit_and_validate_with_states(
+        self,
+        states: dict[int, Any]={},
+        validate: Callable[[Iterable[Any]], bool]=all,
+        **kwargs,
+    ):
+        return validate(handler(state=state, **kwargs) for state, handler in self.states_handlers(states))
 
 
 class Hook(Generic[T]):

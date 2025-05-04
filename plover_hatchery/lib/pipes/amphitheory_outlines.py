@@ -11,15 +11,15 @@ def amphitheory_outlines() -> Plugin[None]:
         soph_trie_api = get_plugin_api(soph_trie)
 
 
-        @soph_trie_api.validate_outline.listen(amphitheory_outlines)
+        @soph_trie_api.process_outline.listen(amphitheory_outlines)
         def _(outline: tuple[Stroke, ...], **_):
             for i, stroke in enumerate(outline):
                 if i == 0: continue
 
                 if linker_chord not in stroke:
-                    return False
+                    return None
 
-            return True
+            return outline
 
 
         @soph_trie_api.process_outline.listen(amphitheory_outlines)

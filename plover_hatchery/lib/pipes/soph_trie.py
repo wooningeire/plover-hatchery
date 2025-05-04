@@ -25,26 +25,39 @@ class SophChordAssociation(NamedTuple):
 @final
 @dataclass
 class SophTrieApi:
-    class ValidateOutline(Protocol):
-        def __call__(self, *, outline: tuple[Stroke, ...]) -> bool: ...
+    class BeginLookup(Protocol):
+        def __call__(self, *, outline: tuple[Stroke, ...]) -> Any: ...
     class ProcessOutline(Protocol):
-        def __call__(self, *, outline: tuple[Stroke, ...]) -> tuple[Stroke, ...]: ...
+        def __call__(self, *, state: Any, outline: tuple[Stroke, ...]) -> "tuple[Stroke, ...] | None": ...
     class ValidateLookupResult(Protocol):
         def __call__(
             self,
             *,
+            state: Any,
             lookup_result: LookupResult[EntryIndex],
             trie: NondeterministicTrie[Soph, EntryIndex],
+            original_outline: tuple[Stroke, ...],
             outline: tuple[Stroke, ...],
             sophs_and_chords_used: tuple[SophChordAssociation, ...],
         ) -> bool: ...
+    class SelectTranslation(Protocol):
+        def __call__(
+            self,
+            *,
+            state: Any,
+            choices: list[LookupResult[EntryIndex]],
+            translations: list[str],
+            original_outline: tuple[Stroke, ...],
+            outline: tuple[Stroke, ...],
+        ) -> "str | None": ...
             
 
     trie: NondeterministicTrie[Soph, EntryIndex]
 
-    validate_outline = Hook(ValidateOutline)
+    begin_lookup = Hook(BeginLookup)
     process_outline = Hook(ProcessOutline)
     validate_lookup_result = Hook(ValidateLookupResult)
+    select_translation = Hook(SelectTranslation)
 
 
 def soph_trie(
@@ -330,12 +343,23 @@ def soph_trie(
                 self.__min_cost_results: dict[EntryIndex, LookupResult[EntryIndex]] = {}
 
 
-            def __record_lookup_result_if_has_min_cost(self, lookup_result: LookupResult[EntryIndex], sophs_and_chords_used: Iterable[SophChordAssociation], outline_for_filtering: tuple[Stroke, ...]):
+            def __record_lookup_result_if_has_min_cost(
+                self,
+                lookup_result: LookupResult[EntryIndex],
+                sophs_and_chords_used: Iterable[SophChordAssociation],
+                outline_for_filtering: tuple[Stroke, ...],
+                original_outline: tuple[Stroke, ...],
+                states: dict[int, Any],
+            ):
                 if lookup_result.cost >= self.__min_costs[lookup_result.translation]: return
 
-                if not all(
-                    handler(lookup_result=lookup_result, trie=trie, outline=outline_for_filtering, sophs_and_chords_used=tuple(sophs_and_chords_used))
-                    for handler in api.validate_lookup_result.handlers()
+                if not api.validate_lookup_result.emit_and_validate_with_states(
+                    states,
+                    lookup_result=lookup_result,
+                    trie=trie,
+                    outline=outline_for_filtering,
+                    original_outline=original_outline,
+                    sophs_and_chords_used=tuple(sophs_and_chords_used),
                 ):
                     return
 
@@ -348,56 +372,49 @@ def soph_trie(
 
 
             @staticmethod
-            def build(outline: tuple[Stroke, ...], outline_for_filtering: tuple[Stroke, ...]):
+            def build(outline: tuple[Stroke, ...], outline_for_filtering: tuple[Stroke, ...], original_outline: tuple[Stroke, ...], states: dict[int, Any]):
                 builder = MinTranslationBuilder()
                 for lookup_result, sophs_and_chords_used in LookupRunner.get_processed_lookup_results(outline):
-                    builder.__record_lookup_result_if_has_min_cost(lookup_result, sophs_and_chords_used, outline_for_filtering)
+                    builder.__record_lookup_result_if_has_min_cost(lookup_result, sophs_and_chords_used, outline_for_filtering, original_outline, states)
                 
                 return builder.__get_sorted_min_translations()
 
 
-
-
-        def nth_variation(choices: list[LookupResult[EntryIndex]], n_variation: int, translations: list[str]):
-            # index = n_variation % (len(choices) + 1)
-            # return choices[index][0] if index != len(choices) else None
-            return translations[choices[n_variation % len(choices)].translation.value]
-        
-
         @base_hooks.lookup.listen(soph_trie)
         def _(stroke_stenos: tuple[str, ...], translations: list[str], **_) -> "str | None":
-            outline = tuple(Stroke.from_steno(steno) for steno in stroke_stenos)
-            if len(outline[-1]) == 0: return None # TODO
+            original_outline = tuple(Stroke.from_steno(steno) for steno in stroke_stenos)
 
-            if not all(
-                handler(outline=outline)
-                for handler in api.validate_outline.handlers()
-            ):
-                return None
 
-            for handler in api.process_outline.handlers():
-                outline = handler(outline=outline)
+            states = api.begin_lookup.emit_and_store_outputs(outline=original_outline)
+
+
+            if len(original_outline[0]) == 0: return None # TODO
+
+
+            outline = original_outline
+            for state, handler in api.process_outline.states_handlers(states):
+                outline = handler(state=state, outline=outline)
+                if outline is None:
+                    return None
             
             
-            translation_choices = MinTranslationBuilder().build(outline, outline)
-            n_variation = 0
+            translation_choices = MinTranslationBuilder().build(outline, outline, original_outline, states)
 
             # if debug:
             #     return _join_all_translations(trie, translation_choices, translations)
             
             if len(translation_choices) == 0: return None
 
-            return nth_variation(translation_choices, n_variation, translations)
-            # if len(positionless) == 0:
-            #     return nth_variation(translation_choices, n_variation, translations)
-            # else:
-            #     for transition in reversed(first_choice.transitions):
-            #         if trie.transition_has_key(transition, TRIE_STROKE_BOUNDARY_KEY): break
-            #         if not trie.transition_has_key(transition, banks_info.positionless.rtfcre): continue
 
-            #         return nth_variation(translation_choices, n_variation, translations)
+            for state, handler in api.select_translation.states_handlers(states):
+                translation = handler(state=state, choices=translation_choices, translations=translations, outline=outline, original_outline=original_outline)
+                if translation is None:
+                    continue
 
-            # return nth_variation(translation_choices, n_variation + 1, translations) if len(translation_choices) > 1 else None
+                return translation
+
+
+            return None
 
         return api
 

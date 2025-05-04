@@ -220,6 +220,9 @@ def theory():
     )
 
 
+    yield conflict_cycler_stroke("@")
+
+
     yield alt_chords(
         sophs_to_alternate_chords_dicts=(sophs_to_alternate_chords,),
         sophs_to_main_chords_dicts=(sophs_to_main_chords,),
