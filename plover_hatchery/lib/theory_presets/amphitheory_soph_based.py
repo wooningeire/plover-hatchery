@@ -220,6 +220,7 @@ def theory():
     )
 
 
+    yield debug_stroke("@*")
     yield conflict_cycler_stroke("@")
 
 

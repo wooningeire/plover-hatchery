@@ -8,13 +8,16 @@ from typing import final
 class EntryIndex:
     value: int
 
+    def __repr__(self):
+        return f"{self.value}"
+
 @final
 @dataclass(frozen=True)
 class Soph:
     value: str
 
     def __repr__(self):
-        return f"Soph({self.value})"
+        return f"{self.value}"
 
     @staticmethod
     def parse_seq(soph_values: str):

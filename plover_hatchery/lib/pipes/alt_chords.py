@@ -5,7 +5,7 @@ from plover.steno import Stroke
 from plover_hatchery.lib.pipes.Plugin import Plugin, define_plugin, GetPluginApi
 from plover_hatchery.lib.pipes.floating_keys import floating_keys
 from plover_hatchery.lib.pipes.plugin_utils import join_sophs_to_chords_dicts
-from plover_hatchery.lib.pipes.soph_trie import SophChordAssociation, soph_trie
+from plover_hatchery.lib.pipes.soph_trie import LookupResultWithAssociations, SophChordAssociation, soph_trie
 
 
 def alt_chords(
@@ -29,10 +29,10 @@ def alt_chords(
 
 
         @soph_trie_api.validate_lookup_result.listen(alt_chords)
-        def _(sophs_and_chords_used: tuple[SophChordAssociation, ...], **_):
+        def _(result: LookupResultWithAssociations, **_):
             # Return true iff, for every alt chord path taken, all of the main chords were unusable
 
-            for i, (sophs, chord, begins_new_stroke) in enumerate(sophs_and_chords_used):
+            for i, (sophs, chord, begins_new_stroke) in enumerate(result.sophs_and_chords_used):
                 if sophs not in sophs_to_alternate_chords: continue
                 if chord not in sophs_to_alternate_chords[sophs]: continue
 
@@ -40,12 +40,12 @@ def alt_chords(
                 if i == 0 or begins_new_stroke:
                     preceding_chord = Stroke.from_integer(0)
                 else:
-                    preceding_chord = sophs_and_chords_used[i - 1].chord
+                    preceding_chord = result.sophs_and_chords_used[i - 1].chord
 
-                if i == len(sophs_and_chords_used) - 1 or sophs_and_chords_used[i + 1].chord_starts_new_stroke:
+                if i == len(result.sophs_and_chords_used) - 1 or result.sophs_and_chords_used[i + 1].chord_starts_new_stroke:
                     following_chord = Stroke.from_integer(0)
                 else:
-                    following_chord = sophs_and_chords_used[i + 1].chord
+                    following_chord = result.sophs_and_chords_used[i + 1].chord
 
 
                 for main_chord in sophs_to_main_chords.get(sophs, ()):

@@ -22,6 +22,10 @@ class SophChordAssociation(NamedTuple):
     chord: Stroke
     chord_starts_new_stroke: bool
 
+class LookupResultWithAssociations(NamedTuple):
+    lookup_result: LookupResult[EntryIndex]
+    sophs_and_chords_used: tuple[SophChordAssociation, ...]
+
 @final
 @dataclass
 class SophTrieApi:
@@ -34,18 +38,18 @@ class SophTrieApi:
             self,
             *,
             state: Any,
-            lookup_result: LookupResult[EntryIndex],
+            result: LookupResultWithAssociations,
             trie: NondeterministicTrie[Soph, EntryIndex],
             original_outline: tuple[Stroke, ...],
             outline: tuple[Stroke, ...],
-            sophs_and_chords_used: tuple[SophChordAssociation, ...],
         ) -> bool: ...
     class SelectTranslation(Protocol):
         def __call__(
             self,
             *,
             state: Any,
-            choices: list[LookupResult[EntryIndex]],
+            trie: NondeterministicTrie[Soph, EntryIndex],
+            choices: list[LookupResultWithAssociations],
             translations: list[str],
             original_outline: tuple[Stroke, ...],
             outline: tuple[Stroke, ...],
@@ -95,6 +99,8 @@ def soph_trie(
             for phoneme in sophemes.phonemes():
                 if not phoneme.keysymbol.optional:
                     new_src_nodes = []
+                else:
+                    new_src_nodes = list(NodeSrc.increment_costs(new_src_nodes, 5))
 
 
                 sophs = list(map_phoneme_to_sophs(phoneme))
@@ -289,11 +295,6 @@ def soph_trie(
             """Manages lookup results after they have been found by a lookup session."""
 
 
-            class LookupResultWithAssociations(NamedTuple):
-                lookup_result: LookupResult[EntryIndex]
-                sophs_and_chords_used: tuple[SophChordAssociation, ...]
-
-
             @staticmethod
             def __resolve_soph_chord_associations(
                 associations: tuple[SophChordAssociationWithUnresolvedChord, ...],
@@ -340,42 +341,43 @@ def soph_trie(
         class MinTranslationBuilder:
             def __init__(self):
                 self.__min_costs: dict[EntryIndex, float] = defaultdict(lambda: float("inf"))
-                self.__min_cost_results: dict[EntryIndex, LookupResult[EntryIndex]] = {}
+                self.__min_cost_results: dict[EntryIndex, LookupResultWithAssociations] = {}
 
 
             def __record_lookup_result_if_has_min_cost(
                 self,
                 lookup_result: LookupResult[EntryIndex],
                 sophs_and_chords_used: Iterable[SophChordAssociation],
-                outline_for_filtering: tuple[Stroke, ...],
+                outline: tuple[Stroke, ...],
                 original_outline: tuple[Stroke, ...],
                 states: dict[int, Any],
             ):
                 if lookup_result.cost >= self.__min_costs[lookup_result.translation]: return
 
+                result = LookupResultWithAssociations(lookup_result, tuple(sophs_and_chords_used))
+
                 if not api.validate_lookup_result.emit_and_validate_with_states(
                     states,
-                    lookup_result=lookup_result,
+                    result=result,
                     trie=trie,
-                    outline=outline_for_filtering,
+                    outline=outline,
                     original_outline=original_outline,
-                    sophs_and_chords_used=tuple(sophs_and_chords_used),
                 ):
                     return
 
                 self.__min_costs[lookup_result.translation] = lookup_result.cost
-                self.__min_cost_results[lookup_result.translation] = lookup_result
+                self.__min_cost_results[lookup_result.translation] = result
 
 
             def __get_sorted_min_translations(self):
-                return sorted(self.__min_cost_results.values(), key=lambda result: result.cost)
+                return sorted(self.__min_cost_results.values(), key=lambda result: result.lookup_result.cost)
 
 
             @staticmethod
-            def build(outline: tuple[Stroke, ...], outline_for_filtering: tuple[Stroke, ...], original_outline: tuple[Stroke, ...], states: dict[int, Any]):
+            def build(outline: tuple[Stroke, ...], original_outline: tuple[Stroke, ...], states: dict[int, Any]):
                 builder = MinTranslationBuilder()
                 for lookup_result, sophs_and_chords_used in LookupRunner.get_processed_lookup_results(outline):
-                    builder.__record_lookup_result_if_has_min_cost(lookup_result, sophs_and_chords_used, outline_for_filtering, original_outline, states)
+                    builder.__record_lookup_result_if_has_min_cost(lookup_result, sophs_and_chords_used, outline, original_outline, states)
                 
                 return builder.__get_sorted_min_translations()
 
@@ -398,7 +400,7 @@ def soph_trie(
                     return None
             
             
-            translation_choices = MinTranslationBuilder().build(outline, outline, original_outline, states)
+            translation_choices = MinTranslationBuilder().build(outline, original_outline, states)
 
             # if debug:
             #     return _join_all_translations(trie, translation_choices, translations)
@@ -407,7 +409,7 @@ def soph_trie(
 
 
             for state, handler in api.select_translation.states_handlers(states):
-                translation = handler(state=state, choices=translation_choices, translations=translations, outline=outline, original_outline=original_outline)
+                translation = handler(state=state, trie=trie, choices=translation_choices, translations=translations, outline=outline, original_outline=original_outline)
                 if translation is None:
                     continue
 

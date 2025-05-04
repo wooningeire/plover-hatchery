@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import dataclasses
 from itertools import product
 from plover_hatchery.lib.trie.Transition import TransitionKey
-from typing import TYPE_CHECKING, Any, Generator, Generic, Protocol, TypeVar, final
+from typing import TYPE_CHECKING, Any, Generator, Generic, Protocol, TypeVar, Union, final
 
 from .Transition import TransitionKey, TransitionCostInfo, TransitionCostKey
 from .LookupResult import LookupResult
@@ -14,13 +14,9 @@ from .TriePath import TriePath, JoinedTransitionSeq, JoinedTriePaths
 _KeyVar = TypeVar("_KeyVar")
 _Translation = TypeVar("_Translation")
 
-if TYPE_CHECKING:
-    _Key = "_KeyVar | None"
-    _KeyId = "int | None"
-    """None for epsilon (empty) transitions."""
-else:
-    _Key = Generic
-    _KeyId = "int | None"
+_Key = Union[_KeyVar, None]
+_KeyId = Union[int, None]
+"""None for epsilon (empty) transitions."""
 
 class OnTraverse(Protocol[_KeyVar, _Translation]):
     def __call__(
