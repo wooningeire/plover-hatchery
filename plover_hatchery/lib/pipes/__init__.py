@@ -20,6 +20,7 @@ from .soph_trie import soph_trie
 from .amphitheory_outlines import amphitheory_outlines
 from .conflict_cycler_stroke import conflict_cycler_stroke
 from .debug_stroke import debug_stroke
+from .prohibited_strokes import prohibited_strokes
 
 from .Theory import Theory
 from .compile_theory import compile_theory
