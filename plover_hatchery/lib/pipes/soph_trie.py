@@ -66,7 +66,7 @@ class SophTrieApi:
 
 def soph_trie(
     *,
-    map_phoneme_to_sophs: Callable[[SophemeSeqPhoneme], Iterable[Soph]],
+    map_phoneme_to_sophs: Callable[[SophemeSeqPhoneme], Iterable[str]],
     sophs_to_chords_dicts: Iterable[dict[str, str]],
     vowel_sophs_str: str,
 ) -> Plugin[SophTrieApi]:
@@ -103,9 +103,9 @@ def soph_trie(
                     new_src_nodes = list(NodeSrc.increment_costs(new_src_nodes, 5))
 
 
-                sophs = list(map_phoneme_to_sophs(phoneme))
+                sophs = set(Soph(value) for value in map_phoneme_to_sophs(phoneme))
                 if any(soph in vowel_sophs for soph in sophs):
-                    sophs.append(Soph("@"))
+                    sophs.add(Soph("@"))
 
 
                 paths = trie.join(src_nodes, sophs, entry_id)
@@ -417,6 +417,71 @@ def soph_trie(
 
 
             return None
+
+
+        ### Reverse lookup ##############################################################
+
+
+        # reverse_lookups: dict[int, Callable[[EntryIndex], Iterable[LookupResult[EntryIndex]]]] = {}
+
+
+        # @base_hooks.reverse_lookup.listen(soph_trie)
+        # def _(translation: str, reverse_translations: dict[str, list[EntryIndex]]):
+        #     if id(trie) in reverse_lookups:
+        #         reverse_lookup = reverse_lookups[id(trie)]
+        #     else:
+        #         reverse_lookup = trie.build_reverse_lookup()
+        #         reverse_lookups[id(trie)] = reverse_lookup
+
+            
+        #     for entry_id in reverse_translations[translation]:
+        #         for lookup_result in reverse_lookup(entry_id):
+        #             outline: list[Stroke] = []
+        #             latest_stroke: Stroke = Stroke.from_integer(0)
+        #             invalid = False
+        #             for transition in lookup_result.transitions:
+        #                 if transition.key_id is None: continue
+        #                 key = trie.get_key(transition.key_id)
+
+        #                 if key == TRIE_STROKE_BOUNDARY_KEY:
+        #                     outline.append(latest_stroke)
+        #                     latest_stroke = Stroke.from_integer(0)
+        #                     continue
+
+        #                 # if key == TRIE_LINKER_KEY:
+        #                 #     key_stroke = amphitheory.spec.LINKER_CHORD
+        #                 # else: 
+        #                 key_stroke = Stroke.from_steno(key)
+
+        #                 if banks_info.can_add_stroke_on(latest_stroke, key_stroke):
+        #                     latest_stroke += key_stroke
+        #                 else:
+        #                     invalid = True
+        #                     break
+
+        #             if invalid:
+        #                 continue
+
+
+        #             outline.append(latest_stroke)
+
+
+        #             final_outline = tuple(outline)
+
+
+        #             states = api.begin_lookup.emit_and_store_outputs(outline=final_outline)
+
+        #             if not api.validate_lookup_result.emit_and_validate_with_states(
+        #                 states,
+        #                 result=result,
+        #                 trie=trie,
+        #                 outline=final_outline,
+        #                 original_outline=final_outline,
+        #             ):
+        #                 return
+
+        #             yield tuple(stroke.rtfcre for stroke in outline)
+        
 
         return api
 

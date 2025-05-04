@@ -2,7 +2,6 @@ from typing import Callable
 from collections.abc import Iterable
 
 from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
-from plover_hatchery.lib.pipes.consonants_vowels_enumeration import consonants_vowels_enumeration
 from plover_hatchery.lib.sopheme import Keysymbol, SophemeSeq, SophemeSeqPhoneme
 
 from ..sopheme import Sopheme

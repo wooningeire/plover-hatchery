@@ -3,7 +3,6 @@ import dataclasses
 from typing import Protocol
 from plover_hatchery.lib.pipes.Plugin import GetPluginApi, Plugin, define_plugin
 from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
-from plover_hatchery.lib.pipes.consonants_vowels_enumeration import consonants_vowels_enumeration
 from plover_hatchery.lib.sopheme import Keysymbol, Sopheme, SophemeSeq, SophemeSeqPhoneme
 
 

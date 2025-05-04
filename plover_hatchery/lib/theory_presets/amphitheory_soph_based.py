@@ -7,6 +7,44 @@ def theory():
 
 
     def map_phoneme_to_sophs(phoneme: SophemeSeqPhoneme):
+        if phoneme.keysymbol.symbol == "s":
+            if "sc" in phoneme.sopheme.chars:
+                yield "SC"
+                return
+            elif "c" in phoneme.sopheme.chars:
+                yield "C"
+                return
+        
+        
+        if phoneme.keysymbol.stress > 1:
+            if any(chars in phoneme.sopheme.chars for chars in ("ai", "ay")):
+                yield "AA"
+            elif any(chars in phoneme.sopheme.chars for chars in ("oi", "oy")):
+                yield "OI"
+            elif any(chars in phoneme.sopheme.chars for chars in ("au", "aw")):
+                yield "AU"
+            elif any(chars in phoneme.sopheme.chars for chars in ("ou", "ow")):
+                yield "OU"
+            elif any(chars in phoneme.sopheme.chars for chars in ("a",)):
+                yield "A"
+                yield "AA"
+            elif any(chars in phoneme.sopheme.chars for chars in ("o",)):
+                yield "O"
+                yield "OO"
+            elif any(chars in phoneme.sopheme.chars for chars in ("e",)):
+                yield "E"
+                yield "EE"
+            elif any(chars in phoneme.sopheme.chars for chars in ("u",)):
+                yield "U"
+                yield "UU"
+            elif any(chars in phoneme.sopheme.chars for chars in ("i",)):
+                yield "I"
+                yield "II"
+
+
+
+
+
         as_spelled = ""
         if any(part in phoneme.sopheme.chars for part in ("aw", "au")):
             as_spelled = "AU"
@@ -110,8 +148,18 @@ def theory():
             "i@": as_spelled,
         }
 
-        return (Soph(value) for value in mapping.get(phoneme.keysymbol.symbol, phoneme.keysymbol.symbol).split())
+        sophones = mapping.get(phoneme.keysymbol.symbol, phoneme.keysymbol.symbol).split()
 
+        if any(sophone in sophones for sophone in ("O", "AU")) and "a" in phoneme.sopheme.chars:
+            yield "A"
+            yield "AU"
+        
+        if "EE" in sophones and any(chars in phoneme.sopheme.chars for chars in ("i", "y")) and "e" not in phoneme.sopheme.chars:
+            yield "I"
+            return
+
+        yield from sophones
+        
 
     sophs_to_main_chords = {
         "B": "PW -B",
@@ -200,6 +248,10 @@ def theory():
         "@ N V": "TPW",
 
         "@": "@",
+
+
+        "C": "KPW",
+        "SC": "SKPW",
     }
 
     sophs_to_alternate_chords = {
@@ -211,6 +263,9 @@ def theory():
         "TH": "-F",
         "V": "W -F",
         "Z": "S* -F",
+
+        "C": "S",
+        "SC": "S",
     }
 
     yield soph_trie(
@@ -222,6 +277,7 @@ def theory():
 
     yield debug_stroke("@*")
     yield conflict_cycler_stroke("@")
+    yield amphitheory_outlines()
 
 
     yield alt_chords(
@@ -262,9 +318,6 @@ def theory():
             "II": ".y?",
         }),
     )
-
-
-    yield amphitheory_outlines()
 
 
     yield optional_middle_vowels()
