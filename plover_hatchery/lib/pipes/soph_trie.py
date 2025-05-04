@@ -18,7 +18,7 @@ from plover_hatchery.lib.pipes.types import Soph, EntryIndex
 
 @dataclass(frozen=True)
 class SophChordAssociation:
-    soph: Soph
+    sophs: tuple[Soph, ...]
     chord: Stroke
 
 @final
@@ -46,11 +46,13 @@ class SophTrieApi:
     validate_lookup_result = Hook(ValidateLookupResult)
 
 
-def soph_trie(map_phoneme_to_soph: Callable[[SophemeSeqPhoneme], Iterable[Soph]], sophs_to_chords_dict: dict[str, str]) -> Plugin[SophTrieApi]:
+def soph_trie(map_phoneme_to_soph: Callable[[SophemeSeqPhoneme], Iterable[Soph]], sophs_to_chords_dict: dict[str, str], vowel_sophs: str) -> Plugin[SophTrieApi]:
     @define_plugin(soph_trie)
     def plugin(get_plugin_api: GetPluginApi, base_hooks: TheoryHooks, **_):
         floating_keys_api = get_plugin_api(floating_keys)
 
+
+        vowel_sophs_set: set[Soph] = {Soph(value) for value in vowel_sophs.split()}
 
         trie: NondeterministicTrie[Soph, EntryIndex] = NondeterministicTrie()
 
@@ -73,7 +75,10 @@ def soph_trie(map_phoneme_to_soph: Callable[[SophemeSeqPhoneme], Iterable[Soph]]
                     new_src_nodes = []
 
 
-                sophs = map_phoneme_to_soph(phoneme)
+                sophs = list(map_phoneme_to_soph(phoneme))
+                if any(soph in vowel_sophs_set for soph in sophs):
+                    sophs.append(Soph("@"))
+
 
                 paths = trie.join(src_nodes, sophs, entry_id)
                 if paths.dst_node_id is not None:
@@ -103,24 +108,24 @@ def soph_trie(map_phoneme_to_soph: Callable[[SophemeSeqPhoneme], Iterable[Soph]]
             def __init__(self, sophs_to_chords_dict: dict[str, str]):
                 self.__chords_to_sophs: Trie[str, list[ChordToSophSearcher.Result]] = Trie()
 
-                for soph_value, chords_steno in sophs_to_chords_dict.items():
-                    soph = Soph(soph_value)
+                for soph_values, chords_steno in sophs_to_chords_dict.items():
+                    sophs = tuple(Soph(value) for value in soph_values.split())
                     for chord_steno in chords_steno.split():
                         chord_rest, chord_floaters = floating_keys_api.split(Stroke.from_steno(chord_steno))
-                        result = ChordToSophSearcher.Result(soph, chord_floaters)
+                        result = ChordToSophSearcher.Result(sophs, chord_floaters)
 
 
                         dst_node = self.__chords_to_sophs.follow_chain(self.__chords_to_sophs.ROOT, chord_rest.keys())
-                        sophs = self.__chords_to_sophs.get_translation(dst_node)
-                        if sophs is None:
+                        existing_soph_seqs = self.__chords_to_sophs.get_translation(dst_node)
+                        if existing_soph_seqs is None:
                             self.__chords_to_sophs.set_translation(dst_node, [result])
                         else:
-                            sophs.append(result)
+                            existing_soph_seqs.append(result)
 
 
             @dataclass(frozen=True)
             class Result:
-                soph: Soph
+                sophs: tuple[Soph, ...]
                 required_floaters: Stroke
 
 
@@ -193,7 +198,7 @@ def soph_trie(map_phoneme_to_soph: Callable[[SophemeSeqPhoneme], Iterable[Soph]]
                 
         @dataclass(frozen=True)
         class SophChordAssociationWithUnresolvedChord:
-            soph: Soph
+            sophs: tuple[Soph, ...]
             chord_start_key_index: int
             required_floaters: Stroke
 
@@ -224,9 +229,9 @@ def soph_trie(map_phoneme_to_soph: Callable[[SophemeSeqPhoneme], Iterable[Soph]]
                         new_possible_sophs.extend(
                             SophLookupPath(
                                 new_trie_path,
-                                path.sophs_and_chords_used + (SophChordAssociationWithUnresolvedChord(soph_result.soph, chord_start_key_index, soph_result.required_floaters),)
+                                path.sophs_and_chords_used + (SophChordAssociationWithUnresolvedChord(soph_result.sophs, chord_start_key_index, soph_result.required_floaters),)
                             )
-                            for new_trie_path in trie.traverse((path.trie_path,), soph_result.soph)
+                            for new_trie_path in trie.traverse_chain((path.trie_path,), soph_result.sophs)
                         )
 
                 self.__possible_soph_paths.append(new_possible_sophs)
@@ -272,13 +277,13 @@ def soph_trie(map_phoneme_to_soph: Callable[[SophemeSeqPhoneme], Iterable[Soph]]
                     if i < len(associations) - 1:
                         next_association = associations[i + 1]
                         yield SophChordAssociation(
-                            association.soph,
+                            association.sophs,
                             Stroke.from_steno(outline_keys[association.chord_start_key_index:next_association.chord_start_key_index]) + association.required_floaters
                         )
 
                     else:
                         yield SophChordAssociation(
-                            association.soph,
+                            association.sophs,
                             Stroke.from_steno(outline_keys[association.chord_start_key_index:]) + association.required_floaters
                         )
 
