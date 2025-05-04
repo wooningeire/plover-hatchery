@@ -15,3 +15,7 @@ class Soph:
 
     def __repr__(self):
         return f"Soph({self.value})"
+
+    @staticmethod
+    def parse_seq(soph_values: str):
+        return tuple(Soph(value) for value in soph_values.split())

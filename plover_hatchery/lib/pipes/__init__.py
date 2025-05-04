@@ -10,7 +10,7 @@ from .diphthong_transition_consonants import diphthong_transition_consonants
 from .optional_middle_vowels import optional_middle_vowels
 from .optional_middle_consonants import optional_middle_consonants
 from .optional_unstressed_middle_consonants import optional_unstressed_middle_consonants
-# from .alternate_chords import alternate_chords
+from .alt_chords import alt_chords
 # from .linker_chord import linker_chord
 # from .key_by_key_lookup import key_by_key_lookup
 # from .path_traversal_reverse_lookup import path_traversal_reverse_lookup
