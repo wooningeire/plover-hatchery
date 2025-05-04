@@ -69,6 +69,10 @@ def soph_trie(map_phoneme_to_soph: Callable[[SophemeSeqPhoneme], Iterable[Soph]]
 
 
             for phoneme in sophemes.phonemes():
+                if not phoneme.keysymbol.optional:
+                    new_src_nodes = []
+
+
                 sophs = map_phoneme_to_soph(phoneme)
 
                 paths = trie.join(src_nodes, sophs, entry_id)
@@ -77,12 +81,15 @@ def soph_trie(map_phoneme_to_soph: Callable[[SophemeSeqPhoneme], Iterable[Soph]]
 
 
                 src_nodes = new_src_nodes
-                if not phoneme.keysymbol.optional:
-                    new_src_nodes = []
 
 
             for src in src_nodes:
                 trie.set_translation(src.node, entry_id)
+
+
+        # @base_hooks.complete_build_lookup.listen(soph_trie)
+        # def _(**_):
+        #     print(trie)
 
 
 

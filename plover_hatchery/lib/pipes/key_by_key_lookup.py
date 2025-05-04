@@ -62,7 +62,7 @@ def key_by_key_lookup(
             )
 
 
-        @base_hooks.build_lookup.listen(key_by_key_lookup)
+        @base_hooks.begin_build_lookup.listen(key_by_key_lookup)
         def _(trie: NondeterministicTrie[str, int], **_):
             trie.on_check_traverse(traverse_handler)
 

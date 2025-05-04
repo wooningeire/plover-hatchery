@@ -56,7 +56,7 @@ def intrabank_consonant_inversions() -> Plugin[None]:
 
         global_state: GlobalState
 
-        @base_hooks.build_lookup.listen(intrabank_consonant_inversions)
+        @base_hooks.begin_build_lookup.listen(intrabank_consonant_inversions)
         def _(**_):
             nonlocal global_state
             global_state = GlobalState()

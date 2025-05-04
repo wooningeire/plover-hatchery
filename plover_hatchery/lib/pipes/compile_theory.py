@@ -23,7 +23,9 @@ T = TypeVar("T")
 
 @final
 class TheoryHooks:
-    class OnBuildLookup(Protocol):
+    class BeginBuildLookup(Protocol):
+        def __call__(self) -> None: ...
+    class CompleteBuildLookup(Protocol):
         def __call__(self) -> None: ...
     class ProcessSophemeSeq(Protocol):
         def __call__(self, *, sopheme_seq: SophemeSeq) -> Iterable[Sopheme]: ...
@@ -35,7 +37,8 @@ class TheoryHooks:
         def __call__(self, translation: str, reverse_translations: dict[str, list[EntryIndex]]) -> Iterable[tuple[str, ...]]: ...
     
 
-    build_lookup = Hook(OnBuildLookup)
+    begin_build_lookup = Hook(BeginBuildLookup)
+    complete_build_lookup = Hook(CompleteBuildLookup)
     process_sopheme_seq = Hook(ProcessSophemeSeq)
     add_entry = Hook(AddEntry)
     lookup = Hook(Lookup)
@@ -76,7 +79,7 @@ def compile_theory(
 
     def build_lookup(entry_lines: Iterable[tuple[str, str]]):
         states: dict[int, Any] = {}
-        for plugin_id, handler in hooks.build_lookup.ids_handlers():
+        for plugin_id, handler in hooks.begin_build_lookup.ids_handlers():
             states[plugin_id] = handler()
 
 
@@ -145,6 +148,11 @@ def compile_theory(
                 # print(f"failed to add {line.strip()}: {e} ({''.join(traceback.format_tb(e.__traceback__))})")
                 pass
 
+
+        for plugin_id, handler in hooks.complete_build_lookup.ids_handlers():
+            handler()
+            
+
         n_failed_additions = n_addable_entries - n_passed_additions
         n_failed_parses = n_entries - n_passed_parses
 
@@ -155,15 +163,11 @@ Added {n_addable_entries} entries
     ({n_failed_additions} ({f"{n_failed_additions / n_addable_entries * 100:.2f}" if n_addable_entries > 0 else "nan"}%) failed)
 """)
 
-        # print(trie)
-
         def true_lookup(stroke_stenos: tuple[str, ...]):
             return lookup(states, stroke_stenos, translations)
 
         def true_reverse_lookup(translation: str):
             return reverse_lookup(states, translation, reverse_translations)
-
-        # print(true_reverse_lookup("airworthiest"))
 
         return TheoryLookup(true_lookup, true_reverse_lookup)
         

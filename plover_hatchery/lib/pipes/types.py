@@ -12,3 +12,6 @@ class EntryIndex:
 @dataclass(frozen=True)
 class Soph:
     value: str
+
+    def __repr__(self):
+        return f"Soph({self.value})"

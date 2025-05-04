@@ -63,7 +63,7 @@ def alternate_chords(
         """
 
 
-        @base_hooks.build_lookup.listen(alternate_chords)
+        @base_hooks.begin_build_lookup.listen(alternate_chords)
         def _(**_):
             nonlocal transitions_tries
             transitions_tries = defaultdict(Trie)
