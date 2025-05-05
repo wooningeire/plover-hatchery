@@ -264,8 +264,8 @@ def theory():
         "V": "W -F",
         "Z": "S* -F",
 
-        "C": "S",
-        "SC": "S",
+        "C": "S -F",
+        "SC": "S -F",
     }
 
     yield soph_trie(
@@ -337,4 +337,11 @@ def theory():
 
     yield optional_unstressed_middle_consonants(
         make_optional_if=if_phoneme_maps_to("R N L"),
+    )
+
+
+
+    yield consonant_inversions(
+        consonant_sophs_str="B CH D F G H J K L M N NG P R S SH T TH W V Y Z ZH  C SC",
+        inversion_domains_steno="STKPWHR FRPBLGTSDZ"
     )

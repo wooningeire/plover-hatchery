@@ -1,5 +1,6 @@
 
 
+from cgitb import lookup
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any, Callable, Iterable, NamedTuple, Protocol, final
@@ -11,7 +12,7 @@ from plover_hatchery.lib.pipes.Plugin import GetPluginApi, Plugin, define_plugin
 from plover_hatchery.lib.pipes.floating_keys import floating_keys
 from plover_hatchery.lib.pipes.plugin_utils import join_sophs_to_chords_dicts
 from plover_hatchery.lib.sopheme import SophemeSeq, SophemeSeqPhoneme
-from plover_hatchery.lib.trie import LookupResult, NondeterministicTrie, NodeSrc, Trie, TriePath
+from plover_hatchery.lib.trie import LookupResult, NondeterministicTrie, NodeSrc, Trie, TriePath, JoinedTriePaths, TransitionCostKey, TransitionKey
 from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
 from plover_hatchery.lib.pipes.types import Soph, EntryIndex
 
@@ -21,6 +22,8 @@ class SophChordAssociation(NamedTuple):
     sophs: tuple[Soph, ...]
     chord: Stroke
     chord_starts_new_stroke: bool
+    phonemes: tuple[SophemeSeqPhoneme, ...]
+    transitions: tuple[TransitionKey, ...]
 
 class LookupResultWithAssociations(NamedTuple):
     lookup_result: LookupResult[EntryIndex]
@@ -29,6 +32,21 @@ class LookupResultWithAssociations(NamedTuple):
 @final
 @dataclass
 class SophTrieApi:
+    class BeginAddEntry(Protocol):
+        def __call__(self, *, trie: NondeterministicTrie[Soph, EntryIndex], sophemes: SophemeSeq, entry_id: EntryIndex) -> Any: ...
+    class AddSophTransition(Protocol):
+        def __call__(
+            self,
+            *,
+            state: Any,
+            phoneme: SophemeSeqPhoneme,
+            sophs: set[Soph],
+            paths: JoinedTriePaths,
+            node_srcs: tuple[NodeSrc, ...],
+            new_node_srcs: list[NodeSrc],
+            trie: NondeterministicTrie[Soph, EntryIndex],
+            entry_id: EntryIndex,
+        ): ...
     class BeginLookup(Protocol):
         def __call__(self, *, outline: tuple[Stroke, ...]) -> Any: ...
     class ProcessOutline(Protocol):
@@ -57,7 +75,15 @@ class SophTrieApi:
             
 
     trie: NondeterministicTrie[Soph, EntryIndex]
+    transition_data: dict[TransitionCostKey, SophemeSeqPhoneme]
 
+    def register_transition(self, transition: TransitionKey, entry_id: EntryIndex, phoneme: SophemeSeqPhoneme):
+        cost_key = TransitionCostKey(transition, entry_id.value)
+        self.transition_data[cost_key] = phoneme
+
+
+    begin_add_entry = Hook(BeginAddEntry)
+    add_soph_transition = Hook(AddSophTransition)
     begin_lookup = Hook(BeginLookup)
     process_outline = Hook(ProcessOutline)
     validate_lookup_result = Hook(ValidateLookupResult)
@@ -81,8 +107,9 @@ def soph_trie(
         vowel_sophs: set[Soph] = {Soph(value) for value in vowel_sophs_str.split()}
 
         trie: NondeterministicTrie[Soph, EntryIndex] = NondeterministicTrie()
+        transition_phonemes: dict[TransitionCostKey, SophemeSeqPhoneme] = {}
 
-        api = SophTrieApi(trie)
+        api = SophTrieApi(trie, transition_phonemes)
 
 
 
@@ -92,6 +119,9 @@ def soph_trie(
 
         @base_hooks.add_entry.listen(soph_trie)
         def _(sophemes: SophemeSeq, entry_id: EntryIndex, **_):
+            states = api.begin_add_entry.emit_and_store_outputs(trie=trie, sophemes=sophemes, entry_id=entry_id)
+
+
             src_nodes: list[NodeSrc] = [NodeSrc(0)]
             new_src_nodes: list[NodeSrc] = []
 
@@ -111,6 +141,21 @@ def soph_trie(
                 paths = trie.join(src_nodes, sophs, entry_id)
                 if paths.dst_node_id is not None:
                     new_src_nodes.append(NodeSrc(paths.dst_node_id))
+
+                for seq in paths.transition_seqs:
+                    api.register_transition(seq.transitions[0], entry_id, phoneme)
+
+
+                api.add_soph_transition.emit_with_states(
+                    states,
+                    phoneme=phoneme,
+                    sophs=sophs,
+                    paths=paths,
+                    node_srcs=tuple(src_nodes),
+                    new_node_srcs=new_src_nodes,
+                    trie=trie,
+                    entry_id=entry_id,
+                )
 
 
                 src_nodes = new_src_nodes
@@ -139,7 +184,7 @@ def soph_trie(
                 for sophs, chords in sophs_to_chords.items():
                     for chord in chords:
                         chord_rest, chord_floaters = floating_keys_api.split(chord)
-                        result = ChordToSophSearcher.Result(sophs, chord_floaters)
+                        result = ChordToSophSearcher.Result(sophs, chord)
 
 
                         dst_node = self.__chords_to_sophs.follow_chain(self.__chords_to_sophs.ROOT, chord_rest.keys())
@@ -153,7 +198,11 @@ def soph_trie(
             @dataclass(frozen=True)
             class Result:
                 sophs: tuple[Soph, ...]
-                required_floaters: Stroke
+                chord: Stroke
+
+                @property
+                def required_floaters(self):
+                    return floating_keys_api.only_floaters(self.chord)
 
 
             def begin_search(self):
@@ -221,20 +270,18 @@ def soph_trie(
             trie_node: int
             chord_starting_key_index: int
 
-            
-                
-        @dataclass(frozen=True)
-        class SophChordAssociationWithUnresolvedChord:
+
+        class SophChordAssociationWithUnresolvedPhonemes(NamedTuple):
             sophs: tuple[Soph, ...]
-            chord_start_key_index: int
-            required_floaters: Stroke
+            chord: Stroke
+            chord_starts_new_stroke: bool
+            transitions: tuple[TransitionKey, ...]
 
 
         @dataclass(frozen=True)
         class SophLookupPath:
             trie_path: TriePath = TriePath(0, ())
-            sophs_and_chords_used: tuple[SophChordAssociationWithUnresolvedChord, ...] = ()
-
+            sophs_and_chords_used: tuple[SophChordAssociationWithUnresolvedPhonemes, ...] = ()
 
 
         class SophPathFinder:
@@ -245,6 +292,7 @@ def soph_trie(
                 self.__possible_soph_paths: list[list[SophLookupPath]] = [[SophLookupPath()]]
                 self.__chord_search = chord_finder.begin_search()
                 self.__consumed_keys: list[str] = []
+                self.__is_new_stroke = True
 
             def __consume_key(self, key: str, stroke: Stroke):
                 new_possible_sophs: list[SophLookupPath] = []
@@ -256,17 +304,26 @@ def soph_trie(
                         new_possible_sophs.extend(
                             SophLookupPath(
                                 new_trie_path,
-                                path.sophs_and_chords_used + (SophChordAssociationWithUnresolvedChord(soph_result.sophs, chord_start_key_index, soph_result.required_floaters),)
+                                path.sophs_and_chords_used + (
+                                    SophChordAssociationWithUnresolvedPhonemes(
+                                        soph_result.sophs,
+                                        soph_result.chord,
+                                        self.__is_new_stroke,
+                                        new_trie_path.transitions[len(path.trie_path.transitions):]
+                                    ),
+                                )
                             )
                             for new_trie_path in trie.traverse_chain((path.trie_path,), soph_result.sophs)
                         )
 
                 self.__possible_soph_paths.append(new_possible_sophs)
                 self.__consumed_keys.append(key)
+                self.__is_new_stroke = False
             
 
             def __finish_stroke(self):
                 self.__chord_search.finish_stroke()
+                self.__is_new_stroke = True
 
 
             def __get_final_paths(self):
@@ -276,19 +333,15 @@ def soph_trie(
             @staticmethod
             def get_paths_from_outline(outline: tuple[Stroke, ...]):
                 soph_path_finder = SophPathFinder()
-                consumed_keys: list[str] = []
-                stroke_starter_key_indices: set[int] = set()
 
                 for stroke_index, stroke in enumerate(outline):
                     if stroke_index > 0:
                         soph_path_finder.__finish_stroke()
 
-                    stroke_starter_key_indices.add(len(consumed_keys))
                     for key in stroke - floating_keys_api.floaters:
                         soph_path_finder.__consume_key(key, stroke)
-                        consumed_keys.append(key)
 
-                return soph_path_finder.__get_final_paths(), consumed_keys, stroke_starter_key_indices
+                return soph_path_finder.__get_final_paths()
 
 
         class LookupRunner:
@@ -296,43 +349,38 @@ def soph_trie(
 
 
             @staticmethod
-            def __resolve_soph_chord_associations(
-                associations: tuple[SophChordAssociationWithUnresolvedChord, ...],
-                consumed_keys: list[str],
-                stroke_starter_key_indices: set[int],
-            ):
-                """
-                :param stroke_starter_key_indices: Indices of the first keys in their respective steno strokes
-                """
+            def __resolve_phonemes(lookup_result: LookupResult[EntryIndex], association: SophChordAssociationWithUnresolvedPhonemes):
+                phonemes: list[SophemeSeqPhoneme] = []
+                for transition in association.transitions:
+                    cost_key = TransitionCostKey(transition, lookup_result.translation_id)
+                    if cost_key not in transition_phonemes: continue
 
-                for i, association in enumerate(associations):
-                    if i < len(associations) - 1:
-                        next_association = associations[i + 1]
-                        yield SophChordAssociation(
-                            association.sophs,
-                            Stroke.from_keys(consumed_keys[association.chord_start_key_index:next_association.chord_start_key_index]) + association.required_floaters,
-                            association.chord_start_key_index in stroke_starter_key_indices,
-                        )
-
-                    else:
-                        yield SophChordAssociation(
-                            association.sophs,
-                            Stroke.from_keys(consumed_keys[association.chord_start_key_index:]) + association.required_floaters,
-                            association.chord_start_key_index in stroke_starter_key_indices,
-                        )
+                    phonemes.append(transition_phonemes[cost_key])
+                
+                return tuple(phonemes)
 
 
             @staticmethod
-            def __items_from_soph_path_result(final_path: SophLookupPath, consumed_keys: list[str], stroke_starter_key_indices: set[int]):
+            def __items_from_soph_path_result(final_path: SophLookupPath):
                 for lookup_result in trie.get_translations_and_costs((final_path.trie_path,)):
-                    yield lookup_result, LookupRunner.__resolve_soph_chord_associations(final_path.sophs_and_chords_used, consumed_keys, stroke_starter_key_indices)
+                    new_associations = tuple(
+                        SophChordAssociation(
+                            association.sophs,
+                            association.chord,
+                            association.chord_starts_new_stroke,
+                            LookupRunner.__resolve_phonemes(lookup_result, association),
+                            association.transitions,
+                        )
+                        for association in final_path.sophs_and_chords_used
+                    )
+
+                    yield lookup_result, new_associations
 
 
             @staticmethod
             def get_processed_lookup_results(outline: tuple[Stroke, ...]):
-                final_paths, consumed_keys, stroke_starter_key_indices = SophPathFinder.get_paths_from_outline(outline)
-                for final_path in final_paths:
-                    yield from LookupRunner.__items_from_soph_path_result(final_path, consumed_keys, stroke_starter_key_indices)
+                for final_path in SophPathFinder.get_paths_from_outline(outline):
+                    yield from LookupRunner.__items_from_soph_path_result(final_path)
                     
 
 
@@ -376,8 +424,8 @@ def soph_trie(
             @staticmethod
             def build(outline: tuple[Stroke, ...], original_outline: tuple[Stroke, ...], states: dict[int, Any]):
                 builder = MinTranslationBuilder()
-                for lookup_result, sophs_and_chords_used in LookupRunner.get_processed_lookup_results(outline):
-                    builder.__record_lookup_result_if_has_min_cost(lookup_result, sophs_and_chords_used, outline, original_outline, states)
+                for lookup_result, associations in LookupRunner.get_processed_lookup_results(outline):
+                    builder.__record_lookup_result_if_has_min_cost(lookup_result, associations, outline, original_outline, states)
                 
                 return builder.__get_sorted_min_translations()
 

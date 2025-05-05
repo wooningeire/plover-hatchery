@@ -32,7 +32,7 @@ def alt_chords(
         def _(result: LookupResultWithAssociations, **_):
             # Return true iff, for every alt chord path taken, all of the main chords were unusable
 
-            for i, (sophs, chord, begins_new_stroke) in enumerate(result.sophs_and_chords_used):
+            for i, (sophs, chord, begins_new_stroke, phonemes, transitions) in enumerate(result.sophs_and_chords_used):
                 if sophs not in sophs_to_alternate_chords: continue
                 if chord not in sophs_to_alternate_chords[sophs]: continue
 

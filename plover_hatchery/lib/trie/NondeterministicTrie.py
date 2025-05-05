@@ -160,6 +160,40 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
         return JoinedTriePaths(first_path.dst_node_id, tuple(transition_seqs))
 
 
+    def link_join(
+        self,
+        src_nodes: Iterable[NodeSrc],
+        dst_node: "int | None",
+        keys_iter: Iterable[_KeyVar],
+        translation: _Translation,
+    ):
+        return self.link_join_chain(src_nodes, dst_node, ((key,) for key in keys_iter), translation)
+
+
+    def link_join_chain(
+        self,
+        src_nodes: Iterable[NodeSrc],
+        dst_node: "int | None",
+        keys_iter: Iterable[tuple[_KeyVar, ...]],
+        translation: _Translation,
+    ):
+        """
+        Given a set of source nodes, a set of strokes, and a destination node, links all source nodes to the given destination node when following any of the strokes.
+        Creates a new destination node if it is None.
+        """
+
+        if dst_node is None:
+            return self.join_chain(src_nodes, keys_iter, translation)
+
+
+        transition_seqs: list[JoinedTransitionSeq] = []
+
+        for src_node, keys in product(src_nodes, keys_iter):
+            transitions = self.link_chain(src_node.node, dst_node, keys, TransitionCostInfo(src_node.cost, translation))
+            transition_seqs.append(JoinedTransitionSeq(transitions))
+
+        return JoinedTriePaths(dst_node, tuple(transition_seqs))
+
 
     def __call_try_traverse_handlers(self, trie_path: TriePath, transition: TransitionKey):
         return all(handler(self, trie_path, transition) for handler in self.__on_try_traverse)

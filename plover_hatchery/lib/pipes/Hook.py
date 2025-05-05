@@ -29,6 +29,16 @@ class HookObj(Generic[T]):
             yield states.get(plugin_id), handler
 
     
+    def emit(self, **kwargs):
+        for handler in self.handlers():
+            handler(**kwargs)
+
+    
+    def emit_with_states(self, states: dict[int, Any]={}, **kwargs):
+        for state, handler in self.states_handlers(states):
+            handler(state=state, **kwargs)
+
+    
     def emit_and_store_outputs(self, **kwargs):
         return_values: dict[int, Any] = {}
 
