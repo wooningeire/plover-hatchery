@@ -201,19 +201,12 @@ def theory():
         "OU": "OU",
 
         
-        "D S": "STK",
         "D S T": "STK",
         "D S K": "STK",
         "K N": "K",
         "K M P": "KP",
         "K M B": "KPW",
-        "L F": "-FL",
-        "L V": "-FL",
-        "G L": "-LG",
-        "L J": "-LG",
         "K L": "*LG",
-        "N J": "-PBG",
-        "M J": "-PLG",
         "R F": "*FR",
         "R S": "*FR",
         "R M": "*FR",
@@ -225,7 +218,6 @@ def theory():
         "R SH": "*RB",
         "N SH": "*RB",
         "M P": "*PL",
-        "T L": "-LT",
         "S T": "*S",
         "SH N": "-GS",
         "K SH N": "-BGS",
@@ -256,7 +248,7 @@ def theory():
 
     sophs_to_alternate_chords = {
         "F": "W",
-        "J": "-FR",
+        "J": "-FR -G",
         "K": "*G",
         "M": "-FR",
         "S": "-F",

@@ -11,7 +11,6 @@ from .optional_middle_consonants import optional_middle_consonants
 from .optional_unstressed_middle_consonants import optional_unstressed_middle_consonants
 from .alt_chords import alt_chords
 # from .linker_chord import linker_chord
-# from .intrabank_consonant_inversions import intrabank_consonant_inversions
 from .floating_keys import floating_keys
 from .amphitheory_outlines import amphitheory_outlines
 from .conflict_cycler_stroke import conflict_cycler_stroke

@@ -22,3 +22,7 @@ def join_sophs_to_chords_dicts(dicts: Iterable[dict[str, str]], collect: Callabl
         sophs: collect(chords)
         for sophs, chords in aggregated_dict.items()
     }
+
+
+def iife(fn: Callable[[], T]) -> T:
+    return fn()
