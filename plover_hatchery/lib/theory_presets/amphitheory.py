@@ -6,7 +6,7 @@ def theory():
     yield floating_keys("*")
 
 
-    def map_phoneme_to_sophs(phoneme: SophemeSeqPhoneme):
+    def map_phoneme_to_soph_values(phoneme: SophemeSeqPhoneme):
         if phoneme.keysymbol.symbol == "s":
             if "sc" in phoneme.sopheme.chars:
                 yield "SC"
@@ -161,6 +161,11 @@ def theory():
         yield from sophones
         
 
+    def map_phoneme_to_sophs(phoneme: SophemeSeqPhoneme):
+        return (Soph(value) for value in map_phoneme_to_soph_values(phoneme))
+
+
+
     sophs_to_main_chords = {
         "B": "PW -B",
         "CH": "KH -FP",
@@ -261,7 +266,7 @@ def theory():
     }
 
     yield soph_trie(
-        map_phoneme_to_sophs=map_phoneme_to_sophs,
+        map_phoneme_to_sophs=map_phoneme_to_soph_values,
         sophs_to_chords_dicts=(sophs_to_main_chords, sophs_to_alternate_chords),
         vowel_sophs_str="A AA E EE I II O OO U UU AU OI OU",
     )
@@ -298,7 +303,7 @@ def theory():
 
 
     yield diphthong_transition_consonants(
-        keysymbols_by_first_vowel=map_phonemes_to_sophemes_by_sophs({
+        sophemes_by_first_vowel=map_phonemes_to_sophemes_by_sophs({
             "E": ".y?",
             "OO": ".w?",
             "OU": ".w?",

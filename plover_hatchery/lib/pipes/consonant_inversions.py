@@ -189,7 +189,8 @@ def consonant_inversions(*, consonant_sophs_str: str, inversion_domains_steno: s
                     if len(results_chain) == 1: continue
 
                     
-                    if any(len(chain_result.soph_result.sophs) != 1 for chain_result in results_chain): continue # TODO handle clusters
+                    if any(len(chain_result.soph_result.sophs) != 1 for chain_result in results_chain):
+                        continue # TODO handle clusters
 
                     sophs = tuple(chain_result.soph_result.sophs[0] for chain_result in results_chain)
 

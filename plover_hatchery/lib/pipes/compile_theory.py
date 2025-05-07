@@ -180,6 +180,7 @@ Added {n_addable_entries} entries
 
     def add_entry(states: dict[int, Any], sophemes: Iterable[Sopheme], entry_id: EntryIndex):
         new_sophemes = process_sopheme_seq(SophemeSeq(tuple(sophemes)))
+
         for plugin_id, handler in hooks.add_entry.ids_handlers():
             handler(sophemes=new_sophemes, entry_id=entry_id)
 

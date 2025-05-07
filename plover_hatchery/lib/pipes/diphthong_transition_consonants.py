@@ -59,7 +59,7 @@ from .Plugin import GetPluginApi, Plugin, define_plugin
 
 def diphthong_transition_consonants(
     *,
-    keysymbols_by_first_vowel: Callable[[SophemeSeqPhoneme], Iterable[Sopheme]],
+    sophemes_by_first_vowel: Callable[[SophemeSeqPhoneme], Iterable[Sopheme]],
 ) -> Plugin[None]:
         @define_plugin(diphthong_transition_consonants)
         def plugin(base_hooks: TheoryHooks, **_):
@@ -70,24 +70,24 @@ def diphthong_transition_consonants(
                 for sopheme, phonemes in sopheme_seq.phonemes_by_sopheme():
                     keysymbols: list[Keysymbol] = []
 
-                    for phoneme in phonemes:
-                        if phoneme.keysymbol.is_vowel:
-                            if prev_phoneme_if_was_vowel:
-                                # Add the diphthong transition consonant
-                                diphthong_transition_sophemes = keysymbols_by_first_vowel(prev_phoneme_if_was_vowel)
-                                for sopheme in diphthong_transition_sophemes:
-                                    keysymbols.extend(sopheme.keysymbols)
-                                    break
-                                    # TODO multiple options
+                    for i, phoneme in enumerate(phonemes):
+                        if phoneme.keysymbol.is_vowel and prev_phoneme_if_was_vowel is not None:
+                            # Add the diphthong transition consonant
+                            diphthong_transition_sophemes = sophemes_by_first_vowel(prev_phoneme_if_was_vowel)
+                            for diphthong_sopheme in diphthong_transition_sophemes:
+                                if i == 0:
+                                    yield Sopheme("", diphthong_sopheme.keysymbols)
+                                else:
+                                    keysymbols.extend(diphthong_sopheme.keysymbols)
+                                    
+                                break
+                                # TODO multiple options
                             
-                            keysymbols.append(phoneme.keysymbol)
+                        keysymbols.append(phoneme.keysymbol)
 
+                        if phoneme.keysymbol.is_vowel:
                             prev_phoneme_if_was_vowel = phoneme
-
-
                         else:
-                            keysymbols.append(phoneme.keysymbol)
-
                             prev_phoneme_if_was_vowel = None
 
                     yield Sopheme(sopheme.chars, tuple(keysymbols))

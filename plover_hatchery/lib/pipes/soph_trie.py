@@ -104,6 +104,15 @@ class SophTrieApi:
             original_outline: tuple[Stroke, ...],
             outline: tuple[Stroke, ...],
         ) -> "str | None": ...
+    class ModifyTranslation(Protocol):
+        def __call__(
+            self,
+            *,
+            state: Any,
+            translation: str,
+            original_outline: tuple[Stroke, ...],
+            outline: tuple[Stroke, ...],
+        ) -> str: ...
 
     
             
@@ -123,6 +132,7 @@ class SophTrieApi:
     consume_key = Hook(ConsumeKey)
     validate_lookup_result = Hook(ValidateLookupResult)
     select_translation = Hook(SelectTranslation)
+    modify_translation = Hook(ModifyTranslation)
 
 
 def soph_trie(
@@ -482,15 +492,26 @@ def soph_trie(
             if len(translation_choices) == 0: return None
 
 
+            translation = None
+
+
             for state, handler in api.select_translation.states_handlers(states):
                 translation = handler(state=state, trie=trie, choices=translation_choices, translations=translations, outline=outline, original_outline=original_outline)
-                if translation is None:
-                    continue
-
-                return translation
+                if translation is not None:
+                    break
 
 
-            return None
+            if translation is None:
+                return
+
+
+            for state, handler in api.modify_translation.states_handlers(states):
+                translation = handler(state=state, translation=translation, outline=outline, original_outline=original_outline)
+
+
+            return translation
+
+
 
 
         ### Reverse lookup ##############################################################
