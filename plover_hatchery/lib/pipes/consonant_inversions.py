@@ -43,12 +43,21 @@ def consonant_inversions(*, consonant_sophs_str: str, inversion_domains_steno: s
             return ConsonantInversionsAddEntryState()
 
 
-        def create_inversion_soph(sophs: tuple[Soph, ...]):
-            sorted_sophs = sorted(sophs, key=lambda soph: soph.value)
+        def create_inversion_soph(sophs: "tuple[Soph | None, ...]"):
+            non_null_sophs = (
+                soph
+                for soph in sophs
+                if soph is not None
+            )
+            sorted_sophs = sorted(non_null_sophs, key=lambda soph: soph.value)
             return Soph(f"inversion:{' '.join(soph.value for soph in sorted_sophs)}")
-        
+
         def get_inversion_sophs(past_consonants: list[PastConsonant]):
-            for combo in itertools.product(*(consonants.sophs for consonants in past_consonants)):
+            product_choices = (
+                (*consonant.sophs, None) if consonant.phoneme.keysymbol.optional else consonant.sophs
+                for consonant in past_consonants
+            )
+            for combo in itertools.product(*product_choices):
                 yield create_inversion_soph(combo)
 
 
