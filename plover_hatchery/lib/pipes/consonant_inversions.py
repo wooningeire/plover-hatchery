@@ -72,7 +72,12 @@ def consonant_inversions(*, consonant_sophs_str: str, inversion_domains_steno: s
             entry_id: EntryIndex,
             **_,
         ):
-            if any(soph not in consonant_sophs for soph in sophs): return
+            if any(soph not in consonant_sophs for soph in sophs):
+                # TODO verify this
+                if not phoneme.keysymbol.optional:
+                    state.past_consonants = []
+                    
+                return
 
             current_consonant_sophs = tuple(sophs & consonant_sophs)
             if len(current_consonant_sophs) == 0: return
@@ -103,9 +108,6 @@ def consonant_inversions(*, consonant_sophs_str: str, inversion_domains_steno: s
             #         for seq in return_paths.transition_seqs:
             #             soph_trie_api.register_transition(seq.transitions[0], entry_id, consonant.phoneme)
 
-
-            # if not phoneme.keysymbol.optional:
-            #     state.past_consonants = []
 
 
 
