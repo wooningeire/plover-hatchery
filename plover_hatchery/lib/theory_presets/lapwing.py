@@ -1,9 +1,9 @@
 from ..pipes import *
 
-from ..sopheme import SophemeSeqPhoneme
+from ..sopheme import DefinitionCursor
 
 
-def as_spelled(phoneme: SophemeSeqPhoneme):
+def as_spelled(phoneme: DefinitionCursor):
     return {
         "a": "A",
         "e": "E",

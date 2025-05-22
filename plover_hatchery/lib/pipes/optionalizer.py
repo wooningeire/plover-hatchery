@@ -3,14 +3,14 @@ import dataclasses
 from typing import Protocol
 from plover_hatchery.lib.pipes.Plugin import GetPluginApi, Plugin, define_plugin
 from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
-from plover_hatchery.lib.sopheme import Keysymbol, Sopheme, SophemeSeq, SophemeSeqPhoneme
+from plover_hatchery.lib.sopheme import Keysymbol, Sopheme, Definition, DefinitionCursor
 
 
 class BaseOptionalizePredicate(Protocol):
-    def __call__(self, phoneme: SophemeSeqPhoneme, /) -> bool: ...
+    def __call__(self, phoneme: DefinitionCursor, /) -> bool: ...
 
 class InjectedOptionalizePredicate(Protocol):
-    def __call__(self, optionalize_if: BaseOptionalizePredicate, phoneme: SophemeSeqPhoneme, /) -> bool: ...
+    def __call__(self, optionalize_if: BaseOptionalizePredicate, phoneme: DefinitionCursor, /) -> bool: ...
 
 
 def create_optionalizer_with_user_condition(
@@ -24,7 +24,7 @@ def create_optionalizer_with_user_condition(
         @define_plugin(optionalizer_plugin)
         def plugin(base_hooks: TheoryHooks, **_):
             @base_hooks.process_sopheme_seq.listen(optionalizer_plugin)
-            def _(sopheme_seq: SophemeSeq, **_):
+            def _(sopheme_seq: Definition, **_):
                 for sopheme, phonemes in sopheme_seq.phonemes_by_sopheme():
                     keysymbols: list[Keysymbol] = []
 
@@ -54,7 +54,7 @@ def create_optionalizer(
         @define_plugin(optionalizer_plugin)
         def plugin(base_hooks: TheoryHooks, **_):
             @base_hooks.process_sopheme_seq.listen(optionalizer_plugin)
-            def _(sopheme_seq: SophemeSeq, **_):
+            def _(sopheme_seq: Definition, **_):
                 for sopheme, phonemes in sopheme_seq.phonemes_by_sopheme():
                     keysymbols: list[Keysymbol] = []
 

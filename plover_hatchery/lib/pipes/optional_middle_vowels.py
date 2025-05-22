@@ -1,9 +1,9 @@
 from plover_hatchery.lib.pipes.optionalizer import BaseOptionalizePredicate, create_optionalizer
-from plover_hatchery.lib.sopheme import SophemeSeqPhoneme
+from plover_hatchery.lib.sopheme import DefinitionCursor
 
 
 
-def _should_optionalize(phoneme: SophemeSeqPhoneme):
+def _should_optionalize(phoneme: DefinitionCursor):
     if not phoneme.keysymbol.is_vowel:
         return False
 

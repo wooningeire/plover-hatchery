@@ -5,7 +5,7 @@ from collections.abc import Iterable, Generator
 
 from plover.steno import Stroke
 
-from plover_hatchery.lib.sopheme import Sopheme, SophemeSeqPhoneme
+from plover_hatchery.lib.sopheme import Sopheme, DefinitionCursor
 from plover_hatchery.lib.sopheme.parse.parse_sopheme_sequence import parse_entry_definition, parse_sopheme_seq
 
 
@@ -23,7 +23,7 @@ class _MapResultType(Enum):
     Str = auto()
     Fn = auto()
 
-_MapResultFn = Callable[[SophemeSeqPhoneme], str]
+_MapResultFn = Callable[[DefinitionCursor], str]
 
 @final
 @dataclass(frozen=True)
@@ -38,7 +38,7 @@ class _MapResult:
         
         return _MapResult(_MapResultType.Str, value)
 
-    def resolve(self, phoneme: SophemeSeqPhoneme):
+    def resolve(self, phoneme: DefinitionCursor):
         if self.type is _MapResultType.Fn:
             value = cast(_MapResultFn, self.value)
             return value(phoneme)
@@ -50,17 +50,17 @@ class _MapResult:
 
 @final
 class SophoneType:
-    def __init__(self, sophones: dict[str, Sophone], from_sound_callback: "Callable[[SophemeSeqPhoneme, SophoneType], Iterable[Sophone]]"):
+    def __init__(self, sophones: dict[str, Sophone], from_sound_callback: "Callable[[DefinitionCursor, SophoneType], Iterable[Sophone]]"):
         self.sophones = sophones
         self.__from_sound_callback = from_sound_callback
 
 
-    def from_phoneme(self, phoneme: SophemeSeqPhoneme):
+    def from_phoneme(self, phoneme: DefinitionCursor):
         return self.__from_sound_callback(phoneme, self)
 
 
     @staticmethod
-    def create_with_sophones(sophone_names: str, from_phoneme_mappings: "dict[str, str | Callable[[SophemeSeqPhoneme], str]]"):
+    def create_with_sophones(sophone_names: str, from_phoneme_mappings: "dict[str, str | Callable[[DefinitionCursor], str]]"):
         return SophoneType(
             {
                 name: Sophone(name)
@@ -81,13 +81,13 @@ class SophoneType:
 
 
     @staticmethod
-    def mapper_from_phonemes(mappings: "dict[str, str | Callable[[SophemeSeqPhoneme], str]]"):
+    def mapper_from_phonemes(mappings: "dict[str, str | Callable[[DefinitionCursor], str]]"):
         new_mappings = {
             key: _MapResult.of(value)
             for key, value in mappings.items()
         }
 
-        def mapper(phoneme: SophemeSeqPhoneme, sophone_type: SophoneType):
+        def mapper(phoneme: DefinitionCursor, sophone_type: SophoneType):
             result = new_mappings[phoneme.keysymbol.base_symbol]
             return sophone_type.iterate(result.resolve(phoneme))
 
@@ -96,7 +96,7 @@ class SophoneType:
     def given_phoneme_maps_to_sophones(self, target_sophone_names: str):
         target_sophones = set(self.iterate(target_sophone_names))
 
-        def check_sound(sound: SophemeSeqPhoneme):
+        def check_sound(sound: DefinitionCursor):
             for sophone in self.from_phoneme(sound):
                 if sophone in target_sophones:
                     return True
@@ -111,13 +111,13 @@ class SophoneType:
             self.__chords = chords
 
 
-        def __call__(self, phoneme: SophemeSeqPhoneme) -> Generator[Stroke, None, None]:
+        def __call__(self, phoneme: DefinitionCursor) -> Generator[Stroke, None, None]:
             for sophone in self.__sophone_type.from_phoneme(phoneme):
                 if sophone not in self.__chords: continue
                 yield from self.__chords[sophone]
 
 
-    def map_given_phoneme_to_chords_by_sophone(self, mappings: "dict[str, str | Iterable[str]]") -> Callable[[SophemeSeqPhoneme], Generator[Stroke, None, None]]:
+    def map_given_phoneme_to_chords_by_sophone(self, mappings: "dict[str, str | Iterable[str]]") -> Callable[[DefinitionCursor], Generator[Stroke, None, None]]:
         def map_steno_or_stenos(steno_or_stenos: "str | Iterable[str]") -> tuple[Stroke, ...]:
             if isinstance(steno_or_stenos, str):
                 return tuple(Stroke.from_steno(steno) for steno in steno_or_stenos.split())
@@ -144,7 +144,7 @@ class SophoneType:
         }
 
 
-        def generate(phoneme: SophemeSeqPhoneme):
+        def generate(phoneme: DefinitionCursor):
             for sophone in self.from_phoneme(phoneme):
                 if sophone not in chords: continue
                 yield chords[sophone]
@@ -155,7 +155,7 @@ class SophoneType:
     def given_sound_is_pronounced_as(self, target_sophone_names: str):
         target_sophones = set(self.iterate(target_sophone_names))
 
-        def check(phoneme: SophemeSeqPhoneme):
+        def check(phoneme: DefinitionCursor):
             return any(sophone in target_sophones for sophone in self.from_phoneme(phoneme))
 
         return check

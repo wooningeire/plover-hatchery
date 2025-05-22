@@ -9,7 +9,7 @@ from dataclasses import dataclass
 
 from plover.steno import Stroke
 
-from plover_hatchery.lib.sopheme import Sopheme, SophemeSeq, parse_entry_definition
+from plover_hatchery.lib.sopheme import Sopheme, Definition, parse_entry_definition
 from plover_hatchery.lib.sopheme.parse.parse_sopheme_sequence import Transclusion
 
 from ..trie import  NondeterministicTrie
@@ -28,9 +28,9 @@ class TheoryHooks:
     class CompleteBuildLookup(Protocol):
         def __call__(self) -> None: ...
     class ProcessSophemeSeq(Protocol):
-        def __call__(self, *, sopheme_seq: SophemeSeq) -> Iterable[Sopheme]: ...
+        def __call__(self, *, sopheme_seq: Definition) -> Iterable[Sopheme]: ...
     class AddEntry(Protocol):
-        def __call__(self, sophemes: SophemeSeq, entry_id: EntryIndex) -> None: ...
+        def __call__(self, sophemes: Definition, entry_id: EntryIndex) -> None: ...
     class Lookup(Protocol):
         def __call__(self, stroke_stenos: tuple[str, ...], translations: list[str]) -> "str | None": ...
     class ReverseLookup(Protocol):
@@ -172,14 +172,14 @@ Added {n_addable_entries} entries
         return TheoryLookup(true_lookup, true_reverse_lookup)
         
 
-    def process_sopheme_seq(sopheme_seq: SophemeSeq):
+    def process_sopheme_seq(sopheme_seq: Definition):
         for plugin_id, handler in hooks.process_sopheme_seq.ids_handlers():
-            sopheme_seq = SophemeSeq(tuple(handler(sopheme_seq=sopheme_seq)))
+            sopheme_seq = Definition(tuple(handler(sopheme_seq=sopheme_seq)))
         return sopheme_seq
 
 
     def add_entry(states: dict[int, Any], sophemes: Iterable[Sopheme], entry_id: EntryIndex):
-        new_sophemes = process_sopheme_seq(SophemeSeq(tuple(sophemes)))
+        new_sophemes = process_sopheme_seq(Definition(tuple(sophemes)))
 
         for plugin_id, handler in hooks.add_entry.ids_handlers():
             handler(sophemes=new_sophemes, entry_id=entry_id)

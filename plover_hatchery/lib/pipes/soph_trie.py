@@ -8,7 +8,7 @@ from plover_hatchery.lib.pipes.Hook import Hook
 from plover_hatchery.lib.pipes.Plugin import GetPluginApi, Plugin, define_plugin
 from plover_hatchery.lib.pipes.floating_keys import floating_keys
 from plover_hatchery.lib.pipes.plugin_utils import iife, join_sophs_to_chords_dicts
-from plover_hatchery.lib.sopheme import SophemeSeq, SophemeSeqPhoneme
+from plover_hatchery.lib.sopheme import Definition, DefinitionCursor
 from plover_hatchery.lib.trie import LookupResult, NondeterministicTrie, NodeSrc, Trie, TriePath, JoinedTriePaths, TransitionCostKey, TransitionKey
 from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
 from plover_hatchery.lib.pipes.types import Soph, EntryIndex
@@ -19,7 +19,7 @@ class SophChordAssociation(NamedTuple):
     sophs: tuple[Soph, ...]
     chord: Stroke
     chord_starts_new_stroke: bool
-    phonemes: tuple[SophemeSeqPhoneme, ...]
+    phonemes: tuple[DefinitionCursor, ...]
     transitions: tuple[TransitionKey, ...]
 
 class LookupResultWithAssociations(NamedTuple):
@@ -55,13 +55,13 @@ class ChordToSophSearchResultWithSrcIndex(NamedTuple):
 @dataclass
 class SophTrieApi:
     class BeginAddEntry(Protocol):
-        def __call__(self, *, trie: NondeterministicTrie[Soph, EntryIndex], sophemes: SophemeSeq, entry_id: EntryIndex) -> Any: ...
+        def __call__(self, *, trie: NondeterministicTrie[Soph, EntryIndex], sophemes: Definition, entry_id: EntryIndex) -> Any: ...
     class AddSophTransition(Protocol):
         def __call__(
             self,
             *,
             state: Any,
-            phoneme: SophemeSeqPhoneme,
+            phoneme: DefinitionCursor,
             sophs: set[Soph],
             paths: JoinedTriePaths,
             node_srcs: tuple[NodeSrc, ...],
@@ -118,9 +118,9 @@ class SophTrieApi:
             
 
     trie: NondeterministicTrie[Soph, EntryIndex]
-    transition_data: dict[TransitionCostKey, SophemeSeqPhoneme]
+    transition_data: dict[TransitionCostKey, DefinitionCursor]
 
-    def register_transition(self, transition: TransitionKey, entry_id: EntryIndex, phoneme: SophemeSeqPhoneme):
+    def register_transition(self, transition: TransitionKey, entry_id: EntryIndex, phoneme: DefinitionCursor):
         cost_key = TransitionCostKey(transition, entry_id.value)
         self.transition_data[cost_key] = phoneme
 
@@ -137,9 +137,8 @@ class SophTrieApi:
 
 def soph_trie(
     *,
-    map_phoneme_to_sophs: Callable[[SophemeSeqPhoneme], Iterable[str]],
+    map_phoneme_to_sophs: Callable[[DefinitionCursor], Iterable[str]],
     sophs_to_chords_dicts: Iterable[dict[str, str]],
-    vowel_sophs_str: str,
 ) -> Plugin[SophTrieApi]:
     sophs_to_chords = join_sophs_to_chords_dicts(sophs_to_chords_dicts)
 
@@ -149,10 +148,8 @@ def soph_trie(
         floating_keys_api = get_plugin_api(floating_keys)
 
 
-        vowel_sophs: set[Soph] = {Soph(value) for value in vowel_sophs_str.split()}
-
         trie: NondeterministicTrie[Soph, EntryIndex] = NondeterministicTrie()
-        transition_phonemes: dict[TransitionCostKey, SophemeSeqPhoneme] = {}
+        transition_phonemes: dict[TransitionCostKey, DefinitionCursor] = {}
 
         api = SophTrieApi(trie, transition_phonemes)
 
@@ -163,7 +160,7 @@ def soph_trie(
         # The translations are the translations of each sopheme sequence.
 
         @base_hooks.add_entry.listen(soph_trie)
-        def _(sophemes: SophemeSeq, entry_id: EntryIndex, **_):
+        def _(sophemes: Definition, entry_id: EntryIndex, **_):
             states = api.begin_add_entry.emit_and_store_outputs(trie=trie, sophemes=sophemes, entry_id=entry_id)
 
 
@@ -179,8 +176,6 @@ def soph_trie(
 
 
                 sophs = set(Soph(value) for value in map_phoneme_to_sophs(phoneme))
-                if any(soph in vowel_sophs for soph in sophs):
-                    sophs.add(Soph("@"))
 
 
                 paths = trie.join(src_nodes, sophs, entry_id)
@@ -390,7 +385,7 @@ def soph_trie(
 
 
             def resolve_phonemes(lookup_result: LookupResult[EntryIndex], association: SophChordAssociationWithUnresolvedPhonemes):
-                phonemes: list[SophemeSeqPhoneme] = []
+                phonemes: list[DefinitionCursor] = []
                 for transition in association.transitions:
                     cost_key = TransitionCostKey(transition, lookup_result.translation_id)
                     if cost_key not in transition_phonemes: continue

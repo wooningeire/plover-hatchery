@@ -8,7 +8,7 @@ from plover.steno import Stroke
 from plover_hatchery.lib.pipes.Plugin import define_plugin, GetPluginApi
 from plover_hatchery.lib.pipes.soph_trie import ChordToSophSearchResult, ChordToSophSearchResultWithSrcIndex, LookupResultWithAssociations, SophChordAssociation, SophsToTranslationSearchPath, soph_trie
 from plover_hatchery.lib.pipes.types import EntryIndex, Soph
-from plover_hatchery.lib.sopheme.SophemeSeq import SophemeSeqPhoneme
+from plover_hatchery.lib.sopheme.Definition import DefinitionCursor
 from plover_hatchery.lib.trie import NondeterministicTrie, NodeSrc, JoinedTriePaths
 from plover_hatchery.lib.trie.Transition import TransitionCostKey
 
@@ -30,7 +30,7 @@ def consonant_inversions(*, consonant_sophs_str: str, inversion_domains_steno: s
         class PastConsonant:
             node_srcs: tuple[NodeSrc, ...]
             sophs: tuple[Soph, ...]
-            phoneme: SophemeSeqPhoneme
+            phoneme: DefinitionCursor
 
 
         class ConsonantInversionsAddEntryState:
@@ -65,7 +65,7 @@ def consonant_inversions(*, consonant_sophs_str: str, inversion_domains_steno: s
         def _(
             state: ConsonantInversionsAddEntryState,
             sophs: set[Soph],
-            phoneme: SophemeSeqPhoneme,
+            phoneme: DefinitionCursor,
             paths: JoinedTriePaths,
             node_srcs: tuple[NodeSrc, ...],
             trie: NondeterministicTrie[Soph, EntryIndex],

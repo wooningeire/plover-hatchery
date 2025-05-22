@@ -1,8 +1,8 @@
 from plover_hatchery.lib.pipes.optionalizer import BaseOptionalizePredicate, create_optionalizer_with_user_condition
-from plover_hatchery.lib.sopheme import SophemeSeqPhoneme
+from plover_hatchery.lib.sopheme import DefinitionCursor
 
 
-def _should_optionalize(optionalize_if: BaseOptionalizePredicate, phoneme: SophemeSeqPhoneme):
+def _should_optionalize(optionalize_if: BaseOptionalizePredicate, phoneme: DefinitionCursor):
     if not phoneme.keysymbol.is_consonant:
         return False
 

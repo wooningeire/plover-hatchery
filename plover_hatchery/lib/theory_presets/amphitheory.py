@@ -6,7 +6,7 @@ def theory():
     yield floating_keys("*")
 
 
-    def map_phoneme_to_soph_values(phoneme: SophemeSeqPhoneme):
+    def map_phoneme_to_soph_values_base(phoneme: DefinitionCursor):
         if phoneme.keysymbol.symbol == "s":
             if "sc" in phoneme.sopheme.chars:
                 yield "SC"
@@ -159,11 +159,23 @@ def theory():
             return
 
         yield from sophones
-        
+    
+    vowel_sophs = set(value for value in "A AA E EE I II O OO U UU AU OI OU".split())
 
-    def map_phoneme_to_sophs(phoneme: SophemeSeqPhoneme):
-        return (Soph(value) for value in map_phoneme_to_soph_values(phoneme))
+    def map_phoneme_to_soph_values(phoneme: DefinitionCursor):
+        sophs = tuple(map_phoneme_to_soph_values_base(phoneme))
+        yield from sophs
 
+        if any(soph in vowel_sophs for soph in sophs):
+            yield "@"
+
+
+    def map_phoneme_to_sophs(phoneme: DefinitionCursor):
+        return (Soph(value) for value in map_phoneme_to_soph_values_base(phoneme))
+
+
+    # def map_sopheme_to_sophs(sopheme: Sopheme):
+    #     return (map_phoneme_to_sophs(phoneme) for phoneme in sopheme)
 
 
     sophs_to_main_chords = {
@@ -268,7 +280,6 @@ def theory():
     yield soph_trie(
         map_phoneme_to_sophs=map_phoneme_to_soph_values,
         sophs_to_chords_dicts=(sophs_to_main_chords, sophs_to_alternate_chords),
-        vowel_sophs_str="A AA E EE I II O OO U UU AU OI OU",
     )
 
 
@@ -294,7 +305,7 @@ def theory():
         }
 
 
-        def generate(phoneme: SophemeSeqPhoneme):
+        def generate(phoneme: DefinitionCursor):
             for soph in map_phoneme_to_sophs(phoneme):
                 if soph not in chords: continue
                 yield chords[soph]
@@ -322,7 +333,7 @@ def theory():
 
     def if_phoneme_maps_to(soph_values: str):
         sophs = set(Soph(value) for value in soph_values.split())
-        def check(phoneme: SophemeSeqPhoneme):
+        def check(phoneme: DefinitionCursor):
             return any(soph in sophs for soph in map_phoneme_to_sophs(phoneme))
 
         return check

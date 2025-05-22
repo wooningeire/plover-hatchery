@@ -4,11 +4,11 @@ from typing import final
 from plover_hatchery.lib.sopheme.Sopheme import Sopheme
 
 @final
-class SophemeSeq:
+class Definition:
     def __init__(self, sophemes: tuple[Sopheme, ...]):
         self.sophemes = sophemes
 
-        vowels: list[SophemeSeqPhoneme] = []
+        vowels: list[DefinitionCursor] = []
         for phoneme in self.phonemes():
             if phoneme.keysymbol.is_vowel:
                 vowels.append(phoneme)
@@ -21,7 +21,7 @@ class SophemeSeq:
 
         while new_sopheme_index < len(self.sophemes):
             if len(self.sophemes[new_sopheme_index].keysymbols) > 0:
-                return SophemeSeqPhoneme(self, new_sopheme_index, 0)
+                return DefinitionCursor(self, new_sopheme_index, 0)
 
             new_sopheme_index += 1
 
@@ -41,7 +41,7 @@ class SophemeSeq:
 
         while new_sopheme_index >= 0:
             if len(self.sophemes[new_sopheme_index].keysymbols) > 0:
-                return SophemeSeqPhoneme(self, new_sopheme_index, len(self.sophemes[new_sopheme_index].keysymbols) - 1)
+                return DefinitionCursor(self, new_sopheme_index, len(self.sophemes[new_sopheme_index].keysymbols) - 1)
 
             new_sopheme_index -= 1
 
@@ -59,7 +59,7 @@ class SophemeSeq:
     def phonemes_by_sopheme(self):
         def yield_phonemes(sopheme_index: int, sopheme: Sopheme):
             for keysymbol_index, keysymbol in enumerate(sopheme.keysymbols):
-                yield SophemeSeqPhoneme(self, sopheme_index, keysymbol_index)
+                yield DefinitionCursor(self, sopheme_index, keysymbol_index)
 
         for sopheme_index, sopheme in enumerate(self.sophemes):
             yield sopheme, yield_phonemes(sopheme_index, sopheme)
@@ -75,14 +75,14 @@ class SophemeSeq:
 
 @final
 @dataclass(frozen=True)
-class SophemeSeqPhoneme:
-    seq: SophemeSeq
+class DefinitionCursor:
+    definition: Definition
     sopheme_index: int
     keysymbol_index: int
 
     @property
     def sopheme(self):
-        return self.seq.sophemes[self.sopheme_index]
+        return self.definition.sophemes[self.sopheme_index]
 
     @property
     def keysymbol(self):
@@ -93,7 +93,7 @@ class SophemeSeqPhoneme:
         return (self.sopheme_index, self.keysymbol_index)
 
 
-    def appears_before(self, phoneme: "SophemeSeqPhoneme"):
+    def appears_before(self, phoneme: "DefinitionCursor"):
         if self.sopheme_index < phoneme.sopheme_index:
             return True
 
@@ -113,23 +113,23 @@ class SophemeSeqPhoneme:
             if new_sopheme_index < 0:
                 return None
 
-            new_keysymbol_index = len(self.seq.sophemes[new_sopheme_index].keysymbols) - 1
+            new_keysymbol_index = len(self.definition.sophemes[new_sopheme_index].keysymbols) - 1
 
-        return SophemeSeqPhoneme(self.seq, new_sopheme_index, new_keysymbol_index)
+        return DefinitionCursor(self.definition, new_sopheme_index, new_keysymbol_index)
 
 
     def next(self):
         new_sopheme_index = self.sopheme_index
         new_keysymbol_index = self.keysymbol_index + 1
 
-        while new_keysymbol_index >= len(self.seq.sophemes[new_sopheme_index].keysymbols):
+        while new_keysymbol_index >= len(self.definition.sophemes[new_sopheme_index].keysymbols):
             new_sopheme_index += 1
-            if new_sopheme_index >= len(self.seq.sophemes):
+            if new_sopheme_index >= len(self.definition.sophemes):
                 return None
 
             new_keysymbol_index = 0
 
-        return SophemeSeqPhoneme(self.seq, new_sopheme_index, new_keysymbol_index)
+        return DefinitionCursor(self.definition, new_sopheme_index, new_keysymbol_index)
 
 
     def prev_consonant(self):
@@ -168,23 +168,23 @@ class SophemeSeqPhoneme:
 
     
     def appears_before_first_vowel(self):
-        if len(self.seq.vowels) == 0:
+        if len(self.definition.vowels) == 0:
             return True
 
-        return self.appears_before(self.seq.vowels[0])
+        return self.appears_before(self.definition.vowels[0])
 
     def appears_after_last_vowel(self):
-        if len(self.seq.vowels) == 0:
+        if len(self.definition.vowels) == 0:
             return True
         
-        return self.seq.vowels[-1].appears_before(self)
+        return self.definition.vowels[-1].appears_before(self)
 
     
     def is_first_phoneme(self):
-        return self == self.seq.first_phoneme()
+        return self == self.definition.first_phoneme()
 
     def is_last_phoneme(self):
-        return self == self.seq.last_phoneme()
+        return self == self.definition.last_phoneme()
 
     
     def is_lone_consonant(self):
