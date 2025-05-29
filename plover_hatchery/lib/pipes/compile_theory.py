@@ -9,7 +9,7 @@ from dataclasses import dataclass
 
 from plover.steno import Stroke
 
-from plover_hatchery.lib.sopheme import Sopheme, Definition, parse_entry_definition
+from plover_hatchery.lib.sopheme import Sopheme, Definition, parse_entry_definition, EntryDefinition
 
 from plover_hatchery_lib_rs import Transclusion, Entity
 
@@ -93,26 +93,14 @@ def compile_theory(
         reverse_translations: dict[str, list[EntryIndex]] = defaultdict(lambda: [])
 
 
-        entries: "dict[str, tuple[Entity, ...]]" = {}
-
-        def resolve_sophemes(definition: "tuple[Entity, ...]", visited: set[str]) -> Generator[Sopheme, None, None]:
-            for entity in definition:
-                if (sopheme := entity.maybe_sopheme) is not None:
-                    yield sopheme
-                    continue
-
-                if (transclusion := entity.maybe_transclusion) is not None:
-                    if transclusion.target_varname in visited:
-                        raise Exception("Circular dependency")
-
-                    yield from resolve_sophemes(entries[transclusion.target_varname], visited | {transclusion.target_varname})
+        entries: dict[str, EntryDefinition] = {}
 
         for i, (varname, definition_str) in enumerate(entry_lines):
             if i % 1000 == 0:
                 print(f"hatched {i}")
 
             try:
-                entries[varname] = tuple(parse_entry_definition(definition_str.strip()))
+                entries[varname] = EntryDefinition(parse_entry_definition(definition_str.strip()))
                 n_passed_parses += 1
             except Exception as e:
                 import traceback
@@ -123,7 +111,7 @@ def compile_theory(
         # while len(line := file.readline()) > 0:
         #     _add_entry(trie, Sopheme.parse_seq())
 
-        for i, (varname, definition) in enumerate(entries.items()):
+        for i, (varname, entry_definition) in enumerate(entries.items()):
             if i % 1000 == 0:
                 print(f"checked/wrote {i}")
 
@@ -135,10 +123,9 @@ def compile_theory(
             n_addable_entries += 1
 
             try:
-                sophemes = tuple(resolve_sophemes(definition, {varname}))
-
                 entry_id = EntryIndex(len(translations) - 1)
 
+                sophemes = tuple(entry_definition.get_sophemes(entries, varname))
                 add_entry(states, sophemes, entry_id)
 
                 translation = Sopheme.get_translation(sophemes)

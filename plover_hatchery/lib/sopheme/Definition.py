@@ -1,7 +1,30 @@
+from collections.abc import Generator, Iterable
 from dataclasses import dataclass
 from typing import final
 
+from plover_hatchery_lib_rs import Entity
+
 from plover_hatchery.lib.sopheme.Sopheme import Sopheme
+
+
+class EntryDefinition:
+    def __init__(self, entities: Iterable[Entity]):
+        self.__entities = tuple(entities)
+    
+    def get_sophemes(self, entries: "dict[str, EntryDefinition]", varname: str):
+        def resolve_sophemes(definition: EntryDefinition, visited: set[str]) -> Generator[Sopheme, None, None]:
+            for entity in definition.__entities:
+                if (sopheme := entity.maybe_sopheme) is not None:
+                    yield sopheme
+                    continue
+
+                if (transclusion := entity.maybe_transclusion) is not None:
+                    if transclusion.target_varname in visited:
+                        raise Exception("Circular dependency")
+
+                    yield from resolve_sophemes(entries[transclusion.target_varname], visited | {transclusion.target_varname})
+        
+        return resolve_sophemes(self, {varname})
 
 @final
 class Definition:
@@ -14,6 +37,7 @@ class Definition:
                 vowels.append(phoneme)
         
         self.vowels = tuple(vowels)
+
 
 
     def first_phoneme(self):

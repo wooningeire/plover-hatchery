@@ -13,7 +13,7 @@ def _main(args: argparse.Namespace):
         raise Exception
 
     for filename in os.listdir(wheels_path):
-        exit_code = os.system(fr"plover_console -s plover_plugins install {wheels_path / filename} --force-reinstall")
+        exit_code = os.system(fr"""plover_console -s plover_plugins install "{wheels_path / filename}" --force-reinstall""")
         if exit_code != 0:
             raise Exception
 
