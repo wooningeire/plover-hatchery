@@ -7,6 +7,8 @@ from ..Sopheme import Sopheme
 from ..Keysymbol import Keysymbol
 from .lex_sopheme_sequence import Token, TokenType, lex_sopheme_sequence
 
+from plover_hatchery_lib_rs import Transclusion
+
 
 @dataclass(frozen=True)
 class _TokenCursor:
@@ -60,11 +62,6 @@ else:
     class _ParseResult(NamedTuple):
         value: T
         end_cursor: _TokenCursor
-
-@dataclass(frozen=True)
-class Transclusion:
-    target_varname: str
-    stress: int = 0
 
 
 def consume_stress(cursor: _TokenCursor):

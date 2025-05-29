@@ -46,5 +46,5 @@ if __name__ == "__main__":
     parser.add_argument("-f", "--failures-out-path", "--failout", help="path to output the failed entries")
     args = parser.parse_args()
 
-    _setup_plover()  
+    _setup_plover()
     _main(args)

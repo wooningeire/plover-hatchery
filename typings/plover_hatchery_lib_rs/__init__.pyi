@@ -1,3 +1,4 @@
-class Sophone:
-    name: str
-    def __init__(self, name: str) -> None: ...
+class Transclusion:
+    target_varname: str
+    stress: int
+    def __init__(self, target_varname: str, stress: int, /) -> None: ...

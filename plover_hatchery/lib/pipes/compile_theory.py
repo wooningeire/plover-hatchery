@@ -10,7 +10,8 @@ from dataclasses import dataclass
 from plover.steno import Stroke
 
 from plover_hatchery.lib.sopheme import Sopheme, Definition, parse_entry_definition
-from plover_hatchery.lib.sopheme.parse.parse_sopheme_sequence import Transclusion
+
+from plover_hatchery_lib_rs import Transclusion
 
 from ..trie import  NondeterministicTrie
 from .Hook import Hook
