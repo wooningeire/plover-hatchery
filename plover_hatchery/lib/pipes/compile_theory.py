@@ -11,7 +11,7 @@ from plover.steno import Stroke
 
 from plover_hatchery.lib.sopheme import Sopheme, Definition, parse_entry_definition
 
-from plover_hatchery_lib_rs import Transclusion
+from plover_hatchery_lib_rs import Transclusion, Entity
 
 from ..trie import  NondeterministicTrie
 from .Hook import Hook
@@ -93,18 +93,19 @@ def compile_theory(
         reverse_translations: dict[str, list[EntryIndex]] = defaultdict(lambda: [])
 
 
-        entries: "dict[str, tuple[Transclusion | Sopheme, ...]]" = {}
+        entries: "dict[str, tuple[Entity, ...]]" = {}
 
-        def resolve_sophemes(definition: "tuple[Transclusion | Sopheme, ...]", visited: set[str]) -> Generator[Sopheme, None, None]:
+        def resolve_sophemes(definition: "tuple[Entity, ...]", visited: set[str]) -> Generator[Sopheme, None, None]:
             for entity in definition:
-                if isinstance(entity, Sopheme):
-                    yield entity
+                if (sopheme := entity.maybe_sopheme) is not None:
+                    yield sopheme
                     continue
-                    
-                if entity.target_varname in visited:
-                    raise Exception("Circular dependency")
 
-                yield from resolve_sophemes(entries[entity.target_varname], visited | {entity.target_varname})
+                if (transclusion := entity.maybe_transclusion) is not None:
+                    if transclusion.target_varname in visited:
+                        raise Exception("Circular dependency")
+
+                    yield from resolve_sophemes(entries[transclusion.target_varname], visited | {transclusion.target_varname})
 
         for i, (varname, definition_str) in enumerate(entry_lines):
             if i % 1000 == 0:
@@ -114,7 +115,8 @@ def compile_theory(
                 entries[varname] = tuple(parse_entry_definition(definition_str.strip()))
                 n_passed_parses += 1
             except Exception as e:
-                # print(f"failed to parse {definition_str.strip()}: {e}")
+                import traceback
+                print(f"failed to parse {definition_str.strip()}: {e} ({''.join(traceback.format_tb(e.__traceback__))})")
                 pass
 
             n_entries += 1

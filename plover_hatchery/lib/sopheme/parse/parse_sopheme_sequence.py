@@ -1,13 +1,13 @@
 from dataclasses import dataclass
 import dataclasses
-from typing import TYPE_CHECKING, Generic, NamedTuple, TypeVar
+from typing import TYPE_CHECKING, Callable, Generic, NamedTuple, TypeVar
 from plover_hatchery.lib.sopheme.Sopheme import Sopheme
 
 from ..Sopheme import Sopheme
 from ..Keysymbol import Keysymbol
 from .lex_sopheme_sequence import Token, TokenType, lex_sopheme_sequence
 
-from plover_hatchery_lib_rs import Transclusion
+from plover_hatchery_lib_rs import Entity, Transclusion
 
 
 @dataclass(frozen=True)
@@ -54,14 +54,20 @@ class ParserException(Exception):
 
 
 T = TypeVar("T")
+U = TypeVar("U")
 if TYPE_CHECKING:
     class _ParseResult(NamedTuple, Generic[T]):
         value: T
         end_cursor: _TokenCursor
+
+        def map(self, fn: Callable[[T], U]) -> "_ParseResult[U]": ...
 else:
     class _ParseResult(NamedTuple):
         value: T
         end_cursor: _TokenCursor
+
+        def map(self, fn: Callable[[T], U]) -> "_ParseResult[U]":
+            return _ParseResult(fn(self.value), self.end_cursor)
 
 
 def consume_stress(cursor: _TokenCursor):
@@ -170,11 +176,11 @@ def consume_transclusion(cursor: _TokenCursor):
 
 def consume_entity(cursor: _TokenCursor):
     try:
-        return consume_transclusion(cursor)
+        return consume_transclusion(cursor).map(Entity.transclusion)
     except ParserException: pass
 
     try:
-        return consume_sopheme(cursor)
+        return consume_sopheme(cursor).map(Entity.sopheme)
     except ParserException: pass
 
     raise ParserException("Expected an entity here", cursor)
