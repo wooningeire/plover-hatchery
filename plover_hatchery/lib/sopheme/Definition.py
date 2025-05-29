@@ -6,7 +6,7 @@ from plover_hatchery_lib_rs import Entity
 
 from plover_hatchery.lib.sopheme.Sopheme import Sopheme
 
-
+@final
 class EntryDefinition:
     def __init__(self, entities: Iterable[Entity]):
         self.__entities = tuple(entities)
@@ -27,7 +27,7 @@ class EntryDefinition:
         return resolve_sophemes(self, {varname})
 
 @final
-class Definition:
+class DefinitionSophemes:
     def __init__(self, sophemes: tuple[Sopheme, ...]):
         self.sophemes = sophemes
 
@@ -100,7 +100,7 @@ class Definition:
 @final
 @dataclass(frozen=True)
 class DefinitionCursor:
-    definition: Definition
+    definition: DefinitionSophemes
     sopheme_index: int
     keysymbol_index: int
 

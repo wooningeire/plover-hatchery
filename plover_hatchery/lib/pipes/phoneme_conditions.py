@@ -1,4 +1,4 @@
-from plover_hatchery.lib.sopheme import Sopheme, DefinitionCursor
+from plover_hatchery.lib.sopheme import Sopheme, DefinitionCursor, get_sopheme_seq_translation
 
 
 def given_phoneme_has_in_spelling(chars: str):
@@ -23,7 +23,7 @@ def given_phoneme_has_in_spelling_including_silent(chars: str):
         while end_index_inclusive < len(phoneme.definition.sophemes) - 1 and phoneme.definition.sophemes[end_index_inclusive + 1].can_be_silent:
             end_index_inclusive += 1
 
-        spelling_including_silent = Sopheme.get_translation(phoneme.definition.sophemes[start_index_inclusive:end_index_inclusive + 1])
+        spelling_including_silent = get_sopheme_seq_translation(phoneme.definition.sophemes[start_index_inclusive:end_index_inclusive + 1])
         
         return any(char_seq in spelling_including_silent for char_seq in char_seqs)
 

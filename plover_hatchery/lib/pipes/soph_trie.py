@@ -8,7 +8,7 @@ from plover_hatchery.lib.pipes.Hook import Hook
 from plover_hatchery.lib.pipes.Plugin import GetPluginApi, Plugin, define_plugin
 from plover_hatchery.lib.pipes.floating_keys import floating_keys
 from plover_hatchery.lib.pipes.plugin_utils import iife, join_sophs_to_chords_dicts
-from plover_hatchery.lib.sopheme import Definition, DefinitionCursor
+from plover_hatchery.lib.sopheme import DefinitionSophemes, DefinitionCursor
 from plover_hatchery.lib.trie import LookupResult, NondeterministicTrie, NodeSrc, Trie, TriePath, JoinedTriePaths, TransitionCostKey, TransitionKey
 from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
 from plover_hatchery.lib.pipes.types import Soph, EntryIndex
@@ -55,7 +55,7 @@ class ChordToSophSearchResultWithSrcIndex(NamedTuple):
 @dataclass
 class SophTrieApi:
     class BeginAddEntry(Protocol):
-        def __call__(self, *, trie: NondeterministicTrie[Soph, EntryIndex], sophemes: Definition, entry_id: EntryIndex) -> Any: ...
+        def __call__(self, *, trie: NondeterministicTrie[Soph, EntryIndex], sophemes: DefinitionSophemes, entry_id: EntryIndex) -> Any: ...
     class AddSophTransition(Protocol):
         def __call__(
             self,
@@ -160,7 +160,7 @@ def soph_trie(
         # The translations are the translations of each sopheme sequence.
 
         @base_hooks.add_entry.listen(soph_trie)
-        def _(sophemes: Definition, entry_id: EntryIndex, **_):
+        def _(sophemes: DefinitionSophemes, entry_id: EntryIndex, **_):
             states = api.begin_add_entry.emit_and_store_outputs(trie=trie, sophemes=sophemes, entry_id=entry_id)
 
 

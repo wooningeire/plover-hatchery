@@ -94,7 +94,7 @@ def consume_keysymbol(cursor: _TokenCursor):
     stress, cursor = consume_stress(cursor)
     
     if cursor.token.type is not TokenType.SYMBOL or cursor.token.value != "?":
-        return _ParseResult(Keysymbol(chars, stress), cursor)
+        return _ParseResult(Keysymbol(chars, stress, False), cursor)
 
     
     cursor = cursor.next()
@@ -149,7 +149,7 @@ def consume_sopheme(cursor: _TokenCursor):
     _, cursor = consume_sopheme_dot(cursor)
     phono, cursor = consume_sopheme_phono(cursor)
 
-    return _ParseResult(Sopheme(ortho, phono), cursor)
+    return _ParseResult(Sopheme(ortho, list(phono)), cursor)
 
 
 def consume_transclusion(cursor: _TokenCursor):

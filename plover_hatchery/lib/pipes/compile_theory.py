@@ -1,15 +1,14 @@
 from plover_hatchery.lib.pipes.types import EntryIndex
-from plover_hatchery.lib.sopheme.Sopheme import Sopheme
+from plover_hatchery.lib.sopheme.Sopheme import Sopheme, get_sopheme_seq_translation
 
 
 from collections import defaultdict
 from collections.abc import Iterable
 from typing import Generator, cast, TypeVar, Generic, Any, Protocol, Callable, final
-from dataclasses import dataclass
 
 from plover.steno import Stroke
 
-from plover_hatchery.lib.sopheme import Sopheme, Definition, parse_entry_definition, EntryDefinition
+from plover_hatchery.lib.sopheme import Sopheme, DefinitionSophemes, parse_entry_definition, EntryDefinition
 
 from plover_hatchery_lib_rs import Transclusion, Entity
 
@@ -29,9 +28,9 @@ class TheoryHooks:
     class CompleteBuildLookup(Protocol):
         def __call__(self) -> None: ...
     class ProcessSophemeSeq(Protocol):
-        def __call__(self, *, sopheme_seq: Definition) -> Iterable[Sopheme]: ...
+        def __call__(self, *, sopheme_seq: DefinitionSophemes) -> Iterable[Sopheme]: ...
     class AddEntry(Protocol):
-        def __call__(self, sophemes: Definition, entry_id: EntryIndex) -> None: ...
+        def __call__(self, sophemes: DefinitionSophemes, entry_id: EntryIndex) -> None: ...
     class Lookup(Protocol):
         def __call__(self, stroke_stenos: tuple[str, ...], translations: list[str]) -> "str | None": ...
     class ReverseLookup(Protocol):
@@ -128,14 +127,14 @@ def compile_theory(
                 sophemes = tuple(entry_definition.get_sophemes(entries, varname))
                 add_entry(states, sophemes, entry_id)
 
-                translation = Sopheme.get_translation(sophemes)
+                translation = get_sopheme_seq_translation(sophemes)
                 translations[-1] = translation
                 reverse_translations[translation].append(entry_id)
 
                 n_passed_additions += 1
             except Exception as e:
-                # import traceback
-                # print(f"failed to add {line.strip()}: {e} ({''.join(traceback.format_tb(e.__traceback__))})")
+                import traceback
+                print(f"failed to add {varname}: {e} ({''.join(traceback.format_tb(e.__traceback__))})")
                 pass
 
 
@@ -162,14 +161,14 @@ Added {n_addable_entries} entries
         return TheoryLookup(true_lookup, true_reverse_lookup)
         
 
-    def process_sopheme_seq(sopheme_seq: Definition):
+    def process_sopheme_seq(sopheme_seq: DefinitionSophemes):
         for plugin_id, handler in hooks.process_sopheme_seq.ids_handlers():
-            sopheme_seq = Definition(tuple(handler(sopheme_seq=sopheme_seq)))
+            sopheme_seq = DefinitionSophemes(tuple(handler(sopheme_seq=sopheme_seq)))
         return sopheme_seq
 
 
     def add_entry(states: dict[int, Any], sophemes: Iterable[Sopheme], entry_id: EntryIndex):
-        new_sophemes = process_sopheme_seq(Definition(tuple(sophemes)))
+        new_sophemes = process_sopheme_seq(DefinitionSophemes(tuple(sophemes)))
 
         for plugin_id, handler in hooks.add_entry.ids_handlers():
             handler(sophemes=new_sophemes, entry_id=entry_id)

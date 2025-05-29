@@ -1,4 +1,26 @@
-from plover_hatchery.lib.sopheme import Sopheme
+class Keysymbol:
+    symbol: str
+    base_symbol: str
+    stress: int = 0
+    optional: bool = False
+
+    def __init__(self, symbol: str, stress: int, optional: bool, /) -> None: ...
+
+    @property
+    def is_vowel(self) -> bool: ...
+
+    @property
+    def is_consonant(self) -> bool: ...
+
+
+class Sopheme:
+    chars: str
+    keysymbols: list[Keysymbol]
+
+    def __init__(self, chars: str, keysymbols: list[Keysymbol], /) -> None: ...
+
+    @property
+    def can_be_silent(self) -> bool: ...
 
 
 class Transclusion:
@@ -9,10 +31,10 @@ class Transclusion:
 
 class Entity:
     @staticmethod
-    def sopheme(sopheme: Sopheme) -> Entity: ...
+    def sopheme(sopheme: Sopheme, /) -> Entity: ...
 
     @staticmethod
-    def transclusion(transclusion: Transclusion) -> Entity: ...
+    def transclusion(transclusion: Transclusion, /) -> Entity: ...
 
     @property
     def maybe_sopheme(self) -> Sopheme | None: ...

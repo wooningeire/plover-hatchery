@@ -1,20 +1,22 @@
 use pyo3::{prelude::*};
 
-pub mod sopheme;
-pub mod transclusion;
+mod sopheme;
+pub use sopheme::{Sopheme, Keysymbol};
 
-use transclusion::Transclusion;
+pub mod transclusion;
+pub use transclusion::Transclusion;
+
 
 #[pyclass]
 pub enum Entity {
-    Sopheme(PyObject),
+    Sopheme(Sopheme),
     Transclusion(Transclusion),
 }
 
 #[pymethods]
 impl Entity {
     #[staticmethod]
-    pub fn sopheme(sopheme: PyObject) -> Self {
+    pub fn sopheme(sopheme: Sopheme) -> Self {
         Entity::Sopheme(sopheme)
     }
 
@@ -24,9 +26,9 @@ impl Entity {
     }
 
     #[getter]
-    pub fn maybe_sopheme(&self) -> Option<&PyObject> {
+    pub fn maybe_sopheme(&self) -> Option<Sopheme> {
         match self {
-            Entity::Sopheme(sopheme) => Some(sopheme),
+            Entity::Sopheme(sopheme) => Some(sopheme.clone()),
             _ => None,
         }
     }

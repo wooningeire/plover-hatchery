@@ -2,7 +2,7 @@ from typing import Callable
 from collections.abc import Iterable
 
 from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
-from plover_hatchery.lib.sopheme import Keysymbol, Definition, DefinitionCursor
+from plover_hatchery.lib.sopheme import Keysymbol, DefinitionSophemes, DefinitionCursor
 
 from ..sopheme import Sopheme
 from .Plugin import GetPluginApi, Plugin, define_plugin
@@ -64,7 +64,7 @@ def diphthong_transition_consonants(
         @define_plugin(diphthong_transition_consonants)
         def plugin(base_hooks: TheoryHooks, **_):
             @base_hooks.process_sopheme_seq.listen(diphthong_transition_consonants)
-            def _(sopheme_seq: Definition, **_):
+            def _(sopheme_seq: DefinitionSophemes, **_):
                 prev_phoneme_if_was_vowel = None
 
                 for sopheme, phonemes in sopheme_seq.phonemes_by_sopheme():
