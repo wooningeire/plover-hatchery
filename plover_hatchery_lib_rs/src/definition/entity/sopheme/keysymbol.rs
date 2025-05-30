@@ -130,7 +130,7 @@ impl Keysymbol {
 
     #[getter]
     pub fn base_symbol(&self) -> &str {
-        &self.symbol
+        &self.base_symbol
     }
 
     #[getter]

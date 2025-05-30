@@ -4,8 +4,8 @@ use pyo3::{prelude::*};
 #[pyclass]
 #[derive(Clone)]
 pub struct Transclusion {
-    target_varname: String,
-    stress: u8
+    #[pyo3(get)] pub target_varname: String,
+    #[pyo3(get)] pub stress: u8
 }
 
 #[pymethods]

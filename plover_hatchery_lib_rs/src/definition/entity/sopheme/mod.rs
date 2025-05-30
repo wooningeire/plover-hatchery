@@ -9,8 +9,8 @@ pub use keysymbol::Keysymbol;
 #[pyclass]
 #[derive(Clone)]
 pub struct Sopheme {
-    chars: String,
-    keysymbols: Vec<Keysymbol>,
+    #[pyo3(get)] pub chars: String,
+    #[pyo3(get)] pub keysymbols: Vec<Keysymbol>,
 }
 
 #[pymethods]
@@ -44,15 +44,5 @@ impl Sopheme {
 
     pub fn __repr__(&self) -> String {
         self.__str__()
-    }
-
-    #[getter]
-    pub fn chars(&self) -> &str {
-        &self.chars
-    }
-
-    #[getter]
-    pub fn keysymbols(&self) -> Vec<Keysymbol> {
-        self.keysymbols.clone()
     }
 }

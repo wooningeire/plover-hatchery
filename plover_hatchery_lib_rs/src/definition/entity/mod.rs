@@ -8,6 +8,7 @@ pub use transclusion::Transclusion;
 
 
 #[pyclass]
+#[derive(Clone)]
 pub enum Entity {
     Sopheme(Sopheme),
     Transclusion(Transclusion),

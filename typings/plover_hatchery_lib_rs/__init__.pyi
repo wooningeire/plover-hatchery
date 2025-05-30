@@ -1,3 +1,6 @@
+from collections.abc import Callable
+
+
 class Keysymbol:
     symbol: str
     base_symbol: str
@@ -41,3 +44,16 @@ class Entity:
 
     @property
     def maybe_transclusion(self) -> Transclusion | None: ...
+
+
+class Definition:
+    entities: list[Entity]
+
+    def __init__(self, entities: list[Entity], /) -> None: ...
+
+class DefinitionDictionary:
+    def sophemes_in(self, definition: Definition, varname: str, /) -> list[Sopheme]: ...
+
+    def add(self, varname: str, definition: Definition, /) -> None: ...
+
+    def foreach(self, callable: Callable[[str, Definition], None], /) -> None: ...

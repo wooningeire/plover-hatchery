@@ -8,9 +8,9 @@ from typing import Generator, cast, TypeVar, Generic, Any, Protocol, Callable, f
 
 from plover.steno import Stroke
 
-from plover_hatchery.lib.sopheme import Sopheme, DefinitionSophemes, parse_entry_definition, EntryDefinition
+from plover_hatchery.lib.sopheme import Sopheme, DefinitionSophemes, parse_entry_definition
 
-from plover_hatchery_lib_rs import Transclusion, Entity
+from plover_hatchery_lib_rs import Definition, Transclusion, Entity, DefinitionDictionary
 
 from ..trie import  NondeterministicTrie
 from .Hook import Hook
@@ -92,14 +92,15 @@ def compile_theory(
         reverse_translations: dict[str, list[EntryIndex]] = defaultdict(lambda: [])
 
 
-        entries: dict[str, EntryDefinition] = {}
+
+        defs = DefinitionDictionary()
 
         for i, (varname, definition_str) in enumerate(entry_lines):
             if i % 1000 == 0:
                 print(f"hatched {i}")
 
             try:
-                entries[varname] = EntryDefinition(parse_entry_definition(definition_str.strip()))
+                defs.add(varname, Definition(list(parse_entry_definition(definition_str.strip()))))
                 n_passed_parses += 1
             except Exception as e:
                 import traceback
@@ -110,12 +111,19 @@ def compile_theory(
         # while len(line := file.readline()) > 0:
         #     _add_entry(trie, Sopheme.parse_seq())
 
-        for i, (varname, entry_definition) in enumerate(entries.items()):
+        i = 0
+
+        @defs.foreach
+        def _(varname: str, definition: Definition):
+            nonlocal i, n_addable_entries, n_passed_additions
+
             if i % 1000 == 0:
                 print(f"checked/wrote {i}")
 
+            i += 1
+
             if any(varname.startswith(modifier) for modifier in "@#^") or varname.endswith("^"):
-                continue
+                return
 
             translations.append("")
 
@@ -124,7 +132,7 @@ def compile_theory(
             try:
                 entry_id = EntryIndex(len(translations) - 1)
 
-                sophemes = tuple(entry_definition.get_sophemes(entries, varname))
+                sophemes = defs.sophemes_in(definition, varname)
                 add_entry(states, sophemes, entry_id)
 
                 translation = get_sopheme_seq_translation(sophemes)
