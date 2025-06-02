@@ -1,6 +1,4 @@
 from plover_hatchery.lib.pipes.types import EntryIndex
-from plover_hatchery.lib.sopheme.Sopheme import Sopheme, get_sopheme_seq_translation
-
 
 from collections import defaultdict
 from collections.abc import Iterable
@@ -10,7 +8,7 @@ from plover.steno import Stroke
 
 from plover_hatchery.lib.sopheme import Sopheme, DefinitionSophemes, parse_entry_definition
 
-from plover_hatchery_lib_rs import Definition, Transclusion, Entity, DefinitionDictionary
+from plover_hatchery_lib_rs import Def, EntitySeq, DefView, Transclusion, Entity, DefDict
 
 from ..trie import  NondeterministicTrie
 from .Hook import Hook
@@ -27,19 +25,19 @@ class TheoryHooks:
         def __call__(self) -> None: ...
     class CompleteBuildLookup(Protocol):
         def __call__(self) -> None: ...
-    class ProcessSophemeSeq(Protocol):
-        def __call__(self, *, sopheme_seq: DefinitionSophemes) -> Iterable[Sopheme]: ...
+    class ProcessDef(Protocol):
+        def __call__(self, *, view: DefView) -> Def: ...
     class AddEntry(Protocol):
-        def __call__(self, sophemes: DefinitionSophemes, entry_id: EntryIndex) -> None: ...
+        def __call__(self, *, view: DefView, entry_id: EntryIndex) -> None: ...
     class Lookup(Protocol):
-        def __call__(self, stroke_stenos: tuple[str, ...], translations: list[str]) -> "str | None": ...
+        def __call__(self, *, stroke_stenos: tuple[str, ...], translations: list[str]) -> "str | None": ...
     class ReverseLookup(Protocol):
-        def __call__(self, translation: str, reverse_translations: dict[str, list[EntryIndex]]) -> Iterable[tuple[str, ...]]: ...
+        def __call__(self, *, translation: str, reverse_translations: dict[str, list[EntryIndex]]) -> Iterable[tuple[str, ...]]: ...
     
 
     begin_build_lookup = Hook(BeginBuildLookup)
     complete_build_lookup = Hook(CompleteBuildLookup)
-    process_sopheme_seq = Hook(ProcessSophemeSeq)
+    process_def = Hook(ProcessDef)
     add_entry = Hook(AddEntry)
     lookup = Hook(Lookup)
     reverse_lookup = Hook(ReverseLookup)
@@ -93,14 +91,14 @@ def compile_theory(
 
 
 
-        defs = DefinitionDictionary()
+        defs = DefDict()
 
         for i, (varname, definition_str) in enumerate(entry_lines):
             if i % 1000 == 0:
                 print(f"hatched {i}")
 
             try:
-                defs.add(varname, Definition(list(parse_entry_definition(definition_str.strip()))))
+                defs.add(varname, EntitySeq(list(parse_entry_definition(definition_str.strip()))))
                 n_passed_parses += 1
             except Exception as e:
                 import traceback
@@ -113,8 +111,8 @@ def compile_theory(
 
         i = 0
 
-        @defs.foreach
-        def _(varname: str, definition: Definition):
+        @defs.foreach_key
+        def _(varname: str):
             nonlocal i, n_addable_entries, n_passed_additions
 
             if i % 1000 == 0:
@@ -132,10 +130,11 @@ def compile_theory(
             try:
                 entry_id = EntryIndex(len(translations) - 1)
 
-                sophemes = defs.sophemes_in(definition, varname)
-                add_entry(states, sophemes, entry_id)
+                view = DefView(defs, defs.get_def(varname))
 
-                translation = get_sopheme_seq_translation(sophemes)
+                add_entry(states, view, entry_id)
+
+                translation = view.translation()
                 translations[-1] = translation
                 reverse_translations[translation].append(entry_id)
 
@@ -169,17 +168,17 @@ Added {n_addable_entries} entries
         return TheoryLookup(true_lookup, true_reverse_lookup)
         
 
-    def process_sopheme_seq(sopheme_seq: DefinitionSophemes):
-        for plugin_id, handler in hooks.process_sopheme_seq.ids_handlers():
-            sopheme_seq = DefinitionSophemes(tuple(handler(sopheme_seq=sopheme_seq)))
-        return sopheme_seq
+    def process_def(view: DefView):
+        for plugin_id, handler in hooks.process_def.ids_handlers():
+            view = DefView(view.defs, handler(view=view))
+        return view
 
 
-    def add_entry(states: dict[int, Any], sophemes: Iterable[Sopheme], entry_id: EntryIndex):
-        new_sophemes = process_sopheme_seq(DefinitionSophemes(tuple(sophemes)))
+    def add_entry(states: dict[int, Any], view: DefView, entry_id: EntryIndex):
+        new_view = process_def(view)
 
         for plugin_id, handler in hooks.add_entry.ids_handlers():
-            handler(sophemes=new_sophemes, entry_id=entry_id)
+            handler(view=new_view, entry_id=entry_id)
 
 
     def lookup(states: dict[int, Any], stroke_stenos: tuple[str, ...], translations: list[str]) -> "str | None":

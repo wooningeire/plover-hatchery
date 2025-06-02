@@ -3,7 +3,7 @@ use pyo3::{prelude::*};
 mod sopheme;
 pub use sopheme::{Sopheme, Keysymbol};
 
-pub mod transclusion;
+mod transclusion;
 pub use transclusion::Transclusion;
 
 

@@ -2,7 +2,7 @@ from collections.abc import Generator, Iterable
 from dataclasses import dataclass
 from typing import final
 
-from plover_hatchery_lib_rs import Definition, DefinitionDictionary, Entity, Sopheme
+from plover_hatchery_lib_rs import EntitySeq, DefDict, Entity, Sopheme
 
 @final
 class DefinitionSophemes:

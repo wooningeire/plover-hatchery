@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Iterable, NamedTuple, Protocol, final
 
 from plover.steno import Stroke
+from plover_hatchery_lib_rs import DefView
 
 from plover_hatchery.lib.pipes.Hook import Hook
 from plover_hatchery.lib.pipes.Plugin import GetPluginApi, Plugin, define_plugin
@@ -160,15 +161,16 @@ def soph_trie(
         # The translations are the translations of each sopheme sequence.
 
         @base_hooks.add_entry.listen(soph_trie)
-        def _(sophemes: DefinitionSophemes, entry_id: EntryIndex, **_):
+        def _(view: DefView, entry_id: EntryIndex, **_):
+            sophemes = view.collect_sophemes()
+
             states = api.begin_add_entry.emit_and_store_outputs(trie=trie, sophemes=sophemes, entry_id=entry_id)
 
 
             src_nodes: list[NodeSrc] = [NodeSrc(0)]
             new_src_nodes: list[NodeSrc] = []
 
-
-            for phoneme in sophemes.phonemes():
+            for phoneme in sophemes.collect_keysymbols():
                 if not phoneme.keysymbol.optional:
                     new_src_nodes = []
                 else:

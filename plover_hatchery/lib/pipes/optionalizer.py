@@ -5,7 +5,7 @@ from plover_hatchery.lib.pipes.Plugin import GetPluginApi, Plugin, define_plugin
 from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
 from plover_hatchery.lib.sopheme import Sopheme, DefinitionSophemes, DefinitionCursor
 
-from plover_hatchery_lib_rs import Keysymbol
+from plover_hatchery_lib_rs import DefView, Keysymbol
 
 class BaseOptionalizePredicate(Protocol):
     def __call__(self, phoneme: DefinitionCursor, /) -> bool: ...
@@ -24,9 +24,9 @@ def create_optionalizer_with_user_condition(
     ) -> Plugin[None]:
         @define_plugin(optionalizer_plugin)
         def plugin(base_hooks: TheoryHooks, **_):
-            @base_hooks.process_sopheme_seq.listen(optionalizer_plugin)
-            def _(sopheme_seq: DefinitionSophemes, **_):
-                for sopheme, phonemes in sopheme_seq.phonemes_by_sopheme():
+            @base_hooks.process_def.listen(optionalizer_plugin)
+            def _(view: DefView, **_):
+                for sopheme, phonemes in view.phonemes_by_sopheme():
                     keysymbols: list[Keysymbol] = []
 
                     for phoneme in phonemes:
@@ -54,7 +54,7 @@ def create_optionalizer(
     def optionalizer_plugin() -> Plugin[None]:
         @define_plugin(optionalizer_plugin)
         def plugin(base_hooks: TheoryHooks, **_):
-            @base_hooks.process_sopheme_seq.listen(optionalizer_plugin)
+            @base_hooks.process_def.listen(optionalizer_plugin)
             def _(sopheme_seq: DefinitionSophemes, **_):
                 for sopheme, phonemes in sopheme_seq.phonemes_by_sopheme():
                     keysymbols: list[Keysymbol] = []

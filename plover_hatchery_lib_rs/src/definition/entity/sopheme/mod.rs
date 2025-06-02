@@ -13,6 +13,7 @@ pub struct Sopheme {
     #[pyo3(get)] pub keysymbols: Vec<Keysymbol>,
 }
 
+
 #[pymethods]
 impl Sopheme {
     #[new]
