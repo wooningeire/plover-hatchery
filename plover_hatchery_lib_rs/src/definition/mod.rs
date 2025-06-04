@@ -37,6 +37,25 @@ impl RawableEntity {
     }
 }
 
+#[pymethods]
+impl RawableEntity {
+    pub fn maybe_entity(&self) -> Option<Entity> {
+        match self {
+            RawableEntity::Entity(entity) => Some(entity.clone()),
+
+            _ => None,
+        }
+    }
+
+    pub fn maybe_raw_def(&self) -> Option<Def> {
+        match self {
+            RawableEntity::RawDef(def) => Some(def.clone()),
+
+            _ => None,
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct OverridableEntitySeq {
     items: Vec<RawableEntity>,
@@ -135,7 +154,9 @@ pub struct SophemeSeq {
     items: Vec<Sopheme>,
 }
 
+#[pymethods]
 impl SophemeSeq {
+    #[new]
     pub fn new(sophemes: Vec<Sopheme>) -> Self {
         SophemeSeq {
             items: sophemes,
@@ -227,7 +248,7 @@ impl<'a> DefView<'a> {
             visited.insert(def.varname.clone());
 
             for overridable_entity in def.entities.items.iter() {
-                dfs(overridable_entity, dict, sophemes, visited);
+                dfs(overridable_entity, dict, sophemes, visited)?;
             }
             
             visited.remove(&def.varname.clone());
@@ -254,10 +275,10 @@ impl<'a> DefView<'a> {
     }
 
 
-    pub fn read(&'a self, cursor: &Vec<usize>) -> Result<Option<DefViewItem<'a>>, &'static str> {
+    pub fn read(&'a self, cursor: &[usize]) -> Result<Option<DefViewItem<'a>>, &'static str> {
         let mut cur_entity = self.root.as_item();
 
-        for index in cursor {
+        for &index in cursor {
             match cur_entity {
                 DefViewItem::Root(def) => match def.get(index) {
                     Some(item) => {
@@ -305,9 +326,9 @@ impl<'a> DefViewItem<'a> {
         match self {
             DefViewItem::Root(def) => Ok(def.get(index)),
 
-            DefViewItem::Rawable(rawable) => Ok(rawable.get(0, defs)?),
+            DefViewItem::Rawable(rawable) => Ok(rawable.get(index, defs)?),
 
-            DefViewItem::Entity(entity) => Ok(entity.get(0, defs)?),
+            DefViewItem::Entity(entity) => Ok(entity.get(index, defs)?),
 
             _ => Ok(None),
         }

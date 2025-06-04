@@ -6,7 +6,8 @@ from plover.steno import Stroke
 
 from ..sophone.Sophone import Sophone
 from .Keysymbol import Keysymbol
-from .Sopheme import Sopheme
+
+from plover_hatchery_lib_rs import Sopheme
 
 
 @dataclass(frozen=True)

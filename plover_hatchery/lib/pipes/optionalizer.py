@@ -5,13 +5,13 @@ from plover_hatchery.lib.pipes.Plugin import GetPluginApi, Plugin, define_plugin
 from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
 from plover_hatchery.lib.sopheme import Sopheme, DefinitionSophemes, DefinitionCursor
 
-from plover_hatchery_lib_rs import DefView, Keysymbol
+from plover_hatchery_lib_rs import Def, DefView, DefViewCursor, DefViewItem, Keysymbol, RawableEntity
 
 class BaseOptionalizePredicate(Protocol):
-    def __call__(self, phoneme: DefinitionCursor, /) -> bool: ...
+    def __call__(self, cursor: DefViewCursor, /) -> bool: ...
 
 class InjectedOptionalizePredicate(Protocol):
-    def __call__(self, optionalize_if: BaseOptionalizePredicate, phoneme: DefinitionCursor, /) -> bool: ...
+    def __call__(self, optionalize_if: BaseOptionalizePredicate, cursor: DefViewCursor, /) -> bool: ...
 
 
 def create_optionalizer_with_user_condition(
@@ -26,16 +26,21 @@ def create_optionalizer_with_user_condition(
         def plugin(base_hooks: TheoryHooks, **_):
             @base_hooks.process_def.listen(optionalizer_plugin)
             def _(view: DefView, **_):
-                for sopheme, phonemes in view.phonemes_by_sopheme():
-                    keysymbols: list[Keysymbol] = []
+                return Def([], "")
 
-                    for phoneme in phonemes:
-                        if should_optionalize(make_optional_if, phoneme):
-                            keysymbols.append(Keysymbol(phoneme.keysymbol.symbol, phoneme.keysymbol.stress, True))
-                        else:
-                            keysymbols.append(phoneme.keysymbol)
 
-                    yield Sopheme(sopheme.chars, list(keysymbols))
+
+
+                # for sopheme, phonemes in view.phonemes_by_sopheme():
+                #     keysymbols: list[Keysymbol] = []
+
+                #     for phoneme in phonemes:
+                #         if should_optionalize(make_optional_if, phoneme):
+                #             keysymbols.append(Keysymbol(phoneme.keysymbol.symbol, phoneme.keysymbol.stress, True))
+                #         else:
+                #             keysymbols.append(phoneme.keysymbol)
+
+                #     yield Sopheme(sopheme.chars, list(keysymbols))
 
 
             return None
@@ -55,17 +60,19 @@ def create_optionalizer(
         @define_plugin(optionalizer_plugin)
         def plugin(base_hooks: TheoryHooks, **_):
             @base_hooks.process_def.listen(optionalizer_plugin)
-            def _(sopheme_seq: DefinitionSophemes, **_):
-                for sopheme, phonemes in sopheme_seq.phonemes_by_sopheme():
-                    keysymbols: list[Keysymbol] = []
+            def _(view: DefView, **_):
+                return Def([], "")
 
-                    for phoneme in phonemes:
-                        if should_optionalize(phoneme):
-                            keysymbols.append(Keysymbol(phoneme.keysymbol.symbol, phoneme.keysymbol.stress, True))
-                        else:
-                            keysymbols.append(phoneme.keysymbol)
+                # for sopheme, phonemes in sopheme_seq.phonemes_by_sopheme():
+                #     keysymbols: list[Keysymbol] = []
 
-                    yield Sopheme(sopheme.chars, list(keysymbols))
+                #     for phoneme in phonemes:
+                #         if should_optionalize(phoneme):
+                #             keysymbols.append(Keysymbol(phoneme.keysymbol.symbol, phoneme.keysymbol.stress, True))
+                #         else:
+                #             keysymbols.append(phoneme.keysymbol)
+
+                #     yield Sopheme(sopheme.chars, list(keysymbols))
 
 
             return None

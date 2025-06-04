@@ -7,7 +7,6 @@ import plover.log
 
 
 from ..trie import NondeterministicTrie
-from ..sopheme import Sopheme
 from ..pipes import Theory
 
 

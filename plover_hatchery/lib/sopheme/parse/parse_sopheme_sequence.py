@@ -1,13 +1,11 @@
 from dataclasses import dataclass
 import dataclasses
 from typing import TYPE_CHECKING, Callable, Generic, NamedTuple, TypeVar
-from plover_hatchery.lib.sopheme.Sopheme import Sopheme
 
-from ..Sopheme import Sopheme
 from ..Keysymbol import Keysymbol
 from .lex_sopheme_sequence import Token, TokenType, lex_sopheme_sequence
 
-from plover_hatchery_lib_rs import Entity, Transclusion
+from plover_hatchery_lib_rs import Entity, Transclusion, Sopheme
 
 
 @dataclass(frozen=True)

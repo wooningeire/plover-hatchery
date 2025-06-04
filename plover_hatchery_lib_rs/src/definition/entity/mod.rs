@@ -6,7 +6,7 @@ pub use sopheme::{Sopheme, Keysymbol};
 mod transclusion;
 pub use transclusion::Transclusion;
 
-use super::{DefDict, DefViewItem, RawableEntity};
+use super::{DefDict, DefViewItem};
 
 
 #[pyclass]

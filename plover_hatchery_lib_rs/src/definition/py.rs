@@ -1,6 +1,4 @@
 
-use std::sync::Arc;
-
 use pyo3::{prelude::*, exceptions::PyException};
 
 use super::*;
@@ -139,7 +137,7 @@ impl DefView {
         self.with_rs(py, |view_rs| {
             let mut cursor = super::DefViewCursor::new(&view_rs);
 
-            while let Some(data) = cursor.step() {
+            while let Some(_) = cursor.step() {
                 _ = callable.call(py, (/* StepData::of(data) */), None);
             }
         });
@@ -153,9 +151,7 @@ impl DefView {
                 match data {
                     super::StepData::In(item) => call_keysymbol_callback(item, &cursor, &pyself, &callable, py),
 
-                    super::StepData::Over(item) => call_keysymbol_callback(item, &cursor, &pyself, &callable, py),
-
-                    _ => {},
+                    super::StepData::Over(_, item) => call_keysymbol_callback(item, &cursor, &pyself, &callable, py),
                 }
             }
         });
@@ -178,15 +174,32 @@ fn call_keysymbol_callback(item: super::StackItem, cursor: &super::DefViewCursor
 #[pyclass]
 pub enum DefViewItem {
     Keysymbol(Keysymbol),
-    Temp_NotKeysymbol(),
+    Sopheme(Sopheme),
+    NotImplemented(),
 }
 
 impl DefViewItem {
     pub fn of(item: super::DefViewItem) -> DefViewItem {
         match item {
             super::DefViewItem::Keysymbol(keysymbol) => DefViewItem::Keysymbol(keysymbol.clone()),
+
+            super::DefViewItem::Entity(entity) => match entity {
+                Entity::Sopheme(sopheme) => DefViewItem::Sopheme(sopheme.clone()),
+
+                _ => DefViewItem::NotImplemented(),
+            },
+
+            super::DefViewItem::Rawable(rawable) => match rawable {
+                RawableEntity::Entity(entity) => match entity {
+                    Entity::Sopheme(sopheme) => DefViewItem::Sopheme(sopheme.clone()),
+
+                    _ => DefViewItem::NotImplemented(),
+                },
+
+                _ => DefViewItem::NotImplemented(),
+            },
             
-            _ => DefViewItem::Temp_NotKeysymbol(),
+            _ => DefViewItem::NotImplemented(),
         }
     }
 }
@@ -197,6 +210,15 @@ impl DefViewItem {
     pub fn maybe_keysymbol(&self) -> Option<Keysymbol> {
         match self {
             DefViewItem::Keysymbol(keysymbol) => Some(keysymbol.clone()),
+            
+            _ => None,
+        }
+    }
+
+    #[getter]
+    pub fn maybe_sopheme(&self) -> Option<Sopheme> {
+        match self {
+            DefViewItem::Sopheme(sopheme) => Some(sopheme.clone()),
             
             _ => None,
         }
@@ -215,6 +237,7 @@ impl DefViewCursor {
         DefViewCursor {
             view,
             index_stack: cursor.stack.iter()
+                .skip(1)
                 .map(|item| item.index)
                 .collect::<Vec<_>>(),
         }
@@ -228,5 +251,19 @@ impl DefViewCursor {
             view_rs.read(&self.index_stack)
                 .map(|item| item.map(DefViewItem::of))
         })
+    }
+
+    pub fn nth(&self, level: usize, py: Python<'_>) -> Result<Option<DefViewItem>, PyErr> {
+        dbg!(&self.index_stack[..level], &self.index_stack, level);
+
+        self.view.borrow(py).with_rs_result(py, |view_rs| {
+            view_rs.read(&self.index_stack[..level])
+                .map(|item| item.map(DefViewItem::of))
+        })
+    }
+
+    #[getter]
+    pub fn stack_len(&self) -> usize {
+        self.index_stack.len()
     }
 }

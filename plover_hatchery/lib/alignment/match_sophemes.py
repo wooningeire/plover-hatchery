@@ -8,10 +8,12 @@ from plover.steno import Stroke
 
 from ..sophone.Sophone import Sophone
 from ..sopheme.Keysymbol import Keysymbol
-from ..sopheme.Sopheme import Sopheme
 from ..sopheme.Steneme import Steneme
 from .steno_annotations import AsteriskableKey, AnnotatedChord
 from .alignment import AlignmentService, Cell, Comparable, aligner
+
+from plover_hatchery_lib_rs import Sopheme
+
 
 _KEYSYMBOL_TO_GRAPHEME_MAPPINGS = {
     tuple(keysymbol.split(" ")): graphemes

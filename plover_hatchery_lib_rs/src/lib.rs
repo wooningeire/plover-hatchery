@@ -1,4 +1,4 @@
-use pyo3::{prelude::*, wrap_pymodule};
+use pyo3::{prelude::*};
 
 mod definition;
 use definition::{
@@ -8,6 +8,7 @@ use definition::{
         DefDict,
         DefView,
         DefViewCursor,
+        DefViewItem
     },
     SophemeSeq,
     Entity,
@@ -25,6 +26,7 @@ pub fn plover_hatchery_lib_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<DefDict>()?;
     m.add_class::<DefView>()?;
     m.add_class::<DefViewCursor>()?;
+    m.add_class::<DefViewItem>()?;
     m.add_class::<SophemeSeq>()?;
     m.add_class::<Entity>()?;
     m.add_class::<RawableEntity>()?;

@@ -23,6 +23,6 @@ from .compile_theory import compile_theory
 
 from .SophoneType import SophoneType, Sophone
 from .iter_helpers import *
-from .phoneme_conditions import *
+# from .phoneme_conditions import *
 from .stroke_conditions import *
 from .types import *

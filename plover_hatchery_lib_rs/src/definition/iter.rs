@@ -1,5 +1,3 @@
-use std::{cell::RefCell, rc::Rc};
-
 use super::*;
 
 
@@ -28,8 +26,7 @@ impl<'a> StackItem<'a> {
 #[derive(Clone)]
 pub enum StepData<'a> {
     In(StackItem<'a>),
-    Over(StackItem<'a>),
-    Out,
+    Over(usize, StackItem<'a>),
 }
 
 pub struct DefViewCursor<'a> {
@@ -51,24 +48,36 @@ impl<'a> DefViewCursor<'a> {
 
 
     pub fn next_step_data(&self) -> Option<StepData<'a>> {
-        let tip = self.stack.last()?;
+        let mut tip = self.stack.last()?;
 
         // First attempt to step in from the tip
         if let Some(inner) = tip.get(0, self.defs) {
             return Some(StepData::In(StackItem::new(0, inner)));
         }
 
-        // Next attempt to step over
-        let parent = if self.stack.len() >= 2 { &self.stack[self.stack.len() - 2] } else { return None };
-
-
-        let new_tip_index = tip.index + 1;
-        if let Some(inner) = parent.get(new_tip_index, self.defs) {
-            return Some(StepData::Over(StackItem::new(new_tip_index, inner)));
+        // Finally attempt to step out
+        // Next attempt to step ove
+        if self.stack.len() < 2 {
+            return None;
         }
 
-        // Finally attempt to step out
-        Some(StepData::Out)
+        let mut parent_index = self.stack.len() - 2;
+
+        loop {
+            let parent = &self.stack[parent_index];
+            
+            let new_tip_index = tip.index + 1;
+            if let Some(inner) = parent.get(new_tip_index, self.defs) {
+                return Some(StepData::Over(parent_index + 1, StackItem::new(new_tip_index, inner)));
+            }
+
+            if parent_index == 0 {
+                return None;
+            }
+
+            tip = parent;
+            parent_index -= 1;
+        }
     }
 
     pub fn step_with_data(&mut self, data: &StepData<'a>) {
@@ -77,13 +86,11 @@ impl<'a> DefViewCursor<'a> {
                 self.stack.push(item.clone());
             },
 
-            StepData::Over(item) => {
-                let last_index = self.stack.len() - 1;
-                self.stack[last_index] = item.clone();
-            },
-
-            StepData::Out => {
-                self.stack.pop();
+            StepData::Over(n_levels_to_keep, item) => {
+                while self.stack.len() > *n_levels_to_keep {
+                    self.stack.pop();
+                }
+                self.stack.push(item.clone());
             },
         }
     }
@@ -94,4 +101,12 @@ impl<'a> DefViewCursor<'a> {
 
         Some(data)
     }
+}
+
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+
 }

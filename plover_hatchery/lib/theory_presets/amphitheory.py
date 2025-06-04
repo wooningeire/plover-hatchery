@@ -1,3 +1,4 @@
+from plover_hatchery_lib_rs import DefViewCursor
 from plover_hatchery.lib.pipes import *
 from plover_hatchery.lib.sopheme.parse.parse_sopheme_sequence import parse_sopheme_seq
 
@@ -6,38 +7,47 @@ def theory():
     yield floating_keys("*")
 
 
-    def map_phoneme_to_soph_values_base(phoneme: DefinitionCursor):
-        if phoneme.keysymbol.symbol == "s":
-            if "sc" in phoneme.sopheme.chars:
+    def map_phoneme_to_soph_values_base(cursor: DefViewCursor):
+        if (maybe_sopheme := cursor.nth(cursor.stack_len - 1)) is None:
+            return
+
+        if (sopheme := maybe_sopheme.maybe_sopheme) is None:
+            return
+        
+        keysymbol = sopheme.keysymbols[cursor.index_stack[-1]]
+
+
+        if keysymbol.symbol == "s":
+            if "sc" in sopheme.chars:
                 yield "SC"
                 return
-            elif "c" in phoneme.sopheme.chars:
+            elif "c" in sopheme.chars:
                 yield "C"
                 return
         
         
-        if phoneme.keysymbol.stress > 1:
-            if any(chars in phoneme.sopheme.chars for chars in ("ai", "ay")):
+        if keysymbol.stress > 1:
+            if any(chars in sopheme.chars for chars in ("ai", "ay")):
                 yield "AA"
-            elif any(chars in phoneme.sopheme.chars for chars in ("oi", "oy")):
+            elif any(chars in sopheme.chars for chars in ("oi", "oy")):
                 yield "OI"
-            elif any(chars in phoneme.sopheme.chars for chars in ("au", "aw")):
+            elif any(chars in sopheme.chars for chars in ("au", "aw")):
                 yield "AU"
-            elif any(chars in phoneme.sopheme.chars for chars in ("ou", "ow")):
+            elif any(chars in sopheme.chars for chars in ("ou", "ow")):
                 yield "OU"
-            elif any(chars in phoneme.sopheme.chars for chars in ("a",)):
+            elif any(chars in sopheme.chars for chars in ("a",)):
                 yield "A"
                 yield "AA"
-            elif any(chars in phoneme.sopheme.chars for chars in ("o",)):
+            elif any(chars in sopheme.chars for chars in ("o",)):
                 yield "O"
                 yield "OO"
-            elif any(chars in phoneme.sopheme.chars for chars in ("e",)):
+            elif any(chars in sopheme.chars for chars in ("e",)):
                 yield "E"
                 yield "EE"
-            elif any(chars in phoneme.sopheme.chars for chars in ("u",)):
+            elif any(chars in sopheme.chars for chars in ("u",)):
                 yield "U"
                 yield "UU"
-            elif any(chars in phoneme.sopheme.chars for chars in ("i",)):
+            elif any(chars in sopheme.chars for chars in ("i",)):
                 yield "I"
                 yield "II"
 
@@ -46,27 +56,27 @@ def theory():
 
 
         as_spelled = ""
-        if any(part in phoneme.sopheme.chars for part in ("aw", "au")):
+        if any(part in sopheme.chars for part in ("aw", "au")):
             as_spelled = "AU"
-        elif any(part in phoneme.sopheme.chars for part in ("ow", "ou")):
+        elif any(part in sopheme.chars for part in ("ow", "ou")):
             as_spelled = "OU"
-        elif any(part in phoneme.sopheme.chars for part in ("oi", "oy")):
+        elif any(part in sopheme.chars for part in ("oi", "oy")):
             as_spelled = "OI"
-        elif any(part in phoneme.sopheme.chars for part in ("ai", "ay")):
+        elif any(part in sopheme.chars for part in ("ai", "ay")):
             as_spelled = "AA"
-        elif any(part in phoneme.sopheme.chars for part in ("ew",)):
+        elif any(part in sopheme.chars for part in ("ew",)):
             as_spelled = "UU"
-        elif any(part in phoneme.sopheme.chars for part in ("ei",)):
+        elif any(part in sopheme.chars for part in ("ei",)):
             as_spelled = "E"
-        elif any(part in phoneme.sopheme.chars for part in ("a",)):
+        elif any(part in sopheme.chars for part in ("a",)):
             as_spelled = "A AA"
-        elif any(part in phoneme.sopheme.chars for part in ("e",)):
+        elif any(part in sopheme.chars for part in ("e",)):
             as_spelled = "E EE"
-        elif any(part in phoneme.sopheme.chars for part in ("i",)):
+        elif any(part in sopheme.chars for part in ("i",)):
             as_spelled = "I II"
-        elif any(part in phoneme.sopheme.chars for part in ("o",)):
+        elif any(part in sopheme.chars for part in ("o",)):
             as_spelled = "O OO"
-        elif any(part in phoneme.sopheme.chars for part in ("u",)):
+        elif any(part in sopheme.chars for part in ("u",)):
             as_spelled = "U UU"
 
         mapping = {
@@ -148,13 +158,13 @@ def theory():
             "i@": as_spelled,
         }
 
-        sophones = mapping.get(phoneme.keysymbol.symbol, phoneme.keysymbol.symbol).split()
+        sophones = mapping.get(keysymbol.symbol, keysymbol.symbol).split()
 
-        if any(sophone in sophones for sophone in ("O", "AU")) and "a" in phoneme.sopheme.chars:
+        if any(sophone in sophones for sophone in ("O", "AU")) and "a" in sopheme.chars:
             yield "A"
             yield "AU"
         
-        if "EE" in sophones and any(chars in phoneme.sopheme.chars for chars in ("i", "y")) and "e" not in phoneme.sopheme.chars:
+        if "EE" in sophones and any(chars in sopheme.chars for chars in ("i", "y")) and "e" not in sopheme.chars:
             yield "I"
             return
 
@@ -162,16 +172,16 @@ def theory():
     
     vowel_sophs = set(value for value in "A AA E EE I II O OO U UU AU OI OU".split())
 
-    def map_phoneme_to_soph_values(phoneme: DefinitionCursor):
-        sophs = tuple(map_phoneme_to_soph_values_base(phoneme))
+    def map_phoneme_to_soph_values(cursor: DefViewCursor):
+        sophs = tuple(map_phoneme_to_soph_values_base(cursor))
         yield from sophs
 
         if any(soph in vowel_sophs for soph in sophs):
             yield "@"
 
 
-    def map_phoneme_to_sophs(phoneme: DefinitionCursor):
-        return (Soph(value) for value in map_phoneme_to_soph_values_base(phoneme))
+    def map_phoneme_to_sophs(cursor: DefViewCursor):
+        return (Soph(value) for value in map_phoneme_to_soph_values_base(cursor))
 
 
     # def map_sopheme_to_sophs(sopheme: Sopheme):
@@ -294,58 +304,58 @@ def theory():
     )
 
 
-    def map_phonemes_to_sophemes_by_sophs(mappings: dict[str, str]):
-        def parse_sopheme(sopheme_str: str):
-            return next(parse_sopheme_seq(sopheme_str))
+    # def map_phonemes_to_sophemes_by_sophs(mappings: dict[str, str]):
+    #     def parse_sopheme(sopheme_str: str):
+    #         return next(parse_sopheme_seq(sopheme_str))
 
 
-        chords = {
-            Soph(key): parse_sopheme(sopheme_str)
-            for key, sopheme_str in mappings.items()
-        }
+    #     chords = {
+    #         Soph(key): parse_sopheme(sopheme_str)
+    #         for key, sopheme_str in mappings.items()
+    #     }
 
 
-        def generate(phoneme: DefinitionCursor):
-            for soph in map_phoneme_to_sophs(phoneme):
-                if soph not in chords: continue
-                yield chords[soph]
+    #     def generate(cursor: DefViewCursor):
+    #         for soph in map_phoneme_to_sophs(cursor):
+    #             if soph not in chords: continue
+    #             yield chords[soph]
 
-        return generate
-
-
-    yield diphthong_transition_consonants(
-        sophemes_by_first_vowel=map_phonemes_to_sophemes_by_sophs({
-            "E": ".y?",
-            "OO": ".w?",
-            "OU": ".w?",
-            "I": ".y?",
-            "EE": ".y?",
-            "UU": ".w?",
-            "AA": ".y?",
-            "OI": ".y?",
-            "II": ".y?",
-        }),
-    )
+    #     return generate
 
 
-    yield optional_middle_vowels()
+    # yield diphthong_transition_consonants(
+    #     sophemes_by_first_vowel=map_phonemes_to_sophemes_by_sophs({
+    #         "E": ".y?",
+    #         "OO": ".w?",
+    #         "OU": ".w?",
+    #         "I": ".y?",
+    #         "EE": ".y?",
+    #         "UU": ".w?",
+    #         "AA": ".y?",
+    #         "OI": ".y?",
+    #         "II": ".y?",
+    #     }),
+    # )
 
 
-    def if_phoneme_maps_to(soph_values: str):
-        sophs = set(Soph(value) for value in soph_values.split())
-        def check(phoneme: DefinitionCursor):
-            return any(soph in sophs for soph in map_phoneme_to_sophs(phoneme))
-
-        return check
+    # yield optional_middle_vowels()
 
 
-    yield optional_middle_consonants(
-        make_optional_if=if_phoneme_maps_to("Y W"),
-    )
+    # def if_phoneme_maps_to(soph_values: str):
+    #     sophs = set(Soph(value) for value in soph_values.split())
+    #     def check(phoneme: DefinitionCursor):
+    #         return any(soph in sophs for soph in map_phoneme_to_sophs(phoneme))
 
-    yield optional_unstressed_middle_consonants(
-        make_optional_if=if_phoneme_maps_to("R N L"),
-    )
+    #     return check
+
+
+    # yield optional_middle_consonants(
+    #     make_optional_if=if_phoneme_maps_to("Y W"),
+    # )
+
+    # yield optional_unstressed_middle_consonants(
+    #     make_optional_if=if_phoneme_maps_to("R N L"),
+    # )
 
 
 

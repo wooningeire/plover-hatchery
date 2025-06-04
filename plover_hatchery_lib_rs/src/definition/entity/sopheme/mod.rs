@@ -1,6 +1,4 @@
-use std::sync::Arc;
-
-use pyo3::{prelude::*, types::PyList};
+use pyo3::prelude::*;
 
 mod keysymbol;
 pub use keysymbol::Keysymbol;
