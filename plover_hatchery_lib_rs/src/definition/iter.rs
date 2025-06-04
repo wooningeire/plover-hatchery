@@ -32,7 +32,7 @@ enum StepData<'a> {
 }
 
 #[pyclass]
-enum StepDir {
+pub enum StepDir {
     In,
     Over,
     Out,
@@ -56,7 +56,7 @@ impl<'a> DefViewCursor<'a> {
     }
 
 
-    fn next_step_data(&'a self) -> Option<StepData<'a>> {
+    fn next_step_data(&self) -> Option<StepData<'a>> {
         let stack = self.stack.borrow();
 
         let tip = stack.last()?;
@@ -79,7 +79,7 @@ impl<'a> DefViewCursor<'a> {
         Some(StepData::Out)
     }
 
-    pub fn step(&'a mut self) -> Option<StepDir> {
+    pub fn step(&mut self) -> Option<StepDir> {
         let data = self.next_step_data()?;
 
         let mut stack = self.stack.borrow_mut();

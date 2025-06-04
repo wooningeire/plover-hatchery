@@ -54,7 +54,6 @@ impl DefView {
 
     fn with_rs_result<T>(&self, py: Python<'_>, func: impl Fn(super::DefView) -> Result<T, &'static str>) -> Result<T, PyErr> {
         self.with_rs(py, func)
-            .map_err(|msg| PyException::new_err(msg))?
             .map_err(|msg| PyException::new_err(msg))
     }
 }
