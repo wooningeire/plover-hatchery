@@ -13,11 +13,14 @@ pub use entity::{
 mod iter;
 pub use iter::{
     DefViewCursor,
+    StepData,
+    StackItem,
 };
 
 pub mod py;
 
 
+#[pyclass]
 #[derive(Clone)]
 pub enum RawableEntity {
     Entity(Entity),
@@ -160,7 +163,7 @@ impl<'a> DefViewRoot<'a> {
     }
 }
 
-struct DefView<'a> {
+pub struct DefView<'a> {
     defs: &'a DefDict,
     root: DefViewRoot<'a>,
 }
@@ -251,7 +254,7 @@ impl<'a> DefView<'a> {
     }
 
 
-    pub fn read(&'a self, cursor: Vec<usize>) -> Result<Option<DefViewItem<'a>>, &'static str> {
+    pub fn read(&'a self, cursor: &Vec<usize>) -> Result<Option<DefViewItem<'a>>, &'static str> {
         let mut cur_entity = self.root.as_item();
 
         for index in cursor {
@@ -307,6 +310,20 @@ impl<'a> DefViewItem<'a> {
             DefViewItem::Entity(entity) => Ok(entity.get(0, defs)?),
 
             _ => Ok(None),
+        }
+    }
+
+    pub fn get_if_sopheme(&self) -> Option<&'a Sopheme> {
+        match self {
+            DefViewItem::Rawable(rawable) => match rawable {
+                RawableEntity::Entity(entity) => entity.get_if_sopheme(),
+
+                _ => None,
+            },
+
+            DefViewItem::Entity(entity) => entity.get_if_sopheme(),
+
+            _ => None,
         }
     }
 }

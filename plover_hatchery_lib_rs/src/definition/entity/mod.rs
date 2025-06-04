@@ -56,4 +56,14 @@ impl Entity {
                 .ok_or("entry not found"),
         }
     }
+
+    pub fn get_if_sopheme<'a>(&'a self) -> Option<&'a Sopheme> {
+        match self {
+            Entity::Sopheme(sopheme) => {
+                Some(sopheme)
+            },
+
+            _ => None,
+        }
+    }
 }

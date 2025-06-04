@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Iterable, NamedTuple, Protocol, final
 
 from plover.steno import Stroke
-from plover_hatchery_lib_rs import DefView
+from plover_hatchery_lib_rs import DefView, DefViewCursor, Keysymbol, Sopheme
 
 from plover_hatchery.lib.pipes.Hook import Hook
 from plover_hatchery.lib.pipes.Plugin import GetPluginApi, Plugin, define_plugin
@@ -20,7 +20,7 @@ class SophChordAssociation(NamedTuple):
     sophs: tuple[Soph, ...]
     chord: Stroke
     chord_starts_new_stroke: bool
-    phonemes: tuple[DefinitionCursor, ...]
+    phonemes: tuple[DefViewCursor, ...]
     transitions: tuple[TransitionKey, ...]
 
 class LookupResultWithAssociations(NamedTuple):
@@ -62,7 +62,7 @@ class SophTrieApi:
             self,
             *,
             state: Any,
-            phoneme: DefinitionCursor,
+            cursor: DefViewCursor,
             sophs: set[Soph],
             paths: JoinedTriePaths,
             node_srcs: tuple[NodeSrc, ...],
@@ -119,9 +119,9 @@ class SophTrieApi:
             
 
     trie: NondeterministicTrie[Soph, EntryIndex]
-    transition_data: dict[TransitionCostKey, DefinitionCursor]
+    transition_data: dict[TransitionCostKey, DefViewCursor]
 
-    def register_transition(self, transition: TransitionKey, entry_id: EntryIndex, phoneme: DefinitionCursor):
+    def register_transition(self, transition: TransitionKey, entry_id: EntryIndex, phoneme: DefViewCursor):
         cost_key = TransitionCostKey(transition, entry_id.value)
         self.transition_data[cost_key] = phoneme
 
@@ -138,7 +138,7 @@ class SophTrieApi:
 
 def soph_trie(
     *,
-    map_phoneme_to_sophs: Callable[[DefinitionCursor], Iterable[str]],
+    map_to_sophs: Callable[[DefViewCursor], Iterable[str]],
     sophs_to_chords_dicts: Iterable[dict[str, str]],
 ) -> Plugin[SophTrieApi]:
     sophs_to_chords = join_sophs_to_chords_dicts(sophs_to_chords_dicts)
@@ -150,7 +150,7 @@ def soph_trie(
 
 
         trie: NondeterministicTrie[Soph, EntryIndex] = NondeterministicTrie()
-        transition_phonemes: dict[TransitionCostKey, DefinitionCursor] = {}
+        transition_phonemes: dict[TransitionCostKey, DefViewCursor] = {}
 
         api = SophTrieApi(trie, transition_phonemes)
 
@@ -170,14 +170,17 @@ def soph_trie(
             src_nodes: list[NodeSrc] = [NodeSrc(0)]
             new_src_nodes: list[NodeSrc] = []
 
-            for phoneme in sophemes.collect_keysymbols():
-                if not phoneme.keysymbol.optional:
+            @view.foreach_keysymbol
+            def _(cursor: DefViewCursor, keysymbol: Keysymbol):
+                nonlocal src_nodes, new_src_nodes
+
+                if not keysymbol.optional:
                     new_src_nodes = []
                 else:
                     new_src_nodes = list(NodeSrc.increment_costs(new_src_nodes, 5))
 
 
-                sophs = set(Soph(value) for value in map_phoneme_to_sophs(phoneme))
+                sophs = set(Soph(value) for value in map_to_sophs(cursor))
 
 
                 paths = trie.join(src_nodes, sophs, entry_id)
@@ -185,12 +188,12 @@ def soph_trie(
                     new_src_nodes.append(NodeSrc(paths.dst_node_id))
 
                 for seq in paths.transition_seqs:
-                    api.register_transition(seq.transitions[0], entry_id, phoneme)
+                    api.register_transition(seq.transitions[0], entry_id, cursor)
 
 
                 api.add_soph_transition.emit_with_states(
                     states,
-                    phoneme=phoneme,
+                    cursor=cursor,
                     sophs=sophs,
                     paths=paths,
                     node_srcs=tuple(src_nodes),
@@ -387,7 +390,7 @@ def soph_trie(
 
 
             def resolve_phonemes(lookup_result: LookupResult[EntryIndex], association: SophChordAssociationWithUnresolvedPhonemes):
-                phonemes: list[DefinitionCursor] = []
+                phonemes: list[DefViewCursor] = []
                 for transition in association.transitions:
                     cost_key = TransitionCostKey(transition, lookup_result.translation_id)
                     if cost_key not in transition_phonemes: continue

@@ -3,7 +3,7 @@ from collections.abc import Iterable
 
 from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
 from plover_hatchery.lib.sopheme import DefinitionSophemes, DefinitionCursor
-from plover_hatchery_lib_rs import Def, DefView, Keysymbol, OverridableEntity, add_diphthong_transitions
+from plover_hatchery_lib_rs import Def, DefView, DefViewCursor, Keysymbol, RawableEntity, add_diphthong_transitions
 
 from ..sopheme import Sopheme
 from .Plugin import GetPluginApi, Plugin, define_plugin
@@ -66,7 +66,10 @@ def diphthong_transition_consonants(
     def plugin(base_hooks: TheoryHooks, **_):
         @base_hooks.process_def.listen(diphthong_transition_consonants)
         def _(view: DefView, **_):
-            return add_diphthong_transitions(sophemes_by_first_vowel)
+            @view.foreach_keysymbol
+            def _(cursor: DefViewCursor, keysymbol: Keysymbol):
+                pass
+
 
             # prev_phoneme_if_was_vowel = None
 

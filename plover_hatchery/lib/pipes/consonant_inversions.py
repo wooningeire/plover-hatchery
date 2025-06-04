@@ -5,6 +5,7 @@ from typing import Any, Generator
 from dataclasses import dataclass, field
 
 from plover.steno import Stroke
+from plover_hatchery_lib_rs import DefViewCursor
 from plover_hatchery.lib.pipes.Plugin import define_plugin, GetPluginApi
 from plover_hatchery.lib.pipes.soph_trie import ChordToSophSearchResult, ChordToSophSearchResultWithSrcIndex, LookupResultWithAssociations, SophChordAssociation, SophsToTranslationSearchPath, soph_trie
 from plover_hatchery.lib.pipes.types import EntryIndex, Soph
@@ -30,7 +31,7 @@ def consonant_inversions(*, consonant_sophs_str: str, inversion_domains_steno: s
         class PastConsonant:
             node_srcs: tuple[NodeSrc, ...]
             sophs: tuple[Soph, ...]
-            phoneme: DefinitionCursor
+            cursor: DefViewCursor
 
 
         class ConsonantInversionsAddEntryState:
@@ -53,11 +54,20 @@ def consonant_inversions(*, consonant_sophs_str: str, inversion_domains_steno: s
             return Soph(f"inversion:{' '.join(soph.value for soph in sorted_sophs)}")
 
         def get_inversion_sophs(past_consonants: list[PastConsonant]):
-            product_choices = (
-                (*consonant.sophs, None) if consonant.phoneme.keysymbol.optional else consonant.sophs
-                for consonant in past_consonants
-            )
-            for combo in itertools.product(*product_choices):
+            def get_product_choices():
+                for consonant in past_consonants:
+                    tip = consonant.cursor.tip()
+                    assert tip is not None
+
+                    keysymbol = tip.maybe_keysymbol
+                    assert keysymbol is not None
+
+                    if keysymbol.optional:
+                        yield (*consonant.sophs, None)
+                    else:
+                        yield consonant.sophs
+
+            for combo in itertools.product(*get_product_choices()):
                 yield create_inversion_soph(combo)
 
 
@@ -65,7 +75,7 @@ def consonant_inversions(*, consonant_sophs_str: str, inversion_domains_steno: s
         def _(
             state: ConsonantInversionsAddEntryState,
             sophs: set[Soph],
-            phoneme: DefinitionCursor,
+            cursor: DefViewCursor,
             paths: JoinedTriePaths,
             node_srcs: tuple[NodeSrc, ...],
             trie: NondeterministicTrie[Soph, EntryIndex],
@@ -73,8 +83,14 @@ def consonant_inversions(*, consonant_sophs_str: str, inversion_domains_steno: s
             **_,
         ):
             if any(soph not in consonant_sophs for soph in sophs):
+                tip = cursor.tip()
+                assert tip is not None
+
+                keysymbol = tip.maybe_keysymbol
+                assert keysymbol is not None
+
                 # TODO verify this
-                if not phoneme.keysymbol.optional:
+                if not keysymbol.optional:
                     state.past_consonants = []
                     
                 return
@@ -82,7 +98,7 @@ def consonant_inversions(*, consonant_sophs_str: str, inversion_domains_steno: s
             current_consonant_sophs = tuple(sophs & consonant_sophs)
             if len(current_consonant_sophs) == 0: return
 
-            state.past_consonants.append(PastConsonant(node_srcs, current_consonant_sophs, phoneme))
+            state.past_consonants.append(PastConsonant(node_srcs, current_consonant_sophs, cursor))
 
             if paths.dst_node_id is not None:
                 for i, consonant in enumerate(state.past_consonants[:-1]):

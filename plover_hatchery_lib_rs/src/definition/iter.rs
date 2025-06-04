@@ -5,8 +5,8 @@ use super::*;
 
 #[derive(Clone)]
 pub struct StackItem<'a> {
-    index: usize,
-    item: DefViewItem<'a>,
+    pub index: usize,
+    pub item: DefViewItem<'a>,
 }
 
 
@@ -25,22 +25,16 @@ impl<'a> StackItem<'a> {
     }
 }
 
-enum StepData<'a> {
+#[derive(Clone)]
+pub enum StepData<'a> {
     In(StackItem<'a>),
     Over(StackItem<'a>),
     Out,
 }
 
-#[pyclass]
-pub enum StepDir {
-    In,
-    Over,
-    Out,
-}
-
 pub struct DefViewCursor<'a> {
     defs: &'a DefDict,
-    stack: RefCell<Vec<StackItem<'a>>>,
+    pub stack: Vec<StackItem<'a>>,
 }
 
 impl<'a> DefViewCursor<'a> {
@@ -48,18 +42,16 @@ impl<'a> DefViewCursor<'a> {
         DefViewCursor {
             defs: view.defs,
 
-            stack: RefCell::new(vec![StackItem {
+            stack: vec![StackItem {
                 index: 0,
                 item: view.root.as_item(),
-            }]),
+            }],
         }
     }
 
 
-    fn next_step_data(&self) -> Option<StepData<'a>> {
-        let stack = self.stack.borrow();
-
-        let tip = stack.last()?;
+    pub fn next_step_data(&self) -> Option<StepData<'a>> {
+        let tip = self.stack.last()?;
 
         // First attempt to step in from the tip
         if let Some(inner) = tip.get(0, self.defs) {
@@ -67,7 +59,7 @@ impl<'a> DefViewCursor<'a> {
         }
 
         // Next attempt to step over
-        let parent = if stack.len() >= 2 { &stack[stack.len() - 2] } else { return None };
+        let parent = if self.stack.len() >= 2 { &self.stack[self.stack.len() - 2] } else { return None };
 
 
         let new_tip_index = tip.index + 1;
@@ -79,27 +71,27 @@ impl<'a> DefViewCursor<'a> {
         Some(StepData::Out)
     }
 
-    pub fn step(&mut self) -> Option<StepDir> {
-        let data = self.next_step_data()?;
-
-        let mut stack = self.stack.borrow_mut();
-
+    pub fn step_with_data(&mut self, data: &StepData<'a>) {
         match data {
             StepData::In(item) => {
-                stack.push(item);
-                Some(StepDir::In)
+                self.stack.push(item.clone());
             },
 
             StepData::Over(item) => {
-                let last_index = stack.len() - 1;
-                stack[last_index] = item;
-                Some(StepDir::Over)
+                let last_index = self.stack.len() - 1;
+                self.stack[last_index] = item.clone();
             },
 
             StepData::Out => {
-                stack.pop();
-                Some(StepDir::Out)
+                self.stack.pop();
             },
         }
+    }
+
+    pub fn step(&mut self) -> Option<StepData<'a>> {
+        let data = self.next_step_data()?;
+        self.step_with_data(&data);
+
+        Some(data)
     }
 }

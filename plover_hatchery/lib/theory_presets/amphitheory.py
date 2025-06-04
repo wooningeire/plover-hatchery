@@ -278,7 +278,7 @@ def theory():
     }
 
     yield soph_trie(
-        map_phoneme_to_sophs=map_phoneme_to_soph_values,
+        map_to_sophs=map_phoneme_to_soph_values,
         sophs_to_chords_dicts=(sophs_to_main_chords, sophs_to_alternate_chords),
     )
 

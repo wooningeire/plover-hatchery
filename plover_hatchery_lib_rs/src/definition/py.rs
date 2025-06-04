@@ -37,6 +37,63 @@ impl DefDict {
 }
 
 
+// #[pyclass]
+// #[derive(Clone)]
+// pub enum DefViewItem {
+//     Root(Definition),
+//     Rawable(RawableEntity),
+//     Entity(Entity),
+//     Keysymbol(Keysymbol),
+// }
+
+// impl DefViewItem {
+//     pub fn of(item: super::DefViewItem) -> DefViewItem {
+//         match item {
+//             super::DefViewItem::Root() => ,
+//             super::DefViewItem::Rawable(rawable) => DefViewItem::Rawable(()),
+//             super::DefViewItem::Entity(entity) => DefViewItem::Entity(entity.clone()),
+//             super::DefViewItem::Keysymbol(keysymbol) => DefViewItem::Keysymbol(keysymbol.clone()),
+//         }
+//     }
+// }
+
+
+// #[pyclass(get_all)]
+// #[derive(Clone)]
+// pub struct StackItem {
+//     index: usize,
+//     item: DefViewItem,
+// }
+
+// impl StackItem {
+//     pub fn of(item: super::StackItem) -> StackItem {
+//         StackItem {
+//             index: item.index,
+//             item: DefViewItem::of(item.item),
+//         }
+//     }
+// }
+
+
+// #[pyclass]
+// #[derive(Clone)]
+// pub enum StepData {
+//     In(StackItem),
+//     Over(StackItem),
+//     Out(),
+// }
+
+// impl StepData {
+//     pub fn of(data: super::StepData) -> StepData {
+//         match data {
+//             super::StepData::In(item) => StepData::In(StackItem::of(item)),
+//             super::StepData::Over(item) => StepData::Over(StackItem::of(item)),
+//             super::StepData::Out => StepData::Out(),
+//         }
+//     }
+// }
+
+
 #[pyclass(get_all)]
 pub struct DefView {
     defs: Py<DefDict>,
@@ -80,23 +137,96 @@ impl DefView {
 
     pub fn foreach_step(&self, py: Python<'_>, callable: PyObject) {
         self.with_rs(py, |view_rs| {
-            let mut cursor = DefViewCursor::new(&view_rs);
+            let mut cursor = super::DefViewCursor::new(&view_rs);
 
-            while let Some(dir) = cursor.step() {
-                _ = callable.call(py, (dir,), None);
+            while let Some(data) = cursor.step() {
+                _ = callable.call(py, (/* StepData::of(data) */), None);
             }
         });
     }
 
-    // pub fn foreach_sopheme(&self, py: Python<'_>, callable: PyObject) {
-    //     self.with_rs(py, |view_rs| {
-    //         view_rs.sophemes().for_each(|item| {
-    //             _ = callable.call(py, (item.cursor.clone(),), None);
-    //         });
-    //     });
-    // }
+    pub fn foreach_keysymbol(pyself: Py<Self>, callable: PyObject, py: Python<'_>) {
+        pyself.borrow(py).with_rs(py, |view_rs| {
+            let mut cursor = super::DefViewCursor::new(&view_rs);
 
-    // pub fn loc_first_keysymbol() {
+            while let Some(data) = cursor.step() {
+                match data {
+                    super::StepData::In(item) => call_keysymbol_callback(item, &cursor, &pyself, &callable, py),
 
-    // }
+                    super::StepData::Over(item) => call_keysymbol_callback(item, &cursor, &pyself, &callable, py),
+
+                    _ => {},
+                }
+            }
+        });
+    }
+}
+
+fn call_keysymbol_callback(item: super::StackItem, cursor: &super::DefViewCursor, pyself: &Py<DefView>, callable: &PyObject, py: Python<'_>) {
+    if let super::DefViewItem::Keysymbol(keysymbol) = item.item {
+        _ = callable.call(py, (DefViewCursor::of(pyself.clone_ref(py), &cursor), keysymbol.clone()), None);
+
+        // if let Some(parent) = cursor.stack.get(cursor.stack.len() - 2) {
+        //     if let Some(sopheme) = parent.item.get_if_sopheme() {
+                // _ = callable.call(py, (DefViewCursor::of(pyself.clone_ref(py), &cursor), sopheme.clone(), keysymbol.clone()), None);
+        //     }
+        // }
+    }
+}
+
+
+#[pyclass]
+pub enum DefViewItem {
+    Keysymbol(Keysymbol),
+    Temp_NotKeysymbol(),
+}
+
+impl DefViewItem {
+    pub fn of(item: super::DefViewItem) -> DefViewItem {
+        match item {
+            super::DefViewItem::Keysymbol(keysymbol) => DefViewItem::Keysymbol(keysymbol.clone()),
+            
+            _ => DefViewItem::Temp_NotKeysymbol(),
+        }
+    }
+}
+
+#[pymethods]
+impl DefViewItem {
+    #[getter]
+    pub fn maybe_keysymbol(&self) -> Option<Keysymbol> {
+        match self {
+            DefViewItem::Keysymbol(keysymbol) => Some(keysymbol.clone()),
+            
+            _ => None,
+        }
+    }
+}
+
+
+#[pyclass(get_all)]
+pub struct DefViewCursor {
+    view: Py<DefView>,
+    index_stack: Vec<usize>,
+}
+
+impl DefViewCursor {
+    pub fn of(view: Py<DefView>, cursor: &super::DefViewCursor) -> DefViewCursor {
+        DefViewCursor {
+            view,
+            index_stack: cursor.stack.iter()
+                .map(|item| item.index)
+                .collect::<Vec<_>>(),
+        }
+    }
+}
+
+#[pymethods]
+impl DefViewCursor {
+    pub fn tip(&self, py: Python<'_>) -> Result<Option<DefViewItem>, PyErr> {
+        self.view.borrow(py).with_rs_result(py, |view_rs| {
+            view_rs.read(&self.index_stack)
+                .map(|item| item.map(DefViewItem::of))
+        })
+    }
 }
