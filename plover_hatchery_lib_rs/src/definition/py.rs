@@ -1,7 +1,10 @@
 
+use std::sync::Arc;
+
 use pyo3::{prelude::*, exceptions::PyException};
 
 use super::*;
+
 
 
 #[pyclass]
@@ -34,37 +37,35 @@ impl DefDict {
 }
 
 
-
-#[pyclass]
+#[pyclass(get_all)]
 pub struct DefView {
     defs: Py<DefDict>,
-    base_def: Py<Def>,
+    root_def: Py<Def>,
 }
 
 impl DefView {
     fn with_rs<T>(&self, py: Python<'_>, func: impl Fn(super::DefView) -> T) -> T {
         let defs = self.defs.borrow(py);
-        let base_def = self.base_def.borrow(py);
-        let view_rs = super::DefView::new(&defs.dict, &base_def);
+        let root_def = self.root_def.borrow(py);
+        let view_rs = super::DefView::new_ref(&defs.dict, &root_def);
 
         func(view_rs)
     }
 
-    fn with_rs_result<T>(&self, py: Python<'_>, func: fn (definition: super::DefView) -> Result<T, &'static str>) -> Result<T, PyErr> {
-        self.with_rs(
-            py,
-            |view_rs| func(view_rs).map_err(|msg| PyErr::new::<PyException, _>(msg))
-        )
+    fn with_rs_result<T>(&self, py: Python<'_>, func: impl Fn(super::DefView) -> Result<T, &'static str>) -> Result<T, PyErr> {
+        self.with_rs(py, func)
+            .map_err(|msg| PyException::new_err(msg))?
+            .map_err(|msg| PyException::new_err(msg))
     }
 }
 
 #[pymethods]
 impl DefView {
     #[new]
-    pub fn new(defs: Py<DefDict>, base_def: Py<Def>) -> Self {
+    pub fn new(defs: Py<DefDict>, root_def: Py<Def>) -> Self {
         DefView {
             defs,
-            base_def,
+            root_def,
         }
     }
 
@@ -77,6 +78,16 @@ impl DefView {
         self.with_rs_result(py, |view_rs| view_rs.translation())
     }
 
+
+    pub fn foreach_step(&self, py: Python<'_>, callable: PyObject) {
+        self.with_rs(py, |view_rs| {
+            let mut cursor = DefViewCursor::new(&view_rs);
+
+            while let Some(dir) = cursor.step() {
+                _ = callable.call(py, (dir,), None);
+            }
+        });
+    }
 
     // pub fn foreach_sopheme(&self, py: Python<'_>, callable: PyObject) {
     //     self.with_rs(py, |view_rs| {

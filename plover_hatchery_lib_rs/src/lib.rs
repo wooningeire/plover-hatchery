@@ -4,11 +4,11 @@ mod definition;
 use definition::{
     EntitySeq,
     py::{
+        // Def,
         DefDict,
         DefView,
     },
     SophemeSeq,
-    Def,
     Entity,
     Sopheme,
     Keysymbol,
@@ -19,8 +19,8 @@ use definition::{
 #[pymodule]
 pub fn plover_hatchery_lib_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<EntitySeq>()?;
+    // m.add_class::<Def>()?;
     m.add_class::<DefDict>()?;
-    m.add_class::<Def>()?;
     m.add_class::<DefView>()?;
     m.add_class::<SophemeSeq>()?;
     m.add_class::<Entity>()?;

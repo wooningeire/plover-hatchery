@@ -47,3 +47,10 @@ impl Sopheme {
         self.__str__()
     }
 }
+
+
+impl Sopheme {
+    pub fn get<'a>(&'a self, index: usize) -> Option<&'a Keysymbol> {
+        self.keysymbols.get(index)
+    }
+}

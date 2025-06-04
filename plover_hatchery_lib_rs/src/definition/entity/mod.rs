@@ -6,6 +6,8 @@ pub use sopheme::{Sopheme, Keysymbol};
 mod transclusion;
 pub use transclusion::Transclusion;
 
+use super::{DefDict, DefViewItem, RawableEntity};
+
 
 #[pyclass]
 #[derive(Clone)]
@@ -39,6 +41,19 @@ impl Entity {
         match self {
             Entity::Transclusion(transclusion) => Some(transclusion.clone()),
             _ => None,
+        }
+    }
+}
+
+impl Entity {
+    pub fn get<'a>(&'a self, index: usize, defs: &'a DefDict) -> Result<Option<DefViewItem<'a>>, &'static str> {
+        match self {
+            Entity::Sopheme(sopheme) => Ok(sopheme.get(index).map(DefViewItem::Keysymbol)),
+
+            Entity::Transclusion(transclusion) => defs.get(&transclusion.target_varname)
+                .and_then(|seq| seq.entities.get(index))
+                .map(|entity| Some(DefViewItem::Entity(entity)))
+                .ok_or("entry not found"),
         }
     }
 }

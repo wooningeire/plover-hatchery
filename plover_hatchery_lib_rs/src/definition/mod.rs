@@ -10,33 +10,38 @@ pub use entity::{
     Transclusion,
 };
 
-// mod iter;
-// pub use iter::DefSophemesIter;
+mod iter;
+pub use iter::{
+    DefViewCursor,
+};
 
 pub mod py;
 
 
 #[derive(Clone)]
-pub enum OverridableEntity {
+pub enum RawableEntity {
     Entity(Entity),
-    Override(Box<Def>),
+    RawDef(Def),
 }
 
-impl OverridableEntity {
-    pub fn of(entity: &Entity) -> OverridableEntity {
-        OverridableEntity::Entity(entity.clone())
+impl RawableEntity {
+    pub fn get<'a>(&'a self, index: usize, defs: &'a DefDict) -> Result<Option<DefViewItem<'a>>, &'static str> {
+        match self {
+            RawableEntity::Entity(entity) => Ok(entity.get(index, defs)?),
+
+            RawableEntity::RawDef(def) => Ok(def.get(index)),
+        }
     }
 }
 
-#[pyclass]
 #[derive(Clone)]
-pub struct DefEntities {
-    items: Vec<OverridableEntity>,
+pub struct OverridableEntitySeq {
+    items: Vec<RawableEntity>,
 }
 
-impl DefEntities {
-    pub fn new(items: Vec<OverridableEntity>) -> Self {
-        DefEntities {
+impl OverridableEntitySeq {
+    pub fn new(items: Vec<RawableEntity>) -> Self {
+        OverridableEntitySeq {
             items,
         }
     }
@@ -45,27 +50,30 @@ impl DefEntities {
 #[pyclass]
 #[derive(Clone)]
 pub struct Def {
-    entities: DefEntities,
+    entities: OverridableEntitySeq,
     varname: String,
 }
 
 impl Def {
-    pub fn of(entity_seq: &EntitySeq, varname: String) -> Def {
+    pub fn of(entity_seq: EntitySeq, varname: String) -> Def {
         Def {
-            entities: DefEntities::new(
-                entity_seq.entities.iter()
-                    .map(|entity| OverridableEntity::of(entity))
+            entities: OverridableEntitySeq::new(
+                entity_seq.entities.into_iter()
+                    .map(|entity| RawableEntity::Entity(entity))
                     .collect::<Vec<_>>(),
             ),
             varname,
         }
     }
+
+    pub fn get<'a>(&'a self, index: usize) -> Option<DefViewItem<'a>> {
+        self.entities.items.get(index)
+            .map(DefViewItem::Rawable)
+    }
 }
 
-#[pymethods]
 impl Def {
-    #[new]
-    pub fn new(entities: DefEntities, varname: String) -> Def {
+    pub fn new(entities: OverridableEntitySeq, varname: String) -> Def {
         Def {
             entities,
             varname,
@@ -92,7 +100,11 @@ impl DefDict {
 
     pub fn get_def(&self, varname: &str) -> Option<Def> {
         self.entries.get(varname)
-            .map(|entity_seq| Def::of(entity_seq, varname.to_string()))
+            .map(|entity_seq| Def::of(entity_seq.clone(), varname.to_string()))
+    }
+
+    pub fn get<'a>(&'a self, varname: &str) -> Option<&'a EntitySeq> {
+        self.entries.get(varname)
     }
 }
 
@@ -128,52 +140,91 @@ impl SophemeSeq {
     }
 }
 
+
+enum DefViewRoot<'a> {
+    Def(Def),
+    DefRef(&'a Def),
+}
+
+impl<'a> DefViewRoot<'a> {
+    fn def_ref(&'a self) -> &'a Def {
+        match self {
+            DefViewRoot::Def(ref def) => def,
+
+            DefViewRoot::DefRef(def) => def,
+        }
+    }
+
+    fn as_item(&'a self) -> DefViewItem<'a> {
+        DefViewItem::Root(&self.def_ref())
+    }
+}
+
 struct DefView<'a> {
     defs: &'a DefDict,
-    base_def: &'a Def,
+    root: DefViewRoot<'a>,
 }
 
 
 impl<'a> DefView<'a> {
-    pub fn new(defs: &'a DefDict, base_def: &'a Def) -> Self {
+    pub fn new(defs: &'a DefDict, root_def: Def) -> Self {
         DefView {
             defs,
-            base_def,
+            root: DefViewRoot::Def(root_def),
         }
     }
 
+    pub fn new_ref(defs: &'a DefDict, root_def: &'a Def) -> Self {
+        DefView {
+            defs,
+            root: DefViewRoot::DefRef(root_def),
+        }
+    }
+
+    pub fn get_entry(defs: &'a DefDict, varname: &str) -> Result<DefView<'a>, &'static str> {
+        Ok(
+            DefView::new(defs, defs.get_def(varname).ok_or("entry is not defined")?)
+        )
+    }
     
     pub fn collect_sophemes(&self) -> Result<SophemeSeq, &'static str> {
-        fn dfs(def: &Def, dict: &DefDict, sophemes: &mut Vec<Sopheme>, visited: &mut HashSet<String>) -> Result<(), &'static str> {
+        fn dfs(entity: &RawableEntity, dict: &DefDict, sophemes: &mut Vec<Sopheme>, visited: &mut HashSet<String>) -> Result<(), &'static str> {
+            match entity {
+                RawableEntity::Entity(entity) => match entity {
+                    Entity::Sopheme(sopheme) => {
+                        sophemes.push(sopheme.clone());
+                    },
+
+                    Entity::Transclusion(transclusion) => {
+                        if visited.contains(&transclusion.target_varname) {
+                            return Err("circular dependency");
+                        }
+
+                        match dict.get_def(&transclusion.target_varname) {
+                            Some(inner_def) => {
+                                dfs_def(&inner_def, dict, sophemes, visited)?;
+                            },
+                            None => {
+                                return Err("entry is not defined");
+                            },
+                        };
+                    },
+                },
+
+                RawableEntity::RawDef(child_def) => {
+                    dfs_def(child_def, dict, sophemes, visited)?;
+                },
+            }
+
+            Ok(())
+        }
+
+
+        fn dfs_def(def: &Def, dict: &DefDict, sophemes: &mut Vec<Sopheme>, visited: &mut HashSet<String>) -> Result<(), &'static str> {
             visited.insert(def.varname.clone());
 
             for overridable_entity in def.entities.items.iter() {
-                match overridable_entity {
-                    OverridableEntity::Entity(entity) => match entity {
-                        Entity::Sopheme(sopheme) => {
-                            sophemes.push(sopheme.clone());
-                        },
-
-                        Entity::Transclusion(transclusion) => {
-                            if visited.contains(&transclusion.target_varname) {
-                                return Err("circular dependency");
-                            }
-
-                            match dict.get_def(&transclusion.target_varname) {
-                                Some(inner_def) => {
-                                    dfs(&inner_def, dict, sophemes, visited)?;
-                                },
-                                None => {
-                                    return Err("entry is not defined");
-                                },
-                            };
-                        },
-                    },
-
-                    OverridableEntity::Override(child_def) => {
-                        dfs(child_def, dict, sophemes, visited)?;
-                    },
-                }
+                dfs(overridable_entity, dict, sophemes, visited);
             }
             
             visited.remove(&def.varname.clone());
@@ -183,7 +234,8 @@ impl<'a> DefView<'a> {
 
 
         let mut sophemes: Vec<Sopheme> = Vec::new();
-        dfs(&self.base_def, &self.defs, &mut sophemes, &mut HashSet::new())?;
+        
+        dfs_def(self.root.def_ref(), &self.defs, &mut sophemes, &mut HashSet::new())?;
 
         Ok(SophemeSeq::new(sophemes))
     }
@@ -199,7 +251,62 @@ impl<'a> DefView<'a> {
     }
 
 
-    // pub fn sophemes(&self) -> DefSophemesIter<'a> {
-    //     DefSophemesIter::new(&self.base_def)
-    // }
+    pub fn read(&'a self, cursor: Vec<usize>) -> Result<Option<DefViewItem<'a>>, &'static str> {
+        let mut cur_entity = self.root.as_item();
+
+        for index in cursor {
+            match cur_entity {
+                DefViewItem::Root(def) => match def.get(index) {
+                    Some(item) => {
+                        cur_entity = item;
+                    },
+
+                    None => return Ok(None),
+                },
+
+                DefViewItem::Rawable(rawable) => match rawable.get(index, self.defs)? {
+                    Some(item) => {
+                        cur_entity = item;
+                    },
+
+                    None => return Ok(None),
+                },
+
+                DefViewItem::Entity(entity) => match entity.get(index, self.defs)? {
+                    Some(item) => {
+                        cur_entity = item;
+                    },
+
+                    None => return Ok(None),
+                },
+
+                DefViewItem::Keysymbol(_) => return Ok(None),
+            }
+        }
+
+        Ok(Some(cur_entity))
+    }
+}
+
+
+#[derive(Clone)]
+pub enum DefViewItem<'a> {
+    Root(&'a Def),
+    Rawable(&'a RawableEntity),
+    Entity(&'a Entity),
+    Keysymbol(&'a Keysymbol),
+}
+
+impl<'a> DefViewItem<'a> {
+    pub fn get(&self, index: usize, defs: &'a DefDict) -> Result<Option<DefViewItem<'a>>, &'static str> {
+        match self {
+            DefViewItem::Root(def) => Ok(def.get(index)),
+
+            DefViewItem::Rawable(rawable) => Ok(rawable.get(0, defs)?),
+
+            DefViewItem::Entity(entity) => Ok(entity.get(0, defs)?),
+
+            _ => Ok(None),
+        }
+    }
 }

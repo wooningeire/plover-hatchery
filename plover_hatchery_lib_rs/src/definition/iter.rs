@@ -1,60 +1,105 @@
-// use super::{
-//     Def, DefRefCursor, OverridableEntity, Sopheme
-// };
+use std::{cell::RefCell, rc::Rc};
+
+use super::*;
 
 
-// pub struct DefSophemesIter<'a> {
-//     def: &'a Def,
-//     cursor: DefRefCursor<'a>,
-// }
-
-// impl<'a> DefSophemesIter<'a> {
-//     pub fn new(def: &'a Def) -> DefSophemesIter<'a> {
-//         DefSophemesIter {
-//             cursor: DefRefCursor::initial(def),
-//             def,
-//         }
-//     }
-// }
-
-// impl<'a> Iterator for DefSophemesIter<'a> {
-//     type Item = &'a Sopheme;
-
-//     fn next(&mut self) -> Option<Self::Item> {
-//         loop {
-//             match self.cursor.cur_tip_item() {
-//                 Some(overridable_entity) => match overridable_entity {
-                    
-//                 },
-//                 None => return None,
-//             }
-//         }
-//     }
-// }
+#[derive(Clone)]
+pub struct StackItem<'a> {
+    index: usize,
+    item: DefViewItem<'a>,
+}
 
 
-// pub struct KeysymbolsIter<'a> {
-//     cursor: DefRefCursor<'a>,
-// }
+impl<'a> StackItem<'a> {
+    pub fn new(index: usize, item: DefViewItem<'a>) -> Self {
+        StackItem {
+            index,
+            item,
+        }
+    }
 
-// impl<'a> KeysymbolsIter<'a> {
-//     pub fn new(definition: &'a Def) -> KeysymbolsIter<'a> {
-//         KeysymbolsIter {
-//             cursor: DefRefCursor::initial(definition),
-//         }
-//     }
+    pub fn get(&self, index: usize, defs: &'a DefDict) -> Option<DefViewItem<'a>> {
+        self.item.get(index, defs)
+            .ok()
+            .and_then(|inner| inner)
+    }
+}
 
-//     fn next(&mut self) -> bool {
-//         self.cursor.step
+enum StepData<'a> {
+    In(StackItem<'a>),
+    Over(StackItem<'a>),
+    Out,
+}
 
-//         match self.cursor.current_keysymbol() {
-//             Some(keysymbol) => {
-//                 self.cursor.move_to_next_keysymbol();
+#[pyclass]
+enum StepDir {
+    In,
+    Over,
+    Out,
+}
 
-//                 true
-//             },
+pub struct DefViewCursor<'a> {
+    defs: &'a DefDict,
+    stack: RefCell<Vec<StackItem<'a>>>,
+}
 
-//             None => false,
-//         }
-//     }
-// }
+impl<'a> DefViewCursor<'a> {
+    pub fn new(view: &'a DefView<'a>) -> Self {
+        DefViewCursor {
+            defs: view.defs,
+
+            stack: RefCell::new(vec![StackItem {
+                index: 0,
+                item: view.root.as_item(),
+            }]),
+        }
+    }
+
+
+    fn next_step_data(&'a self) -> Option<StepData<'a>> {
+        let stack = self.stack.borrow();
+
+        let tip = stack.last()?;
+
+        // First attempt to step in from the tip
+        if let Some(inner) = tip.get(0, self.defs) {
+            return Some(StepData::In(StackItem::new(0, inner)));
+        }
+
+        // Next attempt to step over
+        let parent = if stack.len() >= 2 { &stack[stack.len() - 2] } else { return None };
+
+
+        let new_tip_index = tip.index + 1;
+        if let Some(inner) = parent.get(new_tip_index, self.defs) {
+            return Some(StepData::Over(StackItem::new(new_tip_index, inner)));
+        }
+
+        // Finally attempt to step out
+        Some(StepData::Out)
+    }
+
+    pub fn step(&'a mut self) -> Option<StepDir> {
+        let data = self.next_step_data()?;
+
+        let mut stack = self.stack.borrow_mut();
+
+        match data {
+            StepData::In(item) => {
+                stack.push(item);
+                Some(StepDir::In)
+            },
+
+            StepData::Over(item) => {
+                let last_index = stack.len() - 1;
+                stack[last_index] = item;
+                Some(StepDir::Over)
+            },
+
+            StepData::Out => {
+                stack.pop();
+                Some(StepDir::Out)
+            },
+        }
+    }
+}
