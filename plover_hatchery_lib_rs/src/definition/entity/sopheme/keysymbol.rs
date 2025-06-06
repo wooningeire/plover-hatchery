@@ -8,7 +8,7 @@ use regex::Regex;
 
 
 #[pyclass]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Keysymbol {
     symbol: String,
     base_symbol: String,

@@ -174,11 +174,11 @@ def consume_transclusion(cursor: _TokenCursor):
 
 def consume_entity(cursor: _TokenCursor):
     try:
-        return consume_transclusion(cursor).map(Entity.transclusion)
+        return consume_transclusion(cursor).map(Entity.Transclusion)
     except ParserException: pass
 
     try:
-        return consume_sopheme(cursor).map(Entity.sopheme)
+        return consume_sopheme(cursor).map(Entity.Sopheme)
     except ParserException: pass
 
     raise ParserException("Expected an entity here", cursor)

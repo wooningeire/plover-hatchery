@@ -180,7 +180,7 @@ def theory():
             yield "@"
 
 
-    def map_phoneme_to_sophs(cursor: DefViewCursor):
+    def map_keysymbol_to_sophs(cursor: DefViewCursor):
         return (Soph(value) for value in map_phoneme_to_soph_values_base(cursor))
 
 
@@ -304,7 +304,7 @@ def theory():
     )
 
 
-    # def map_phonemes_to_sophemes_by_sophs(mappings: dict[str, str]):
+    # def map_keysymbols_to_sophemes_by_sophs(mappings: dict[str, str]):
     #     def parse_sopheme(sopheme_str: str):
     #         return next(parse_sopheme_seq(sopheme_str))
 
@@ -316,7 +316,7 @@ def theory():
 
 
     #     def generate(cursor: DefViewCursor):
-    #         for soph in map_phoneme_to_sophs(cursor):
+    #         for soph in map_keysymbol_to_sophs(cursor):
     #             if soph not in chords: continue
     #             yield chords[soph]
 
@@ -324,7 +324,7 @@ def theory():
 
 
     # yield diphthong_transition_consonants(
-    #     sophemes_by_first_vowel=map_phonemes_to_sophemes_by_sophs({
+    #     sophemes_by_first_vowel=map_keysymbols_to_sophemes_by_sophs({
     #         "E": ".y?",
     #         "OO": ".w?",
     #         "OU": ".w?",
@@ -343,8 +343,8 @@ def theory():
 
     # def if_phoneme_maps_to(soph_values: str):
     #     sophs = set(Soph(value) for value in soph_values.split())
-    #     def check(phoneme: DefinitionCursor):
-    #         return any(soph in sophs for soph in map_phoneme_to_sophs(phoneme))
+    #     def check(cursor: DefViewCursor):
+    #         return any(soph in sophs for soph in map_keysymbol_to_sophs(cursor))
 
     #     return check
 

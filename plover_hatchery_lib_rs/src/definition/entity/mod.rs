@@ -6,11 +6,11 @@ pub use sopheme::{Sopheme, Keysymbol};
 mod transclusion;
 pub use transclusion::Transclusion;
 
-use super::{DefDict, DefViewItem};
+use super::{DefDict, DefViewItemRef};
 
 
 #[pyclass]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Entity {
     Sopheme(Sopheme),
     Transclusion(Transclusion),
@@ -18,16 +18,6 @@ pub enum Entity {
 
 #[pymethods]
 impl Entity {
-    #[staticmethod]
-    pub fn sopheme(sopheme: Sopheme) -> Self {
-        Entity::Sopheme(sopheme)
-    }
-
-    #[staticmethod]
-    pub fn transclusion(transclusion: Transclusion) -> Self {
-        Entity::Transclusion(transclusion)
-    }
-
     #[getter]
     pub fn maybe_sopheme(&self) -> Option<Sopheme> {
         match self {
@@ -46,14 +36,16 @@ impl Entity {
 }
 
 impl Entity {
-    pub fn get<'a>(&'a self, index: usize, defs: &'a DefDict) -> Result<Option<DefViewItem<'a>>, &'static str> {
+    pub fn get<'a>(&'a self, index: usize, defs: &'a DefDict) -> Option<Result<DefViewItemRef<'a>, &'static str>> {
         match self {
-            Entity::Sopheme(sopheme) => Ok(sopheme.get(index).map(DefViewItem::Keysymbol)),
+            Entity::Sopheme(sopheme) => sopheme.get(index).map(DefViewItemRef::Keysymbol).map(Ok),
 
-            Entity::Transclusion(transclusion) => defs.get(&transclusion.target_varname)
-                .and_then(|seq| seq.entities.get(index))
-                .map(|entity| Some(DefViewItem::Entity(entity)))
-                .ok_or("entry not found"),
+            Entity::Transclusion(transclusion) => Some(
+                defs.get(&transclusion.target_varname)
+                    .and_then(|seq| seq.entities.get(index))
+                    .map(DefViewItemRef::Entity)
+                    .ok_or("entry not found")
+            ),
         }
     }
 

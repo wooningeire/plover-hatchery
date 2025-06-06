@@ -2,7 +2,7 @@ use pyo3::{prelude::*};
 
 
 #[pyclass]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Transclusion {
     #[pyo3(get)] pub target_varname: String,
     #[pyo3(get)] pub stress: u8

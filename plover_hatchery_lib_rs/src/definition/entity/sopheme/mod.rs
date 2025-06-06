@@ -5,7 +5,7 @@ pub use keysymbol::Keysymbol;
 
 
 #[pyclass]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Sopheme {
     #[pyo3(get)] pub chars: String,
     #[pyo3(get)] pub keysymbols: Vec<Keysymbol>,

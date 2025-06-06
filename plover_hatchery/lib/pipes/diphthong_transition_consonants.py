@@ -60,7 +60,7 @@ from .Plugin import GetPluginApi, Plugin, define_plugin
 
 def diphthong_transition_consonants(
     *,
-    sophemes_by_first_vowel: Callable[[DefinitionCursor], Iterable[Sopheme]],
+    sophemes_by_first_vowel: Callable[[DefViewCursor], Iterable[Sopheme]],
 ) -> Plugin[None]:
     @define_plugin(diphthong_transition_consonants)
     def plugin(base_hooks: TheoryHooks, **_):

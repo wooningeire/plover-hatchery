@@ -12,27 +12,26 @@ pub use entity::{
 
 mod iter;
 pub use iter::{
+    DefViewItemRefIter,
     DefViewCursor,
-    StepData,
-    StackItem,
 };
 
 pub mod py;
 
 
 #[pyclass]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum RawableEntity {
     Entity(Entity),
     RawDef(Def),
 }
 
 impl RawableEntity {
-    pub fn get<'a>(&'a self, index: usize, defs: &'a DefDict) -> Result<Option<DefViewItem<'a>>, &'static str> {
+    pub fn get<'a>(&'a self, index: usize, defs: &'a DefDict) -> Option<Result<DefViewItemRef<'a>, &'static str>> {
         match self {
-            RawableEntity::Entity(entity) => Ok(entity.get(index, defs)?),
+            RawableEntity::Entity(entity) => entity.get(index, defs),
 
-            RawableEntity::RawDef(def) => Ok(def.get(index)),
+            RawableEntity::RawDef(def) => def.get(index).map(Ok),
         }
     }
 }
@@ -56,30 +55,30 @@ impl RawableEntity {
     }
 }
 
-#[derive(Clone)]
-pub struct OverridableEntitySeq {
-    items: Vec<RawableEntity>,
+#[derive(Clone, Debug)]
+pub struct RawableSeq {
+    rawables: Vec<RawableEntity>,
 }
 
-impl OverridableEntitySeq {
-    pub fn new(items: Vec<RawableEntity>) -> Self {
-        OverridableEntitySeq {
-            items,
+impl RawableSeq {
+    pub fn new(rawables: Vec<RawableEntity>) -> Self {
+        RawableSeq {
+            rawables,
         }
     }
 }
 
 #[pyclass]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Def {
-    entities: OverridableEntitySeq,
-    varname: String,
+    rawable_seq: RawableSeq,
+    #[pyo3(get)] varname: String,
 }
 
 impl Def {
     pub fn of(entity_seq: EntitySeq, varname: String) -> Def {
         Def {
-            entities: OverridableEntitySeq::new(
+            rawable_seq: RawableSeq::new(
                 entity_seq.entities.into_iter()
                     .map(|entity| RawableEntity::Entity(entity))
                     .collect::<Vec<_>>(),
@@ -88,18 +87,31 @@ impl Def {
         }
     }
 
-    pub fn get<'a>(&'a self, index: usize) -> Option<DefViewItem<'a>> {
-        self.entities.items.get(index)
-            .map(DefViewItem::Rawable)
+    pub fn get<'a>(&'a self, index: usize) -> Option<DefViewItemRef<'a>> {
+        self.rawable_seq.rawables.get(index)
+            .map(DefViewItemRef::Rawable)
+    }
+
+    pub fn new(rawable_seq: RawableSeq, varname: String) -> Def {
+        Def {
+            rawable_seq,
+            varname,
+        }
+    }
+
+    pub fn empty(varname: String) -> Def {
+        Def {
+            rawable_seq: RawableSeq::new(vec![]),
+            varname,
+        }
     }
 }
 
+#[pymethods]
 impl Def {
-    pub fn new(entities: OverridableEntitySeq, varname: String) -> Def {
-        Def {
-            entities,
-            varname,
-        }
+    #[getter]
+    pub fn rawables(&self) -> Vec<RawableEntity> {
+        self.rawable_seq.rawables.clone()
     }
 }
 
@@ -164,6 +176,7 @@ impl SophemeSeq {
     }
 }
 
+#[derive(Clone, Debug)]
 
 enum DefViewRoot<'a> {
     Def(Def),
@@ -179,11 +192,12 @@ impl<'a> DefViewRoot<'a> {
         }
     }
 
-    fn as_item(&'a self) -> DefViewItem<'a> {
-        DefViewItem::Root(&self.def_ref())
+    fn as_item(&'a self) -> DefViewItemRef<'a> {
+        DefViewItemRef::Root(&self.def_ref())
     }
 }
 
+#[derive(Clone)]
 pub struct DefView<'a> {
     defs: &'a DefDict,
     root: DefViewRoot<'a>,
@@ -247,7 +261,7 @@ impl<'a> DefView<'a> {
         fn dfs_def(def: &Def, dict: &DefDict, sophemes: &mut Vec<Sopheme>, visited: &mut HashSet<String>) -> Result<(), &'static str> {
             visited.insert(def.varname.clone());
 
-            for overridable_entity in def.entities.items.iter() {
+            for overridable_entity in def.rawable_seq.rawables.iter() {
                 dfs(overridable_entity, dict, sophemes, visited)?;
             }
             
@@ -275,74 +289,71 @@ impl<'a> DefView<'a> {
     }
 
 
-    pub fn read(&'a self, cursor: &[usize]) -> Result<Option<DefViewItem<'a>>, &'static str> {
+    pub fn read(&'a self, cursor: &[usize]) -> Option<Result<DefViewItemRef<'a>, &'static str>> {
         let mut cur_entity = self.root.as_item();
 
         for &index in cursor {
             match cur_entity {
-                DefViewItem::Root(def) => match def.get(index) {
-                    Some(item) => {
-                        cur_entity = item;
-                    },
-
-                    None => return Ok(None),
+                DefViewItemRef::Root(def) => {
+                    cur_entity = def.get(index)?;
                 },
 
-                DefViewItem::Rawable(rawable) => match rawable.get(index, self.defs)? {
-                    Some(item) => {
-                        cur_entity = item;
+                DefViewItemRef::Rawable(rawable) => match rawable.get(index, self.defs)? {
+                    Ok(item_ref) => {
+                        cur_entity = item_ref;
                     },
 
-                    None => return Ok(None),
+                    Err(err) => return Some(Err(err)),
                 },
 
-                DefViewItem::Entity(entity) => match entity.get(index, self.defs)? {
-                    Some(item) => {
-                        cur_entity = item;
+
+                DefViewItemRef::Entity(entity) => match entity.get(index, self.defs)? {
+                    Ok(item_ref) => {
+                        cur_entity = item_ref;
                     },
 
-                    None => return Ok(None),
+                    Err(err) => return Some(Err(err)),
                 },
 
-                DefViewItem::Keysymbol(_) => return Ok(None),
+                DefViewItemRef::Keysymbol(_) => return None,
             }
         }
 
-        Ok(Some(cur_entity))
+        Some(Ok(cur_entity))
     }
 }
 
 
-#[derive(Clone)]
-pub enum DefViewItem<'a> {
+#[derive(Clone, Debug)]
+pub enum DefViewItemRef<'a> {
     Root(&'a Def),
     Rawable(&'a RawableEntity),
     Entity(&'a Entity),
     Keysymbol(&'a Keysymbol),
 }
 
-impl<'a> DefViewItem<'a> {
-    pub fn get(&self, index: usize, defs: &'a DefDict) -> Result<Option<DefViewItem<'a>>, &'static str> {
+impl<'a> DefViewItemRef<'a> {
+    pub fn get(&self, index: usize, defs: &'a DefDict) -> Option<Result<DefViewItemRef<'a>, &'static str>> {
         match self {
-            DefViewItem::Root(def) => Ok(def.get(index)),
+            DefViewItemRef::Root(def) => def.get(index).map(Ok),
 
-            DefViewItem::Rawable(rawable) => Ok(rawable.get(index, defs)?),
+            DefViewItemRef::Rawable(rawable) => rawable.get(index, defs),
 
-            DefViewItem::Entity(entity) => Ok(entity.get(index, defs)?),
+            DefViewItemRef::Entity(entity) => entity.get(index, defs),
 
-            _ => Ok(None),
+            _ => None,
         }
     }
 
     pub fn get_if_sopheme(&self) -> Option<&'a Sopheme> {
         match self {
-            DefViewItem::Rawable(rawable) => match rawable {
+            DefViewItemRef::Rawable(rawable) => match rawable {
                 RawableEntity::Entity(entity) => entity.get_if_sopheme(),
 
                 _ => None,
             },
 
-            DefViewItem::Entity(entity) => entity.get_if_sopheme(),
+            DefViewItemRef::Entity(entity) => entity.get_if_sopheme(),
 
             _ => None,
         }

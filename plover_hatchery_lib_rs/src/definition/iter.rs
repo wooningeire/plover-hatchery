@@ -1,105 +1,93 @@
 use super::*;
 
 
-#[derive(Clone)]
-pub struct StackItem<'a> {
-    pub index: usize,
-    pub item: DefViewItem<'a>,
+pub struct DefViewItemRefIter<'a> {
+    item_ref: DefViewItemRef<'a>,
+    index: Option<usize>,
 }
 
-
-impl<'a> StackItem<'a> {
-    pub fn new(index: usize, item: DefViewItem<'a>) -> Self {
-        StackItem {
-            index,
-            item,
+impl<'a> DefViewItemRefIter<'a> {
+    pub fn new(item_ref: DefViewItemRef<'a>) -> Self {
+        DefViewItemRefIter {
+            item_ref,
+            index: None,
         }
     }
 
-    pub fn get(&self, index: usize, defs: &'a DefDict) -> Option<DefViewItem<'a>> {
-        self.item.get(index, defs)
-            .ok()
-            .and_then(|inner| inner)
+    pub fn create_child_iter(&self, defs: &'a DefDict) -> Option<Result<Self, &'static str>> {
+        Some(
+            self.item_ref.get(self.index?, defs)?
+                .map(DefViewItemRefIter::new)
+        )
     }
-}
 
-#[derive(Clone)]
-pub enum StepData<'a> {
-    In(StackItem<'a>),
-    Over(usize, StackItem<'a>),
+    fn peek(&self, defs: &'a DefDict) -> Option<Result<DefViewItemRef<'a>, &'static str>> {
+        self.item_ref.get(self.index?, defs)
+    }
+
+    pub fn next(&mut self, defs: &'a DefDict) -> Option<Result<DefViewItemRef<'a>, &'static str>> {
+        self.incr();
+        self.peek(defs)
+    }
+
+    fn incr(&mut self) {
+        match self.index {
+            Some(val) => {
+                self.index = Some(val + 1);
+            },
+
+            None => {
+                self.index = Some(0);
+            },
+        }
+    }
+
+    pub fn index(&self) -> Option<usize> {
+        self.index
+    }
 }
 
 pub struct DefViewCursor<'a> {
     defs: &'a DefDict,
-    pub stack: Vec<StackItem<'a>>,
+    pub stack: Vec<DefViewItemRefIter<'a>>,
 }
 
 impl<'a> DefViewCursor<'a> {
-    pub fn new(view: &'a DefView<'a>) -> Self {
+    pub fn of_view<'b>(view: &'b DefView<'a>) -> Self
+        where 'b: 'a
+    {
         DefViewCursor {
             defs: view.defs,
 
-            stack: vec![StackItem {
-                index: 0,
-                item: view.root.as_item(),
-            }],
+            stack: vec![DefViewItemRefIter::new(view.root.as_item())],
         }
     }
 
+    pub fn step(&mut self) -> Option<Result<DefViewItemRef<'a>, &'static str>> {
+        // Step in
+        if let Some(val) = self.stack.last()?.create_child_iter(self.defs) {
+            match val {
+                Ok(iter) => {
+                    self.stack.push(iter);
+                },
 
-    pub fn next_step_data(&self) -> Option<StepData<'a>> {
-        let mut tip = self.stack.last()?;
-
-        // First attempt to step in from the tip
-        if let Some(inner) = tip.get(0, self.defs) {
-            return Some(StepData::In(StackItem::new(0, inner)));
+                Err(err) => return Some(Err(err)),
+            }
         }
-
-        // Finally attempt to step out
-        // Next attempt to step ove
-        if self.stack.len() < 2 {
-            return None;
-        }
-
-        let mut parent_index = self.stack.len() - 2;
 
         loop {
-            let parent = &self.stack[parent_index];
-            
-            let new_tip_index = tip.index + 1;
-            if let Some(inner) = parent.get(new_tip_index, self.defs) {
-                return Some(StepData::Over(parent_index + 1, StackItem::new(new_tip_index, inner)));
-            }
+            // Step over
+            match self.stack.last_mut()?.next(self.defs) {
+                Some(item_ref) => {
+                    return Some(item_ref);
+                },
 
-            if parent_index == 0 {
-                return None;
-            }
-
-            tip = parent;
-            parent_index -= 1;
-        }
-    }
-
-    pub fn step_with_data(&mut self, data: &StepData<'a>) {
-        match data {
-            StepData::In(item) => {
-                self.stack.push(item.clone());
-            },
-
-            StepData::Over(n_levels_to_keep, item) => {
-                while self.stack.len() > *n_levels_to_keep {
+                None => {
+                    // Step out
                     self.stack.pop();
-                }
-                self.stack.push(item.clone());
-            },
+                },
+            }
         }
-    }
-
-    pub fn step(&mut self) -> Option<StepData<'a>> {
-        let data = self.next_step_data()?;
-        self.step_with_data(&data);
-
-        Some(data)
     }
 }
 
