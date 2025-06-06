@@ -10,9 +10,8 @@ pub use entity::{
     Transclusion,
 };
 
-mod iter;
-pub use iter::{
-    DefViewItemRefIter,
+mod cursor;
+pub use cursor::{
     DefViewCursor,
 };
 

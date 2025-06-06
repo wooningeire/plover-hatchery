@@ -35,63 +35,6 @@ impl DefDict {
 }
 
 
-// #[pyclass]
-// #[derive(Clone)]
-// pub enum DefViewItem {
-//     Root(Definition),
-//     Rawable(RawableEntity),
-//     Entity(Entity),
-//     Keysymbol(Keysymbol),
-// }
-
-// impl DefViewItem {
-//     pub fn of(item: super::DefViewItem) -> DefViewItem {
-//         match item {
-//             super::DefViewItem::Root() => ,
-//             super::DefViewItem::Rawable(rawable) => DefViewItem::Rawable(()),
-//             super::DefViewItem::Entity(entity) => DefViewItem::Entity(entity.clone()),
-//             super::DefViewItem::Keysymbol(keysymbol) => DefViewItem::Keysymbol(keysymbol.clone()),
-//         }
-//     }
-// }
-
-
-// #[pyclass(get_all)]
-// #[derive(Clone)]
-// pub struct StackItem {
-//     index: usize,
-//     item: DefViewItem,
-// }
-
-// impl StackItem {
-//     pub fn of(item: super::StackItem) -> StackItem {
-//         StackItem {
-//             index: item.index,
-//             item: DefViewItem::of(item.item),
-//         }
-//     }
-// }
-
-
-// #[pyclass]
-// #[derive(Clone)]
-// pub enum StepData {
-//     In(StackItem),
-//     Over(StackItem),
-//     Out(),
-// }
-
-// impl StepData {
-//     pub fn of(data: super::StepData) -> StepData {
-//         match data {
-//             super::StepData::In(item) => StepData::In(StackItem::of(item)),
-//             super::StepData::Over(item) => StepData::Over(StackItem::of(item)),
-//             super::StepData::Out => StepData::Out(),
-//         }
-//     }
-// }
-
-
 #[pyclass(get_all)]
 pub struct DefView {
     pub defs: Py<DefDict>,
@@ -149,30 +92,6 @@ impl DefView {
             Ok(())
         })
     }
-
-    // pub fn map_keysymbols(pyself: Py<Self>, callable: PyObject, py: Python<'_>) -> Def {
-    //     let view = pyself.borrow(py);
-
-    //     let mut new_def = super::Def::empty(view.root_def.borrow(py).varname.clone());
-
-    //     view.with_rs(py, |view_rs| {
-    //         let mut cursor = super::DefViewCursor::of_view(&view_rs);
-
-    //         let mut new_item_stack: Vec<super::DefViewItemRef> = vec![];
-
-    //         while let Some(data) = cursor.step() {
-    //             match data {
-    //                 super::StepData::In(item) => match item.item_ref {
-    //                     super::DefViewItemRef::
-    //                 },
-
-    //                 super::StepData::Over(_, item) => call_keysymbol_callback(item, &cursor, &pyself, &callable, py),
-    //             }
-    //         }
-    //     });
-
-    //     new_def
-    // }
 }
 
 #[pyclass]
@@ -249,9 +168,7 @@ impl DefViewCursor {
     pub fn of(view: Py<DefView>, cursor: &super::DefViewCursor) -> DefViewCursor {
         DefViewCursor {
             view,
-            index_stack: cursor.stack.iter()
-                .map(|iter| iter.index().unwrap_or(0))
-                .collect::<Vec<_>>(),
+            index_stack: cursor.index_stack(),
         }
     }
 }
