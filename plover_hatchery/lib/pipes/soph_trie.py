@@ -172,7 +172,6 @@ def soph_trie(
 
             @view.foreach_keysymbol
             def _(cursor: DefViewCursor, keysymbol: Keysymbol):
-
                 nonlocal src_nodes, new_src_nodes
 
                 if not keysymbol.optional:

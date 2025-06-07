@@ -34,7 +34,7 @@ impl DefViewCursor {
     pub fn tip(&self, py: Python<'_>) -> Result<Option<py::DefViewItem>, PyErr> {
         self.view.borrow(py).with_rs_result(py, |view_rs| {
             Ok(match view_rs.read(&self.index_stack) {
-                Some(item_ref) => py::DefViewItem::of(item_ref?, &self.view.borrow(py).defs.borrow(py).dict),
+                Some(item_ref) => py::DefViewItem::of(item_ref?),
 
                 None => None,
             })
@@ -44,7 +44,7 @@ impl DefViewCursor {
     pub fn nth(&self, level: usize, py: Python<'_>) -> Result<Option<py::DefViewItem>, PyErr> {
         self.view.borrow(py).with_rs_result(py, |view_rs| {
             Ok(match view_rs.read(&self.index_stack[..level]) {
-                Some(item_ref) => py::DefViewItem::of(item_ref?, &self.view.borrow(py).defs.borrow(py).dict),
+                Some(item_ref) => py::DefViewItem::of(item_ref?),
 
                 None => None,
             })

@@ -3,12 +3,19 @@ from typing import TYPE_CHECKING
 
 
 class Keysymbol:
-    symbol: str
-    base_symbol: str
-    stress: int = 0
-    optional: bool = False
+    @property
+    def symbol(self) -> str: ...
+    @property
+    def base_symbol(self) -> str: ...
+    @property
+    def stress(self) -> int: ...
+    @property
+    def optional(self) -> bool: ...
 
     def __init__(self, symbol: str, stress: int, optional: bool, /) -> None: ...
+
+    @staticmethod
+    def new_with_known_base_symbol(symbol: str, base_symbol: str, stress: int, optional: bool, /) -> Keysymbol: ...
 
     @property
     def is_vowel(self) -> bool: ...
@@ -18,8 +25,10 @@ class Keysymbol:
 
 
 class Sopheme:
-    chars: str
-    keysymbols: list[Keysymbol]
+    @property
+    def chars(self) -> str: ...
+    @property
+    def keysymbols(self) -> list[Keysymbol]: ...
 
     def __init__(self, chars: str, keysymbols: list[Keysymbol], /) -> None: ...
 
@@ -28,8 +37,10 @@ class Sopheme:
 
 
 class Transclusion:
-    target_varname: str
-    stress: int
+    @property
+    def target_varname(self) -> str: ...
+    @property
+    def stress(self) -> int: ...
 
     def __init__(self, target_varname: str, stress: int, /) -> None: ...
 
@@ -61,7 +72,8 @@ class RawableEntity:
 
 
 class EntitySeq:
-    entities: list[Entity]
+    @property
+    def entities(self) -> list[Entity]: ...
 
     def __init__(self, entities: list[Entity], /) -> None: ...
 
@@ -97,7 +109,10 @@ class DefView:
 
     def foreach_keysymbol(self, callable: Callable[[DefViewCursor, Keysymbol], None], /) -> None: ...
 
-    def map(self) -> Def:...
+    @property
+    def first_consonant_loc(self) -> list[int]: ...
+    @property
+    def last_consonant_loc(self) -> list[int]: ...
 
 
 class DefViewItem:
@@ -124,4 +139,4 @@ class DefViewCursor:
     @property
     def stack_len(self) -> int: ...
 
-# def add_diphthong_transitions(sophemes_by_first_consonant: Callable[[DefCursor], Iterable[Sopheme]]) -> Def: ...
+def optionalize_keysymbols(view: DefView, condition: Callable[[DefViewCursor], bool]) -> Def: ...

@@ -47,7 +47,7 @@ impl Sopheme {
 
 
 impl Sopheme {
-    pub fn get<'a>(&'a self, index: usize) -> Option<&'a Keysymbol> {
+    pub fn get_child<'a>(&'a self, index: usize) -> Option<&'a Keysymbol> {
         self.keysymbols.get(index)
     }
 }

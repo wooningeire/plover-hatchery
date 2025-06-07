@@ -4,11 +4,12 @@ use super::{
     def_items::{
         Keysymbol,
         Entity,
+        EntitySeq,
         Sopheme,
         SophemeSeq,
         RawableEntity,
+        Def,
     },
-    def::Def,
     dict::DefDict,
     cursor::DefViewCursor,
 };
@@ -33,7 +34,7 @@ impl<'a> DefViewRoot<'a> {
     }
 
     pub fn as_item(&'a self) -> DefViewItemRef<'a> {
-        DefViewItemRef::Root(&self.def_ref())
+        DefViewItemRef::Def(&self.def_ref())
     }
 }
 
@@ -137,100 +138,140 @@ impl<'a> DefView<'a> {
     }
 
 
-    pub fn read(&'a self, cursor: &[usize]) -> Option<Result<DefViewItemRef<'a>, &'static str>> {
-        let mut cur_entity = self.root.as_item();
+    pub fn read(&'a self, indexes: &[usize]) -> Option<Result<DefViewItemRef<'a>, &'static str>> {
+        let mut cur_item_ref = self.root.as_item();
 
-        for &index in cursor {
-            match cur_entity {
-                DefViewItemRef::Root(def) => {
-                    cur_entity = def.get(index)?;
-                },
+        for &index in indexes {
+            cur_item_ref = match cur_item_ref.get_child(index, self.defs)? {
+                Ok(item_ref) => item_ref,
 
-                DefViewItemRef::Rawable(rawable) => match rawable.get(index, self.defs)? {
-                    Ok(item_ref) => {
-                        cur_entity = item_ref;
-                    },
-
-                    Err(err) => return Some(Err(err)),
-                },
-
-
-                DefViewItemRef::Entity(entity) => match entity.get(index, self.defs)? {
-                    Ok(item_ref) => {
-                        cur_entity = item_ref;
-                    },
-
-                    Err(err) => return Some(Err(err)),
-                },
-
-                DefViewItemRef::Keysymbol(_) => return None,
+                Err(msg) => return Some(Err(msg)),
             }
         }
 
-        Some(Ok(cur_entity))
+        Some(Ok(cur_item_ref))
     }
 
     pub fn foreach(&self, func: impl Fn(DefViewItemRef, &DefViewCursor)) -> Result<(), &'static str> {
-        let mut cursor = DefViewCursor::of_view(self);
+        let mut cursor = DefViewCursor::of_view_at_start(self);
 
-        while let Some(item_ref) = cursor.step() {
+        while let Some(item_ref) = cursor.step_forward() {
             func(item_ref?, &cursor);
         }
 
         Ok(())
     }
+
+    pub fn first_consonant_loc(&self) -> Result<Option<Vec<usize>>, &'static str> {
+        let mut cursor = DefViewCursor::of_view_at_start(self);
+
+        while let Some(item_ref) = cursor.step_forward() {
+            match item_ref? {
+                DefViewItemRef::Keysymbol(keysymbol) => {
+                    if keysymbol.is_consonant() {
+                        return Ok(Some(cursor.index_stack()));
+                    }
+                },
+                
+                _ => {},
+            }
+        }
+
+        Ok(None)
+    }
+
+    pub fn last_consonant_loc(&self) -> Result<Option<Vec<usize>>, &'static str> {
+        let mut cursor = DefViewCursor::of_view_at_start(self);
+
+        let mut last_index_stack = None;
+
+        while let Some(item_ref) = cursor.step_forward() {
+            match item_ref? {
+                DefViewItemRef::Keysymbol(keysymbol) => {
+                    if keysymbol.is_consonant() {
+                        last_index_stack = Some(cursor.index_stack());
+                    }
+                },
+                
+                _ => {},
+            }
+        }
+
+        Ok(last_index_stack)
+        // let mut cursor = DefViewCursor::of_view_at_end(self);
+
+        // dbg!(cursor.index_stack());
+
+        // while let Some(item_ref) = cursor.step_backward() {
+        //     dbg!(cursor.index_stack());
+
+        //     match item_ref? {
+        //         DefViewItemRef::Keysymbol(keysymbol) => {
+        //             if keysymbol.is_consonant() {
+        //                 return Ok(Some(cursor.index_stack()));
+        //             }
+        //         },
+                
+        //         _ => {},
+        //     }
+        // }
+
+        // Ok(None)
+    }
 }
-
-
-// fn map_sopheme(sopheme: &Sopheme, cursor: &mut DefViewCursor, func: impl Fn(DefViewItemRef, &DefViewCursor)) -> Result<Def, &'static str> {
-//     let mut new_def = Sopheme::empty(sopheme.chars);
-//     let level = cursor.stack.len();
-
-//     while let Some(item_ref) = cursor.step() {
-//         if cursor.stack.len() < level {
-//             break;
-//         }
-
-//         func(item_ref?, &cursor);
-//     }
-
-//     Ok(new_def)
-// }
 
 
 #[derive(Clone, Debug)]
 pub enum DefViewItemRef<'a> {
-    Root(&'a Def),
-    Rawable(&'a RawableEntity),
-    Entity(&'a Entity),
     Keysymbol(&'a Keysymbol),
+    Sopheme(&'a Sopheme),
+    Def(&'a Def),
+    EntitySeq(&'a EntitySeq, String),
 }
 
 impl<'a> DefViewItemRef<'a> {
 
-    pub fn get(&self, index: usize, defs: &'a DefDict) -> Option<Result<DefViewItemRef<'a>, &'static str>> {
-        match self {
-            DefViewItemRef::Root(def) => def.get(index).map(Ok),
+    pub fn get_child(&self, index: usize, defs: &'a DefDict) -> Option<Result<DefViewItemRef<'a>, &'static str>> {
+        Some(Ok(match self {
+            DefViewItemRef::Sopheme(sopheme) => DefViewItemRef::Keysymbol(sopheme.get_child(index)?),
 
-            DefViewItemRef::Rawable(rawable) => rawable.get(index, defs),
+            DefViewItemRef::Def(def) => match def.get_child(index)? {
+                RawableEntity::Entity(entity) => match entity {
+                    Entity::Sopheme(sopheme) => DefViewItemRef::Sopheme(sopheme),
 
-            DefViewItemRef::Entity(entity) => entity.get(index, defs),
+                    Entity::Transclusion(transclusion) => match defs.get(&transclusion.target_varname) {
+                        Some(seq) => DefViewItemRef::EntitySeq(seq, transclusion.target_varname.clone()),
 
-            _ => None,
-        }
-    }
+                        None => return Some(Err("entry not found")),
+                    },
+                },
 
-    pub fn get_if_sopheme(&self) -> Option<&'a Sopheme> {
-        match self {
-            DefViewItemRef::Rawable(rawable) => match rawable {
-                RawableEntity::Entity(entity) => entity.get_if_sopheme(),
-
-                _ => None,
+                RawableEntity::RawDef(def) => DefViewItemRef::Def(def),
             },
 
-            DefViewItemRef::Entity(entity) => entity.get_if_sopheme(),
+            DefViewItemRef::EntitySeq(seq, _) => match seq.entities.get(index)? {
+                Entity::Sopheme(sopheme) => DefViewItemRef::Sopheme(sopheme),
 
-            _ => None,
+                Entity::Transclusion(transclusion) => match defs.get(&transclusion.target_varname) {
+                    Some(seq) => DefViewItemRef::EntitySeq(seq, transclusion.target_varname.clone()),
+
+                    None => return Some(Err("entry not found")),
+                },
+            },
+
+            _ => return None,
+        }))
+    }
+
+    pub fn n_children(&self) -> usize {
+        match self {
+            DefViewItemRef::Sopheme(sopheme) => sopheme.keysymbols.len(),
+
+            DefViewItemRef::Def(def) => def.rawables.len(),
+
+            DefViewItemRef::EntitySeq(seq, _) => seq.entities.len(),
+
+            _ => 0,
         }
     }
 }

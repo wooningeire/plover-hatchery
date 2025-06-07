@@ -39,7 +39,6 @@ impl Keysymbol {
     }
 }
 
-
 #[pymethods]
 impl Keysymbol {
     #[new]
@@ -50,6 +49,16 @@ impl Keysymbol {
         Keysymbol {
             base_symbol: keysymbol_sub.replace_all(symbol.as_str(), "").to_string(),
             symbol,
+            stress,
+            optional,
+        }
+    }
+
+    #[staticmethod]
+    pub fn new_with_known_base_symbol(symbol: String, base_symbol: String, stress: u8, optional: bool) -> Self {
+        Keysymbol {
+            symbol,
+            base_symbol,
             stress,
             optional,
         }

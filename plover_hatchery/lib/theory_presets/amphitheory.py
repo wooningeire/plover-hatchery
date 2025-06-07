@@ -338,7 +338,7 @@ def theory():
     # )
 
 
-    # yield optional_middle_vowels()
+    yield optional_middle_vowels()
 
 
     # def if_phoneme_maps_to(soph_values: str):

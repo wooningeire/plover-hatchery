@@ -1,10 +1,11 @@
 
 use super::{
-    def_items::{
+    rawable::{
         RawableEntity,
+    },
+    entity::{
         EntitySeq,
     },
-    view::DefViewItemRef,
 };
 
 use pyo3::prelude::*;
@@ -27,21 +28,13 @@ impl Def {
         }
     }
 
-    pub fn get<'a>(&'a self, index: usize) -> Option<DefViewItemRef<'a>> {
+    pub fn get_child(&self, index: usize) -> Option<&RawableEntity> {
         self.rawables.get(index)
-            .map(DefViewItemRef::Rawable)
     }
 
     pub fn new(rawables: Vec<RawableEntity>, varname: String) -> Def {
         Def {
             rawables,
-            varname,
-        }
-    }
-
-    pub fn empty(varname: String) -> Def {
-        Def {
-            rawables: vec![],
             varname,
         }
     }

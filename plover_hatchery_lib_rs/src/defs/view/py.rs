@@ -2,12 +2,11 @@
 use super::super::{
     def_items::{
         Keysymbol,
-        Entity,
         Sopheme,
         SophemeSeq,
-        RawableEntity,
+        Def,
     },
-    def::Def,
+    view::DefViewItemRef,
     py,
 };
 
@@ -69,6 +68,20 @@ impl DefView {
             Ok(())
         })
     }
+
+    #[getter]
+    pub fn first_consonant_loc(pyself: Py<Self>, py: Python<'_>) -> Result<Option<Vec<usize>>, PyErr> {
+        pyself.borrow(py).with_rs_result(py, |view_rs| {
+            view_rs.first_consonant_loc()
+        })
+    }
+
+    #[getter]
+    pub fn last_consonant_loc(pyself: Py<Self>, py: Python<'_>) -> Result<Option<Vec<usize>>, PyErr> {
+        pyself.borrow(py).with_rs_result(py, |view_rs| {
+            view_rs.last_consonant_loc()
+        })
+    }
 }
 
 #[pyclass]
@@ -79,27 +92,15 @@ pub enum DefViewItem {
 }
 
 impl DefViewItem {
-    pub fn of(item_ref: super::DefViewItemRef, defs: &super::DefDict) -> Option<DefViewItem> {
+    pub fn of(item_ref: DefViewItemRef) -> Option<DefViewItem> {
         Some(match item_ref {
-            super::DefViewItemRef::Keysymbol(keysymbol) => DefViewItem::Keysymbol(keysymbol.clone()),
+            DefViewItemRef::Keysymbol(keysymbol) => DefViewItem::Keysymbol(keysymbol.clone()),
 
-            super::DefViewItemRef::Entity(entity) => match entity {
-                Entity::Sopheme(sopheme) => DefViewItem::Sopheme(sopheme.clone()),
+            DefViewItemRef::Sopheme(sopheme) => DefViewItem::Sopheme(sopheme.clone()),
 
-                Entity::Transclusion(transclusion) => DefViewItem::Def(defs.get_def(&transclusion.target_varname)?),
-            },
+            DefViewItemRef::Def(def) => DefViewItem::Def(def.clone()),
 
-            super::DefViewItemRef::Rawable(rawable) => match rawable {
-                RawableEntity::Entity(entity) => match entity {
-                    Entity::Sopheme(sopheme) => DefViewItem::Sopheme(sopheme.clone()),
-
-                    Entity::Transclusion(transclusion) => DefViewItem::Def(defs.get_def(&transclusion.target_varname)?),
-                },
-
-                RawableEntity::RawDef(def) => DefViewItem::Def(def.clone()),
-            },
-            
-            super::DefViewItemRef::Root(def) => DefViewItem::Def(def.clone()),
+            DefViewItemRef::EntitySeq(seq, varname) => DefViewItem::Def(Def::of(seq.clone(), varname)),
         })
     }
 }

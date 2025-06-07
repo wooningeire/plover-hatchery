@@ -6,8 +6,6 @@ use super::{
     transclusion::Transclusion,
 };
 
-use super::{DefDict, DefViewItemRef};
-
 
 #[pyclass]
 #[derive(Clone, Debug)]
@@ -36,19 +34,6 @@ impl Entity {
 }
 
 impl Entity {
-    pub fn get<'a>(&'a self, index: usize, defs: &'a DefDict) -> Option<Result<DefViewItemRef<'a>, &'static str>> {
-        match self {
-            Entity::Sopheme(sopheme) => sopheme.get(index).map(DefViewItemRef::Keysymbol).map(Ok),
-
-            Entity::Transclusion(transclusion) => Some(
-                defs.get(&transclusion.target_varname)
-                    .and_then(|seq| seq.entities.get(index))
-                    .map(DefViewItemRef::Entity)
-                    .ok_or("entry not found")
-            ),
-        }
-    }
-
     pub fn get_if_sopheme<'a>(&'a self) -> Option<&'a Sopheme> {
         match self {
             Entity::Sopheme(sopheme) => {
@@ -62,7 +47,7 @@ impl Entity {
 
 
 #[pyclass]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct EntitySeq {
     #[pyo3(get)] pub entities: Vec<Entity>,
 }

@@ -1,7 +1,6 @@
-use std::collections::{HashMap, HashSet};
-
 mod def_items;
 pub use def_items::{
+    Def,
     RawableEntity,
     Entity,
     EntitySeq,
@@ -9,11 +8,6 @@ pub use def_items::{
     SophemeSeq,
     Keysymbol,
     Transclusion,
-};
-
-mod def;
-pub use def::{
-    Def,
 };
 
 mod dict;

@@ -1,8 +1,6 @@
 use super::{
     entity::Entity,
     Def,
-    DefDict,
-    DefViewItemRef,
 };
 
 use pyo3::prelude::*;
@@ -13,16 +11,6 @@ use pyo3::prelude::*;
 pub enum RawableEntity {
     Entity(Entity),
     RawDef(Def),
-}
-
-impl RawableEntity {
-    pub fn get<'a>(&'a self, index: usize, defs: &'a DefDict) -> Option<Result<DefViewItemRef<'a>, &'static str>> {
-        match self {
-            RawableEntity::Entity(entity) => entity.get(index, defs),
-
-            RawableEntity::RawDef(def) => def.get(index).map(Ok),
-        }
-    }
 }
 
 #[pymethods]

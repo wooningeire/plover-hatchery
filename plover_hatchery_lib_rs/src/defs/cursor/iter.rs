@@ -6,26 +6,46 @@ pub struct DefViewItemRefChildrenCursor<'a> {
 }
 
 impl<'a> DefViewItemRefChildrenCursor<'a> {
-    pub fn new(item_ref: DefViewItemRef<'a>) -> Self {
+    pub fn new_at_start(item_ref: DefViewItemRef<'a>) -> Self {
         DefViewItemRefChildrenCursor {
             item_ref,
             index: None,
         }
     }
 
-    pub fn create_child_iter(&self, defs: &'a DefDict) -> Option<Result<Self, &'static str>> {
+    pub fn new_at_end(item_ref: DefViewItemRef<'a>) -> Self {
+        let item_n_children = item_ref.n_children();
+        DefViewItemRefChildrenCursor {
+            item_ref,
+            index: if item_n_children > 0 { Some(item_n_children - 1) } else { None },
+        }
+    }
+
+    pub fn create_child_iter_at_start(&self, defs: &'a DefDict) -> Option<Result<Self, &'static str>> {
         Some(
-            self.item_ref.get(self.index?, defs)?
-                .map(DefViewItemRefChildrenCursor::new)
+            self.item_ref.get_child(self.index?, defs)?
+                .map(DefViewItemRefChildrenCursor::new_at_start)
         )
     }
 
-    fn peek(&self, defs: &'a DefDict) -> Option<Result<DefViewItemRef<'a>, &'static str>> {
-        self.item_ref.get(self.index?, defs)
+    pub fn create_child_iter_at_end(&self, defs: &'a DefDict) -> Option<Result<Self, &'static str>> {
+        Some(
+            self.item_ref.get_child(self.index?, defs)?
+                .map(DefViewItemRefChildrenCursor::new_at_end)
+        )
+    }
+
+    pub fn peek(&self, defs: &'a DefDict) -> Option<Result<DefViewItemRef<'a>, &'static str>> {
+        self.item_ref.get_child(self.index?, defs)
     }
 
     pub fn next(&mut self, defs: &'a DefDict) -> Option<Result<DefViewItemRef<'a>, &'static str>> {
         self.incr();
+        self.peek(defs)
+    }
+
+    pub fn prev(&mut self, defs: &'a DefDict) -> Option<Result<DefViewItemRef<'a>, &'static str>> {
+        self.decr();
         self.peek(defs)
     }
 
@@ -38,6 +58,20 @@ impl<'a> DefViewItemRefChildrenCursor<'a> {
             None => {
                 self.index = Some(0);
             },
+        }
+    }
+
+    fn decr(&mut self) {
+        match self.index {
+            Some(val) => {
+                if val == 0 {
+                    self.index = None;
+                } else {
+                    self.index = Some(val - 1);
+                }
+            },
+
+            _ => {},
         }
     }
 

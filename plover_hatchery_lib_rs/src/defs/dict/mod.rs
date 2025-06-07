@@ -1,8 +1,10 @@
 use std::collections::HashMap;
 
 use super::{
-    def::Def,
-    def_items::EntitySeq,
+    def_items::{
+        Def,
+        EntitySeq,
+    },
 };
 
 pub mod py;

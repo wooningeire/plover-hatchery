@@ -21,5 +21,8 @@ pub use rawable::{
     RawableEntity,
 };
 
-use super::{Def, DefDict, DefViewItemRef};
+mod def;
+pub use def::{
+    Def,
+};
 
