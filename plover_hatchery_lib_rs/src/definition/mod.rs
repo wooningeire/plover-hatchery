@@ -2,115 +2,60 @@ use std::collections::{HashMap, HashSet};
 
 use pyo3::{prelude::*};
 
-mod entity;
-pub use entity::{
-    Entity,
-    Sopheme,
-    Keysymbol,
-    Transclusion,
+mod rawable;
+pub use rawable::{
+    RawableEntity,
+    entity::{
+        Entity,
+        Sopheme,
+        Keysymbol,
+        Transclusion,
+    },
 };
 
 mod cursor;
 pub use cursor::{
     DefViewCursor,
+    DefViewItemRefChildrenCursor,
+    DefViewItemRefChildrenIter,
 };
 
 pub mod py;
 
-
-#[pyclass]
-#[derive(Clone, Debug)]
-pub enum RawableEntity {
-    Entity(Entity),
-    RawDef(Def),
-}
-
-impl RawableEntity {
-    pub fn get<'a>(&'a self, index: usize, defs: &'a DefDict) -> Option<Result<DefViewItemRef<'a>, &'static str>> {
-        match self {
-            RawableEntity::Entity(entity) => entity.get(index, defs),
-
-            RawableEntity::RawDef(def) => def.get(index).map(Ok),
-        }
-    }
-}
-
-#[pymethods]
-impl RawableEntity {
-    pub fn maybe_entity(&self) -> Option<Entity> {
-        match self {
-            RawableEntity::Entity(entity) => Some(entity.clone()),
-
-            _ => None,
-        }
-    }
-
-    pub fn maybe_raw_def(&self) -> Option<Def> {
-        match self {
-            RawableEntity::RawDef(def) => Some(def.clone()),
-
-            _ => None,
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct RawableSeq {
-    rawables: Vec<RawableEntity>,
-}
-
-impl RawableSeq {
-    pub fn new(rawables: Vec<RawableEntity>) -> Self {
-        RawableSeq {
-            rawables,
-        }
-    }
-}
-
-#[pyclass]
+#[pyclass(get_all)]
 #[derive(Clone, Debug)]
 pub struct Def {
-    rawable_seq: RawableSeq,
-    #[pyo3(get)] varname: String,
+    rawables: Vec<RawableEntity>,
+    varname: String,
 }
 
 impl Def {
     pub fn of(entity_seq: EntitySeq, varname: String) -> Def {
         Def {
-            rawable_seq: RawableSeq::new(
-                entity_seq.entities.into_iter()
-                    .map(|entity| RawableEntity::Entity(entity))
-                    .collect::<Vec<_>>(),
-            ),
+            rawables: entity_seq.entities.into_iter()
+                .map(|entity| RawableEntity::Entity(entity))
+                .collect::<Vec<_>>(),
             varname,
         }
     }
 
     pub fn get<'a>(&'a self, index: usize) -> Option<DefViewItemRef<'a>> {
-        self.rawable_seq.rawables.get(index)
+        self.rawables.get(index)
             .map(DefViewItemRef::Rawable)
     }
 
-    pub fn new(rawable_seq: RawableSeq, varname: String) -> Def {
+    pub fn new(rawables: Vec<RawableEntity>, varname: String) -> Def {
         Def {
-            rawable_seq,
+            rawables,
             varname,
         }
     }
 
     pub fn empty(varname: String) -> Def {
         Def {
-            rawable_seq: RawableSeq::new(vec![]),
+            rawables: vec![],
             varname,
         }
-    }
-}
-
-#[pymethods]
-impl Def {
-    #[getter]
-    pub fn rawables(&self) -> Vec<RawableEntity> {
-        self.rawable_seq.rawables.clone()
     }
 }
 
@@ -260,7 +205,7 @@ impl<'a> DefView<'a> {
         fn dfs_def(def: &Def, dict: &DefDict, sophemes: &mut Vec<Sopheme>, visited: &mut HashSet<String>) -> Result<(), &'static str> {
             visited.insert(def.varname.clone());
 
-            for overridable_entity in def.rawable_seq.rawables.iter() {
+            for overridable_entity in def.rawables.iter() {
                 dfs(overridable_entity, dict, sophemes, visited)?;
             }
             
@@ -320,7 +265,33 @@ impl<'a> DefView<'a> {
 
         Some(Ok(cur_entity))
     }
+
+    pub fn foreach(&self, func: impl Fn(DefViewItemRef, &DefViewCursor)) -> Result<(), &'static str> {
+        let mut cursor = DefViewCursor::of_view(self);
+
+        while let Some(item_ref) = cursor.step() {
+            func(item_ref?, &cursor);
+        }
+
+        Ok(())
+    }
 }
+
+
+// fn map_sopheme(sopheme: &Sopheme, cursor: &mut DefViewCursor, func: impl Fn(DefViewItemRef, &DefViewCursor)) -> Result<Def, &'static str> {
+//     let mut new_def = Sopheme::empty(sopheme.chars);
+//     let level = cursor.stack.len();
+
+//     while let Some(item_ref) = cursor.step() {
+//         if cursor.stack.len() < level {
+//             break;
+//         }
+
+//         func(item_ref?, &cursor);
+//     }
+
+//     Ok(new_def)
+// }
 
 
 #[derive(Clone, Debug)]
@@ -332,6 +303,7 @@ pub enum DefViewItemRef<'a> {
 }
 
 impl<'a> DefViewItemRef<'a> {
+
     pub fn get(&self, index: usize, defs: &'a DefDict) -> Option<Result<DefViewItemRef<'a>, &'static str>> {
         match self {
             DefViewItemRef::Root(def) => def.get(index).map(Ok),

@@ -77,17 +77,15 @@ impl DefView {
 
     pub fn foreach_keysymbol(pyself: Py<Self>, callable: PyObject, py: Python<'_>) -> Result<(), PyErr> {
         pyself.borrow(py).with_rs_result(py, |view_rs| {
-            let mut cursor = super::DefViewCursor::of_view(&view_rs);
-
-            while let Some(item_ref) = cursor.step() {
-                match item_ref? {
+            view_rs.foreach(|item_ref, cursor| {
+                match item_ref {
                     super::DefViewItemRef::Keysymbol(keysymbol) => {
                         _ = callable.call(py, (DefViewCursor::of(pyself.clone_ref(py), &cursor), keysymbol.clone()), None);
                     },
 
                     _ => {},
                 }
-            }
+            })?;
 
             Ok(())
         })

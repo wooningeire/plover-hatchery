@@ -1,11 +1,14 @@
 use super::*;
 
 mod iter;
-use iter::{DefViewItemRefIter};
+pub use iter::{
+    DefViewItemRefChildrenCursor,
+    DefViewItemRefChildrenIter,
+};
 
 pub struct DefViewCursor<'a> {
-    defs: &'a DefDict,
-    stack: Vec<DefViewItemRefIter<'a>>,
+    pub defs: &'a DefDict,
+    pub stack: Vec<DefViewItemRefChildrenCursor<'a>>,
 }
 
 impl<'a> DefViewCursor<'a> {
@@ -15,7 +18,7 @@ impl<'a> DefViewCursor<'a> {
         DefViewCursor {
             defs: view.defs,
 
-            stack: vec![DefViewItemRefIter::new(view.root.as_item())],
+            stack: vec![DefViewItemRefChildrenCursor::new(view.root.as_item())],
         }
     }
 
@@ -31,6 +34,10 @@ impl<'a> DefViewCursor<'a> {
             }
         }
 
+        self.step_over()
+    }
+
+    pub fn step_over(&mut self) -> Option<Result<DefViewItemRef<'a>, &'static str>> {
         loop {
             // Step over
             match self.stack.last_mut()?.next(self.defs) {

@@ -1,13 +1,13 @@
 use super::*;
 
-pub struct DefViewItemRefIter<'a> {
+pub struct DefViewItemRefChildrenCursor<'a> {
     item_ref: DefViewItemRef<'a>,
     index: Option<usize>,
 }
 
-impl<'a> DefViewItemRefIter<'a> {
+impl<'a> DefViewItemRefChildrenCursor<'a> {
     pub fn new(item_ref: DefViewItemRef<'a>) -> Self {
-        DefViewItemRefIter {
+        DefViewItemRefChildrenCursor {
             item_ref,
             index: None,
         }
@@ -16,7 +16,7 @@ impl<'a> DefViewItemRefIter<'a> {
     pub fn create_child_iter(&self, defs: &'a DefDict) -> Option<Result<Self, &'static str>> {
         Some(
             self.item_ref.get(self.index?, defs)?
-                .map(DefViewItemRefIter::new)
+                .map(DefViewItemRefChildrenCursor::new)
         )
     }
 
@@ -43,5 +43,26 @@ impl<'a> DefViewItemRefIter<'a> {
 
     pub fn index(&self) -> Option<usize> {
         self.index
+    }
+
+
+    pub fn iter_mut<'cur>(&'cur mut self, defs: &'a DefDict) -> DefViewItemRefChildrenIter<'a, 'cur> {
+        DefViewItemRefChildrenIter {
+            cursor: self,
+            defs,
+        }
+    }
+}
+
+pub struct DefViewItemRefChildrenIter<'defs, 'cur> {
+    cursor: &'cur mut DefViewItemRefChildrenCursor<'defs>,
+    defs: &'defs DefDict,
+}
+
+impl<'defs, 'cur> Iterator for DefViewItemRefChildrenIter<'defs, 'cur> {
+    type Item = Result<DefViewItemRef<'defs>, &'static str>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.cursor.next(self.defs)
     }
 }
