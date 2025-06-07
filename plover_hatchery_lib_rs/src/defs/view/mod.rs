@@ -165,6 +165,20 @@ impl<'a> DefView<'a> {
     pub fn first_consonant_loc(&self) -> Result<Option<Vec<usize>>, &'static str> {
         let mut cursor = DefViewCursor::of_view_at_start(self);
 
+        match cursor.stack.last().and_then(|iter| iter.peek(self.defs)) {
+            Some(item_ref) => match item_ref? {
+                DefViewItemRef::Keysymbol(keysymbol) => {
+                    if keysymbol.is_consonant() {
+                        return Ok(Some(cursor.index_stack()));
+                    }
+                },
+
+                _ => {},
+            },
+            
+            _ => {},
+        }
+
         while let Some(item_ref) = cursor.step_forward() {
             match item_ref? {
                 DefViewItemRef::Keysymbol(keysymbol) => {
@@ -181,15 +195,27 @@ impl<'a> DefView<'a> {
     }
 
     pub fn last_consonant_loc(&self) -> Result<Option<Vec<usize>>, &'static str> {
-        let mut cursor = DefViewCursor::of_view_at_start(self);
+        let mut cursor = DefViewCursor::of_view_at_end(self);
 
-        let mut last_index_stack = None;
+        match cursor.stack.last().and_then(|iter| iter.peek(self.defs)) {
+            Some(item_ref) => match item_ref? {
+                DefViewItemRef::Keysymbol(keysymbol) => {
+                    if keysymbol.is_consonant() {
+                        return Ok(Some(cursor.index_stack()));
+                    }
+                },
+                
+                _ => {},
+            },
+            
+            _ => {},
+        }
 
-        while let Some(item_ref) = cursor.step_forward() {
+        while let Some(item_ref) = cursor.step_backward() {
             match item_ref? {
                 DefViewItemRef::Keysymbol(keysymbol) => {
                     if keysymbol.is_consonant() {
-                        last_index_stack = Some(cursor.index_stack());
+                        return Ok(Some(cursor.index_stack()));
                     }
                 },
                 
@@ -197,26 +223,7 @@ impl<'a> DefView<'a> {
             }
         }
 
-        Ok(last_index_stack)
-        // let mut cursor = DefViewCursor::of_view_at_end(self);
-
-        // dbg!(cursor.index_stack());
-
-        // while let Some(item_ref) = cursor.step_backward() {
-        //     dbg!(cursor.index_stack());
-
-        //     match item_ref? {
-        //         DefViewItemRef::Keysymbol(keysymbol) => {
-        //             if keysymbol.is_consonant() {
-        //                 return Ok(Some(cursor.index_stack()));
-        //             }
-        //         },
-                
-        //         _ => {},
-        //     }
-        // }
-
-        // Ok(None)
+        Ok(None)
     }
 }
 

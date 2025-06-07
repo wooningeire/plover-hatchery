@@ -25,33 +25,33 @@ impl<'a> DefViewCursor<'a> {
         }
     }
 
-    // pub fn of_view_at_end<'b>(view: &'b DefView<'a>) -> Self
-    //     where 'b: 'a
-    // {
-    //     let mut cursor = DefViewCursor {
-    //         defs: view.defs(),
+    pub fn of_view_at_end<'b>(view: &'b DefView<'a>) -> Self
+        where 'b: 'a
+    {
+        let mut cursor = DefViewCursor {
+            defs: view.defs(),
 
-    //         stack: vec![DefViewItemRefChildrenCursor::new_at_end(view.root().as_item())],
-    //     };
+            stack: vec![DefViewItemRefChildrenCursor::new_at_end(view.root().as_item())],
+        };
 
-    //     while let Some(_) = cursor.step_in_at_end() {}
+        cursor.drill_in();
 
-    //     cursor
-    // }
+        cursor
+    }
 
     pub fn step_forward(&mut self) -> Option<Result<DefViewItemRef<'a>, &'static str>> {
-        if let Some(val) = self.step_in_at_start() {
-            if let Err(msg) = val {
-                return Some(Err(msg));
-            }
+        match self.step_in_at_start() {
+            Some(Err(msg)) => return Some(Err(msg)),
+
+            _ => {},
         }
         
         self.step_over_forward()
     }
 
-    // pub fn step_backward(&mut self) -> Option<Result<DefViewItemRef<'a>, &'static str>> {
-    //     self.step_over_backward()
-    // }
+    pub fn step_backward(&mut self) -> Option<Result<DefViewItemRef<'a>, &'static str>> {
+        self.step_over_backward()
+    }
 
     pub fn step_in_at_start(&mut self) -> Option<Result<(), &'static str>> {
         match self.stack.last()?.create_child_iter_at_start(self.defs)? {
@@ -65,17 +65,17 @@ impl<'a> DefViewCursor<'a> {
         Some(Ok(()))
     }
 
-    // pub fn step_in_at_end(&mut self) -> Option<Result<(), &'static str>> {
-    //     match self.stack.last()?.create_child_iter_at_end(self.defs)? {
-    //         Ok(iter) => {
-    //             self.stack.push(iter);
-    //         },
+    pub fn step_in_at_end(&mut self) -> Option<Result<(), &'static str>> {
+        match self.stack.last()?.create_child_iter_at_end(self.defs)? {
+            Ok(iter) => {
+                self.stack.push(iter);
+            },
 
-    //         Err(err) => return Some(Err(err)),
-    //     }
+            Err(err) => return Some(Err(err)),
+        }
 
-    //     Some(Ok(()))
-    // }
+        Some(Ok(()))
+    }
 
     pub fn step_over_forward(&mut self) -> Option<Result<DefViewItemRef<'a>, &'static str>> {
         loop {
@@ -91,19 +91,25 @@ impl<'a> DefViewCursor<'a> {
         }
     }
 
-    // pub fn step_over_backward(&mut self) -> Option<Result<DefViewItemRef<'a>, &'static str>> {
-    //     match self.stack.last_mut()?.prev(self.defs) {
-    //         Some(_) => {
-    //             while let Some(_) = self.step_in_at_end() {}
-    //         },
+    pub fn step_over_backward(&mut self) -> Option<Result<DefViewItemRef<'a>, &'static str>> {
+        // TODO clean this up :(
+        match self.stack.last_mut()?.prev(self.defs) {
+            Some(_) => {
+                self.drill_in();
+            },
 
-    //         None => {
-    //             self.step_out();
-    //         },
-    //     }
+            None => {
+                self.step_out();
+            },
+        }
 
-    //     self.stack.last()?.peek(self.defs)
-    // }
+        self.stack.last()?.peek(self.defs)
+    }
+
+    fn drill_in(&mut self) {
+        while let Some(_) = self.step_in_at_end() {}
+        self.stack.pop();
+    }
 
     pub fn step_out(&mut self) {
         self.stack.pop();
