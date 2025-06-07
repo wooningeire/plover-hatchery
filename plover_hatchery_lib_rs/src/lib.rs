@@ -1,14 +1,14 @@
-use pyo3::{prelude::*};
+use pyo3::{prelude::*, wrap_pyfunction};
 
-mod definition;
-use definition::{
+mod defs;
+use defs::{
     EntitySeq,
     Def,
     py::{
         DefDict,
         DefView,
         DefViewCursor,
-        DefViewItem
+        DefViewItem,
     },
     SophemeSeq,
     Entity,
@@ -16,6 +16,11 @@ use definition::{
     Sopheme,
     Keysymbol,
     Transclusion,
+};
+
+mod pipes;
+use pipes::{
+    optionalize_keysymbols,
 };
 
 
@@ -33,6 +38,8 @@ pub fn plover_hatchery_lib_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Sopheme>()?;
     m.add_class::<Keysymbol>()?;
     m.add_class::<Transclusion>()?;
+
+    m.add_function(wrap_pyfunction!(optionalize_keysymbols, m)?)?;
 
     Ok(())
 }

@@ -6,6 +6,9 @@ pub use iter::{
     DefViewItemRefChildrenIter,
 };
 
+pub mod py;
+
+
 pub struct DefViewCursor<'a> {
     pub defs: &'a DefDict,
     pub stack: Vec<DefViewItemRefChildrenCursor<'a>>,
@@ -16,9 +19,9 @@ impl<'a> DefViewCursor<'a> {
         where 'b: 'a
     {
         DefViewCursor {
-            defs: view.defs,
+            defs: view.defs(),
 
-            stack: vec![DefViewItemRefChildrenCursor::new(view.root.as_item())],
+            stack: vec![DefViewItemRefChildrenCursor::new(view.root().as_item())],
         }
     }
 

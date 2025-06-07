@@ -1,10 +1,10 @@
 use pyo3::{prelude::*};
 
-mod sopheme;
-pub use sopheme::{Sopheme, Keysymbol};
 
-mod transclusion;
-pub use transclusion::Transclusion;
+use super::{
+    sopheme::Sopheme,
+    transclusion::Transclusion,
+};
 
 use super::{DefDict, DefViewItemRef};
 
@@ -56,6 +56,23 @@ impl Entity {
             },
 
             _ => None,
+        }
+    }
+}
+
+
+#[pyclass]
+#[derive(Clone)]
+pub struct EntitySeq {
+    #[pyo3(get)] pub entities: Vec<Entity>,
+}
+
+#[pymethods]
+impl EntitySeq {
+    #[new]
+    pub fn new(entities: Vec<Entity>) -> Self {
+        EntitySeq {
+            entities,
         }
     }
 }

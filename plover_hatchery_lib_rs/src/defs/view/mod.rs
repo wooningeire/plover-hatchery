@@ -1,134 +1,30 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
-use pyo3::{prelude::*};
-
-mod rawable;
-pub use rawable::{
-    RawableEntity,
-    entity::{
+use super::{
+    def_items::{
+        Keysymbol,
         Entity,
         Sopheme,
-        Keysymbol,
-        Transclusion,
+        SophemeSeq,
+        RawableEntity,
     },
-};
-
-mod cursor;
-pub use cursor::{
-    DefViewCursor,
-    DefViewItemRefChildrenCursor,
-    DefViewItemRefChildrenIter,
+    def::Def,
+    dict::DefDict,
+    cursor::DefViewCursor,
 };
 
 pub mod py;
 
-#[pyclass(get_all)]
-#[derive(Clone, Debug)]
-pub struct Def {
-    rawables: Vec<RawableEntity>,
-    varname: String,
-}
-
-impl Def {
-    pub fn of(entity_seq: EntitySeq, varname: String) -> Def {
-        Def {
-            rawables: entity_seq.entities.into_iter()
-                .map(|entity| RawableEntity::Entity(entity))
-                .collect::<Vec<_>>(),
-            varname,
-        }
-    }
-
-    pub fn get<'a>(&'a self, index: usize) -> Option<DefViewItemRef<'a>> {
-        self.rawables.get(index)
-            .map(DefViewItemRef::Rawable)
-    }
-
-    pub fn new(rawables: Vec<RawableEntity>, varname: String) -> Def {
-        Def {
-            rawables,
-            varname,
-        }
-    }
-
-    pub fn empty(varname: String) -> Def {
-        Def {
-            rawables: vec![],
-            varname,
-        }
-    }
-}
-
-
-pub struct DefDict {
-    entries: HashMap<String, EntitySeq>,
-}
-
-impl DefDict {
-    pub fn new() -> Self {
-        DefDict {
-            entries: HashMap::new(),
-        }
-    }
-
-
-    pub fn add(&mut self, varname: String, seq: EntitySeq) {
-        self.entries.insert(varname, seq);
-    }
-
-    pub fn get_def(&self, varname: &str) -> Option<Def> {
-        self.entries.get(varname)
-            .map(|entity_seq| Def::of(entity_seq.clone(), varname.to_string()))
-    }
-
-    pub fn get<'a>(&'a self, varname: &str) -> Option<&'a EntitySeq> {
-        self.entries.get(varname)
-    }
-}
-
-
-#[pyclass]
-#[derive(Clone)]
-pub struct EntitySeq {
-    #[pyo3(get)] pub entities: Vec<Entity>,
-}
-
-#[pymethods]
-impl EntitySeq {
-    #[new]
-    pub fn new(entities: Vec<Entity>) -> Self {
-        EntitySeq {
-            entities,
-        }
-    }
-}
-
-
-
-#[pyclass]
-pub struct SophemeSeq {
-    items: Vec<Sopheme>,
-}
-
-#[pymethods]
-impl SophemeSeq {
-    #[new]
-    pub fn new(sophemes: Vec<Sopheme>) -> Self {
-        SophemeSeq {
-            items: sophemes,
-        }
-    }
-}
 
 #[derive(Clone, Debug)]
 
-enum DefViewRoot<'a> {
+pub enum DefViewRoot<'a> {
     Def(Def),
     DefRef(&'a Def),
 }
 
 impl<'a> DefViewRoot<'a> {
-    fn def_ref(&'a self) -> &'a Def {
+    pub fn def_ref(&'a self) -> &'a Def {
         match self {
             DefViewRoot::Def(ref def) => def,
 
@@ -136,7 +32,7 @@ impl<'a> DefViewRoot<'a> {
         }
     }
 
-    fn as_item(&'a self) -> DefViewItemRef<'a> {
+    pub fn as_item(&'a self) -> DefViewItemRef<'a> {
         DefViewItemRef::Root(&self.def_ref())
     }
 }
@@ -161,6 +57,14 @@ impl<'a> DefView<'a> {
             defs,
             root: DefViewRoot::DefRef(root_def),
         }
+    }
+
+    pub fn defs(&self) -> &'a DefDict {
+        self.defs
+    }
+
+    pub fn root(&self) -> &DefViewRoot<'a> {
+        &self.root
     }
 
     pub fn get_entry(defs: &'a DefDict, varname: &str) -> Result<DefView<'a>, &'static str> {

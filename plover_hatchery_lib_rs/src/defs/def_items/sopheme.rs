@@ -1,7 +1,6 @@
 use pyo3::prelude::*;
 
-mod keysymbol;
-pub use keysymbol::Keysymbol;
+use super::keysymbol::Keysymbol;
 
 
 #[pyclass]
@@ -50,5 +49,20 @@ impl Sopheme {
 impl Sopheme {
     pub fn get<'a>(&'a self, index: usize) -> Option<&'a Keysymbol> {
         self.keysymbols.get(index)
+    }
+}
+
+#[pyclass]
+pub struct SophemeSeq {
+    pub items: Vec<Sopheme>,
+}
+
+#[pymethods]
+impl SophemeSeq {
+    #[new]
+    pub fn new(sophemes: Vec<Sopheme>) -> Self {
+        SophemeSeq {
+            items: sophemes,
+        }
     }
 }

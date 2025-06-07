@@ -1,7 +1,9 @@
-pub mod entity;
-use entity::Entity;
-
-use super::{Def, DefDict, DefViewItemRef};
+use super::{
+    entity::Entity,
+    Def,
+    DefDict,
+    DefViewItemRef,
+};
 
 use pyo3::prelude::*;
 
