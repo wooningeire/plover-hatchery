@@ -14,6 +14,8 @@ use super::{
     cursor::DefViewCursor,
 };
 
+use pyo3::{exceptions::PyException, PyErr};
+
 pub mod py;
 
 
@@ -25,7 +27,7 @@ pub enum DefViewRoot<'a> {
 }
 
 impl<'a> DefViewRoot<'a> {
-    pub fn def_ref(&'a self) -> &'a Def {
+    pub fn def_ref(&self) -> &Def {
         match self {
             DefViewRoot::Def(ref def) => def,
 
@@ -33,7 +35,7 @@ impl<'a> DefViewRoot<'a> {
         }
     }
 
-    pub fn as_item_ref(&'a self) -> DefViewItemRef<'a> {
+    pub fn as_item_ref(&self) -> DefViewItemRef {
         DefViewItemRef::Def(&self.def_ref())
     }
 }
@@ -68,14 +70,16 @@ impl<'a> DefView<'a> {
         &self.root
     }
 
-    pub fn get_entry(defs: &'a DefDict, varname: &str) -> Result<DefView<'a>, &'static str> {
+    pub fn get_entry(defs: &'a DefDict, varname: &str) -> Result<DefView<'a>, DefViewErr> {
         Ok(
-            DefView::new(defs, defs.get_def(varname).ok_or("entry is not defined")?)
+            DefView::new(
+                defs,
+                defs.get_def(varname).ok_or(DefViewErr::MissingEntry { varname: varname.to_string() })?)
         )
     }
     
-    pub fn collect_sophemes(&self) -> Result<SophemeSeq, &'static str> {
-        fn dfs(entity: &RawableEntity, dict: &DefDict, sophemes: &mut Vec<Sopheme>, visited: &mut HashSet<String>) -> Result<(), &'static str> {
+    pub fn collect_sophemes(&self) -> Result<SophemeSeq, DefViewErr> {
+        fn dfs(entity: &RawableEntity, dict: &DefDict, sophemes: &mut Vec<Sopheme>, visited: &mut HashSet<String>) -> Result<(), DefViewErr> {
             match entity {
                 RawableEntity::Entity(entity) => match entity {
                     Entity::Sopheme(sopheme) => {
@@ -84,16 +88,14 @@ impl<'a> DefView<'a> {
 
                     Entity::Transclusion(transclusion) => {
                         if visited.contains(&transclusion.target_varname) {
-                            return Err("circular dependency");
+                            return Err(DefViewErr::UnexpectedNone);
                         }
 
                         match dict.get_def(&transclusion.target_varname) {
                             Some(inner_def) => {
                                 dfs_def(&inner_def, dict, sophemes, visited)?;
                             },
-                            None => {
-                                return Err("entry is not defined");
-                            },
+                            None => return Err(DefViewErr::MissingEntry { varname: transclusion.target_varname.clone() }),
                         };
                     },
                 },
@@ -107,7 +109,7 @@ impl<'a> DefView<'a> {
         }
 
 
-        fn dfs_def(def: &Def, dict: &DefDict, sophemes: &mut Vec<Sopheme>, visited: &mut HashSet<String>) -> Result<(), &'static str> {
+        fn dfs_def(def: &Def, dict: &DefDict, sophemes: &mut Vec<Sopheme>, visited: &mut HashSet<String>) -> Result<(), DefViewErr> {
             visited.insert(def.varname.clone());
 
             for overridable_entity in def.rawables.iter() {
@@ -127,7 +129,7 @@ impl<'a> DefView<'a> {
         Ok(SophemeSeq::new(sophemes))
     }
 
-    pub fn translation(&self) -> Result<String, &'static str> {
+    pub fn translation(&self) -> Result<String, DefViewErr> {
         self.collect_sophemes()
             .map(
                 |sophemes| sophemes.items.iter()
@@ -138,23 +140,21 @@ impl<'a> DefView<'a> {
     }
 
 
-    pub fn read(&'a self, indexes: &[usize]) -> Result<Option<DefViewItemRef<'a>>, &'static str> {
+    pub fn get(&self, indexes: &[usize]) -> Result<Option<DefViewItemRef>, DefViewErr> {
         let mut cur_item_ref = self.root.as_item_ref();
 
         for &index in indexes {
-            cur_item_ref = match cur_item_ref.get_child(index, self.defs) {
-                Some(Ok(item_ref)) => item_ref,
-
-                Some(Err(msg)) => return Err(msg),
+            cur_item_ref = match cur_item_ref.get_child(index, self.defs)? {
+                Some(item_ref) => item_ref,
 
                 None => return Ok(None),
-            }
+            };
         }
 
         Ok(Some(cur_item_ref))
     }
 
-    pub fn foreach(&self, func: impl Fn(DefViewItemRef, &DefViewCursor)) -> Result<(), &'static str> {
+    pub fn foreach(&self, func: impl Fn(DefViewItemRef, &DefViewCursor)) -> Result<(), DefViewErr> {
         let mut cursor = DefViewCursor::of_view_at_start(self);
 
         while let Some(item_ref) = cursor.step_forward()? {
@@ -164,7 +164,7 @@ impl<'a> DefView<'a> {
         Ok(())
     }
 
-    pub fn first_index_after(&self, mut cursor: DefViewCursor<'a, '_>, predicate: impl Fn(DefViewItemRef) -> bool) -> Result<Option<DefViewCursor<'a, '_>>, &'static str> {
+    pub fn first_index_after(&self, mut cursor: DefViewCursor<'a, '_>, predicate: impl Fn(DefViewItemRef) -> bool) -> Result<Option<DefViewCursor<'a, '_>>, DefViewErr> {
         while let Some(item_ref) = cursor.step_forward()? {
             if predicate(item_ref) {
                 return Ok(Some(cursor));
@@ -174,7 +174,7 @@ impl<'a> DefView<'a> {
         Ok(None)
     }
 
-    pub fn last_index_before(&self, mut cursor: DefViewCursor<'a, '_>, predicate: impl Fn(DefViewItemRef) -> bool) -> Result<Option<DefViewCursor<'a, '_>>, &'static str> {
+    pub fn last_index_before(&self, mut cursor: DefViewCursor<'a, '_>, predicate: impl Fn(DefViewItemRef) -> bool) -> Result<Option<DefViewCursor<'a, '_>>, DefViewErr> {
         while let Some(item_ref) = cursor.step_backward()? {
             if predicate(item_ref) {
                 return Ok(Some(cursor));
@@ -184,7 +184,7 @@ impl<'a> DefView<'a> {
         Ok(None)
     }
 
-    pub fn first_index_since(&self, cursor: DefViewCursor<'a, '_>, predicate: impl Fn(DefViewItemRef) -> bool) -> Result<Option<DefViewCursor<'a, '_>>, &'static str> {
+    pub fn first_index_since(&self, cursor: DefViewCursor<'a, '_>, predicate: impl Fn(DefViewItemRef) -> bool) -> Result<Option<DefViewCursor<'a, '_>>, DefViewErr> {
         if let Some(item_ref) = cursor.peek()? {
             if predicate(item_ref) {
                 return Ok(Some(cursor));
@@ -194,7 +194,7 @@ impl<'a> DefView<'a> {
         self.first_index_after(cursor, predicate)
     }
     
-    pub fn last_index_until(&self, cursor: DefViewCursor<'a, '_>, predicate: impl Fn(DefViewItemRef) -> bool) -> Result<Option<DefViewCursor<'a, '_>>, &'static str> {
+    pub fn last_index_until(&self, cursor: DefViewCursor<'a, '_>, predicate: impl Fn(DefViewItemRef) -> bool) -> Result<Option<DefViewCursor<'a, '_>>, DefViewErr> {
         if let Some(item_ref) = cursor.peek()? {
             if predicate(item_ref) {
                 return Ok(Some(cursor));
@@ -205,15 +205,15 @@ impl<'a> DefView<'a> {
     }
 
 
-    pub fn first_index(&self, predicate: impl Fn(DefViewItemRef) -> bool) -> Result<Option<DefViewCursor>, &'static str> {
+    pub fn first_index(&self, predicate: impl Fn(DefViewItemRef) -> bool) -> Result<Option<DefViewCursor>, DefViewErr> {
         self.first_index_since(DefViewCursor::of_view_at_start(self), predicate)
     }
 
-    pub fn last_index(&self, predicate: impl Fn(DefViewItemRef) -> bool) -> Result<Option<DefViewCursor>, &'static str> {
-        self.last_index_until(DefViewCursor::of_view_at_end(self), predicate)
+    pub fn last_index(&self, predicate: impl Fn(DefViewItemRef) -> bool) -> Result<Option<DefViewCursor>, DefViewErr> {
+        self.last_index_until(DefViewCursor::of_view_at_end(self)?, predicate)
     }
 
-    pub fn first_keysymbol_cur(&self, predicate: impl Fn(&Keysymbol) -> bool) -> Result<Option<DefViewCursor>, &'static str> {
+    pub fn first_keysymbol_cur(&self, predicate: impl Fn(&Keysymbol) -> bool) -> Result<Option<DefViewCursor>, DefViewErr> {
         self.first_index(|item_ref| match item_ref {
             DefViewItemRef::Keysymbol(keysymbol) => predicate(keysymbol),
 
@@ -221,7 +221,7 @@ impl<'a> DefView<'a> {
         })
     }
 
-    pub fn last_keysymbol_cur(&self, predicate: impl Fn(&Keysymbol) -> bool) -> Result<Option<DefViewCursor>, &'static str> {
+    pub fn last_keysymbol_cur(&self, predicate: impl Fn(&Keysymbol) -> bool) -> Result<Option<DefViewCursor>, DefViewErr> {
         self.last_index(|item_ref| match item_ref {
             DefViewItemRef::Keysymbol(keysymbol) => predicate(keysymbol),
 
@@ -229,19 +229,19 @@ impl<'a> DefView<'a> {
         })
     }
 
-    pub fn first_consonant_cur(&self) -> Result<Option<DefViewCursor>, &'static str> {
+    pub fn first_consonant_cur(&self) -> Result<Option<DefViewCursor>, DefViewErr> {
         self.first_keysymbol_cur(|keysymbol| keysymbol.is_consonant())
     }
 
-    pub fn last_consonant_cur(&self) -> Result<Option<DefViewCursor>, &'static str> {
+    pub fn last_consonant_cur(&self) -> Result<Option<DefViewCursor>, DefViewErr> {
         self.last_keysymbol_cur(|keysymbol| keysymbol.is_consonant())
     }
 
-    pub fn first_vowel_cur(&self) -> Result<Option<DefViewCursor>, &'static str> {
+    pub fn first_vowel_cur(&self) -> Result<Option<DefViewCursor>, DefViewErr> {
         self.first_keysymbol_cur(|keysymbol| keysymbol.is_vowel())
     }
 
-    pub fn last_vowel_cur(&self) -> Result<Option<DefViewCursor>, &'static str> {
+    pub fn last_vowel_cur(&self) -> Result<Option<DefViewCursor>, DefViewErr> {
         self.last_keysymbol_cur(|keysymbol| keysymbol.is_vowel())
     }
 }
@@ -256,37 +256,48 @@ pub enum DefViewItemRef<'a> {
 }
 
 impl<'a> DefViewItemRef<'a> {
+    pub fn get_child(&self, index: usize, defs: &'a DefDict) -> Result<Option<DefViewItemRef<'a>>, DefViewErr> {
+        Ok(match self {
+            DefViewItemRef::Sopheme(sopheme) => match sopheme.get_child(index) {
+                Some(keysymbol) => Some(DefViewItemRef::Keysymbol(keysymbol)),
 
-    pub fn get_child(&self, index: usize, defs: &'a DefDict) -> Option<Result<DefViewItemRef<'a>, &'static str>> {
-        Some(Ok(match self {
-            DefViewItemRef::Sopheme(sopheme) => DefViewItemRef::Keysymbol(sopheme.get_child(index)?),
+                None => None,
+            },
 
-            DefViewItemRef::Def(def) => match def.get_child(index)? {
-                RawableEntity::Entity(entity) => match entity {
-                    Entity::Sopheme(sopheme) => DefViewItemRef::Sopheme(sopheme),
+            DefViewItemRef::Def(def) => match def.get_child(index) {
+                Some(rawable) => match rawable {
+                    RawableEntity::Entity(entity) => match entity {
+                        Entity::Sopheme(sopheme) => Some(DefViewItemRef::Sopheme(sopheme)),
+
+                        Entity::Transclusion(transclusion) => match defs.get(&transclusion.target_varname) {
+                            Some(seq) => Some(DefViewItemRef::EntitySeq(seq, transclusion.target_varname.clone())),
+
+                            None => return Err(DefViewErr::MissingEntry { varname: transclusion.target_varname.clone() }),
+                        },
+                    },
+
+                    RawableEntity::RawDef(def) => Some(DefViewItemRef::Def(def)),
+                },
+
+                None => None,
+            },
+
+            DefViewItemRef::EntitySeq(seq, _) => match seq.entities.get(index) {
+                Some(entity) => match entity {
+                    Entity::Sopheme(sopheme) => Some(DefViewItemRef::Sopheme(sopheme)),
 
                     Entity::Transclusion(transclusion) => match defs.get(&transclusion.target_varname) {
-                        Some(seq) => DefViewItemRef::EntitySeq(seq, transclusion.target_varname.clone()),
+                        Some(seq) => Some(DefViewItemRef::EntitySeq(seq, transclusion.target_varname.clone())),
 
-                        None => return Some(Err("entry not found")),
+                        None => return Err(DefViewErr::MissingEntry { varname: transclusion.target_varname.clone() }),
                     },
                 },
 
-                RawableEntity::RawDef(def) => DefViewItemRef::Def(def),
+                None => None,
             },
 
-            DefViewItemRef::EntitySeq(seq, _) => match seq.entities.get(index)? {
-                Entity::Sopheme(sopheme) => DefViewItemRef::Sopheme(sopheme),
-
-                Entity::Transclusion(transclusion) => match defs.get(&transclusion.target_varname) {
-                    Some(seq) => DefViewItemRef::EntitySeq(seq, transclusion.target_varname.clone()),
-
-                    None => return Some(Err("entry not found")),
-                },
-            },
-
-            _ => return None,
-        }))
+            _ => None,
+        })
     }
 
     pub fn n_children(&self) -> usize {
@@ -299,5 +310,40 @@ impl<'a> DefViewItemRef<'a> {
 
             _ => 0,
         }
+    }
+}
+
+
+pub enum DefViewErr {
+    MissingEntry {
+        varname: String,
+    },
+    EmptyStack,
+    UnexpectedNone,
+    CircularDependency {
+        def_varname: String,
+        varname: String,
+    },
+    UnexpectedChildItemType,
+}
+
+impl DefViewErr {
+    pub fn message(&self) -> String {
+        match self {
+            DefViewErr::MissingEntry { varname } => format!("There is no entry for \"{varname}\""),
+
+            DefViewErr::EmptyStack => "Cursor stack is empty".to_string(),
+
+            DefViewErr::UnexpectedNone => "Expected this cursor to be pointing to an item".to_string(),
+
+            DefViewErr::CircularDependency { def_varname, varname } => 
+                format!("Definition for \"{def_varname}\" contains a circular dependency \"{varname}\""),
+
+            DefViewErr::UnexpectedChildItemType => format!("Unexpected child item type"),
+        }
+    }
+
+    pub fn as_pyerr(&self) -> PyErr {
+        PyException::new_err(self.message())
     }
 }

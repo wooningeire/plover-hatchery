@@ -97,8 +97,8 @@ def compile_theory(
                 defs.add(varname, EntitySeq(list(parse_entry_definition(definition_str.strip()))))
                 n_passed_parses += 1
             except Exception as e:
-                import traceback
-                print(f"failed to parse {definition_str.strip()}: {e} ({''.join(traceback.format_tb(e.__traceback__))})")
+                # import traceback
+                # print(f"failed to parse {definition_str.strip()}: {e} ({''.join(traceback.format_tb(e.__traceback__))})")
                 pass
 
             n_entries += 1
@@ -111,12 +111,12 @@ def compile_theory(
         def _(varname: str):
             nonlocal i, n_addable_entries, n_passed_additions
 
-            if i % 1000 == 0:
+            if i % 10000 == 0:
                 print(f"checked/wrote {i}")
 
             i += 1
 
-            if any(varname.startswith(modifier) for modifier in "@#^") or varname.endswith("^"):
+            if any(varname.startswith(modifier) for modifier in "@#") or "^" in varname:
                 return
 
             translations.append("")

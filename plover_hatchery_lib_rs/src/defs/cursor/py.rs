@@ -1,7 +1,8 @@
-use pyo3::{exceptions::{PyException, PyKeyError, PyTypeError}, prelude::*, types::PyTuple};
+use pyo3::{exceptions::{PyKeyError}, prelude::*, types::PyTuple};
 
 use super::super::{
     py,
+    view::DefViewErr,
 };
 
 
@@ -22,15 +23,16 @@ impl py::DefViewCursor {
     pub fn with_rs<T>(&self, py: Python<'_>, func: impl Fn(super::DefViewCursor) -> T) -> Result<T, PyErr> {
         self.view.borrow(py).with_rs(py, |view_rs| {
             let cursor_rs = super::DefViewCursor::with_index_stack(&view_rs, self.index_stack.clone().into_iter().map(Some))
-                .map_err(PyException::new_err)?;
+                .map_err(|err| err.as_pyerr())?
+                .ok_or(DefViewErr::UnexpectedNone.as_pyerr())?;
 
             Ok(func(cursor_rs))
         })
     }
 
-    pub fn with_rs_result<T>(&self, py: Python<'_>, func: impl Fn(super::DefViewCursor) -> Result<T, &'static str>) -> Result<T, PyErr> {
+    pub fn with_rs_result<T>(&self, py: Python<'_>, func: impl Fn(super::DefViewCursor) -> Result<T, DefViewErr>) -> Result<T, PyErr> {
         self.with_rs(py, func)?
-            .map_err(PyException::new_err)
+            .map_err(|err| err.as_pyerr())
     }
 }
 
@@ -50,12 +52,12 @@ impl py::DefViewCursor {
     }
 
     pub fn tip(&self, py: Python<'_>) -> Result<py::DefViewItem, PyErr> {
-        self.maybe_tip(py)?.ok_or(PyTypeError::new_err("cursor is not pointing to anything"))
+        self.maybe_tip(py)?.ok_or(DefViewErr::UnexpectedNone.as_pyerr())
     }
 
     pub fn maybe_tip(&self, py: Python<'_>) -> Result<Option<py::DefViewItem>, PyErr> {
         self.view.borrow(py).with_rs_result(py, |view_rs| {
-            Ok(view_rs.read(&self.index_stack)?.map(py::DefViewItem::of))
+            Ok(view_rs.get(&self.index_stack)?.map(py::DefViewItem::of))
         })
     }
 
@@ -65,7 +67,7 @@ impl py::DefViewCursor {
 
     pub fn maybe_nth(&self, level: usize, py: Python<'_>) -> Result<Option<py::DefViewItem>, PyErr> {
         self.view.borrow(py).with_rs_result(py, |view_rs| {
-            Ok(view_rs.read(&self.index_stack[..level])?.map(py::DefViewItem::of))
+            Ok(view_rs.get(&self.index_stack[..level])?.map(py::DefViewItem::of))
         })
     }
 

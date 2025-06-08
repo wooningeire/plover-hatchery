@@ -6,12 +6,14 @@ use super::super::{
         SophemeSeq,
         Def,
     },
-    view::DefViewItemRef,
+    view::{
+        DefViewItemRef,
+        DefViewErr,
+    },
     py,
 };
 
 use pyo3::{exceptions::{PyException, PyTypeError}, prelude::*, types::PyTuple};
-
 
 #[pyclass]
 pub struct DefView {
@@ -32,9 +34,9 @@ impl DefView {
         func(view_rs)
     }
 
-    pub fn with_rs_result<T>(&self, py: Python<'_>, func: impl Fn(super::DefView) -> Result<T, &'static str>) -> Result<T, PyErr> {
+    pub fn with_rs_result<T>(&self, py: Python<'_>, func: impl Fn(super::DefView) -> Result<T, DefViewErr>) -> Result<T, PyErr> {
         self.with_rs(py, func)
-            .map_err(|msg| PyException::new_err(msg))
+            .map_err(|err| PyException::new_err(err.message()))
     }
 }
 
@@ -80,7 +82,7 @@ impl DefView {
     #[getter]
     pub fn first_consonant_cur<'py>(&self, py: Python<'py>) -> Result<Option<Bound<'py, PyTuple>>, PyErr> {
         self.with_rs(py, |view_rs| {
-            Ok(match view_rs.first_consonant_cur().map_err(PyException::new_err)? {
+            Ok(match view_rs.first_consonant_cur().map_err(|err| PyException::new_err(err.message()))? {
                 Some(cur) => Some(PyTuple::new(py, cur.index_stack())?),
 
                 None => None,
@@ -91,7 +93,7 @@ impl DefView {
     #[getter]
     pub fn last_consonant_cur<'py>(&self, py: Python<'py>) -> Result<Option<Bound<'py, PyTuple>>, PyErr> {
         self.with_rs(py, |view_rs| {
-            Ok(match view_rs.last_consonant_cur().map_err(PyException::new_err)? {
+            Ok(match view_rs.last_consonant_cur().map_err(|err| err.as_pyerr())? {
                 Some(cur) => Some(PyTuple::new(py, cur.index_stack())?),
 
                 None => None,
@@ -102,7 +104,7 @@ impl DefView {
     #[getter]
     pub fn first_vowel_cur<'py>(&self, py: Python<'py>) -> Result<Option<Bound<'py, PyTuple>>, PyErr> {
         self.with_rs(py, |view_rs| {
-            Ok(match view_rs.first_vowel_cur().map_err(PyException::new_err)? {
+            Ok(match view_rs.first_vowel_cur().map_err(|err| err.as_pyerr())? {
                 Some(cur) => Some(PyTuple::new(py, cur.index_stack())?),
 
                 None => None,
@@ -113,7 +115,7 @@ impl DefView {
     #[getter]
     pub fn last_vowel_cur<'py>(&self, py: Python<'py>) -> Result<Option<Bound<'py, PyTuple>>, PyErr> {
         self.with_rs(py, |view_rs| {
-            Ok(match view_rs.last_vowel_cur().map_err(PyException::new_err)? {
+            Ok(match view_rs.last_vowel_cur().map_err(|err| err.as_pyerr())? {
                 Some(cur) => Some(PyTuple::new(py, cur.index_stack())?),
 
                 None => None,

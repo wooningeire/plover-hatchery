@@ -11,14 +11,11 @@ pub use def_items::{
 };
 
 mod dict;
-pub use dict::{
-    DefDict,
-};
 
 mod view;
 pub use view::{
-    DefView,
     DefViewItemRef,
+    DefViewErr,
 };
 
 mod cursor;

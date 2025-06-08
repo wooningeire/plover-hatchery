@@ -1,4 +1,10 @@
-use super::*;
+use super::super::{
+    view::{
+        DefViewItemRef,
+        DefViewErr,
+    },
+    dict::DefDict,
+};
 
 #[derive(Clone)]
 pub struct DefViewItemRefChildrenCursor<'a> {
@@ -29,24 +35,22 @@ impl<'a> DefViewItemRefChildrenCursor<'a> {
         }
     }
 
-    pub fn create_child_iter_at_start(&self, defs: &'a DefDict) -> Option<Result<Self, &'static str>> {
-        Some(
-            self.item_ref.get_child(self.index?, defs)?
-                .map(DefViewItemRefChildrenCursor::new_at_start)
-        )
-    }
-
-    pub fn create_child_iter_at_end(&self, defs: &'a DefDict) -> Option<Result<Self, &'static str>> {
-        Some(
-            self.item_ref.get_child(self.index?, defs)?
-                .map(DefViewItemRefChildrenCursor::new_at_end)
-        )
-    }
-
-    pub fn create_child_iter_at(&self, defs: &'a DefDict, child_index: Option<usize>) -> Result<Option<Self>, &'static str> {
+    pub fn create_child_iter_at_start(&self, defs: &'a DefDict) -> Result<Option<Self>, DefViewErr> {
         Ok(match self.index {
-            Some(index) => match self.item_ref.get_child(index, defs) {
-                Some(item_ref) => Some(DefViewItemRefChildrenCursor::new(item_ref?, child_index)),
+            Some(index) => match self.item_ref.get_child(index, defs)? {
+                Some(item_ref) => Some(DefViewItemRefChildrenCursor::new_at_start(item_ref)),
+                
+                None => None,
+            },
+
+            None => None,
+        })
+    }
+
+    pub fn create_child_iter_at_end(&self, defs: &'a DefDict) -> Result<Option<Self>, DefViewErr> {
+        Ok(match self.index {
+            Some(index) => match self.item_ref.get_child(index, defs)? {
+                Some(item_ref) => Some(DefViewItemRefChildrenCursor::new_at_end(item_ref)),
 
                 None => None,
             },
@@ -55,12 +59,10 @@ impl<'a> DefViewItemRefChildrenCursor<'a> {
         })
     }
 
-    pub fn peek(&self, defs: &'a DefDict) -> Result<Option<DefViewItemRef<'a>>, &'static str> {
+    pub fn create_child_iter_at(&self, defs: &'a DefDict, child_index: Option<usize>) -> Result<Option<Self>, DefViewErr> {
         Ok(match self.index {
-            Some(index) => match self.item_ref.get_child(index, defs) {
-                Some(Err(msg)) => return Err(msg),
-
-                Some(Ok(item_ref)) => Some(item_ref),
+            Some(index) => match self.item_ref.get_child(index, defs)? {
+                Some(item_ref) => Some(DefViewItemRefChildrenCursor::new(item_ref, child_index)),
 
                 None => None,
             },
@@ -69,12 +71,20 @@ impl<'a> DefViewItemRefChildrenCursor<'a> {
         })
     }
 
-    pub fn next(&mut self, defs: &'a DefDict) -> Result<Option<DefViewItemRef<'a>>, &'static str> {
+    pub fn peek(&self, defs: &'a DefDict) -> Result<Option<DefViewItemRef<'a>>, DefViewErr> {
+        match self.index {
+            Some(index) => self.item_ref.get_child(index, defs),
+
+            None => Ok(None),
+        }
+    }
+
+    pub fn next(&mut self, defs: &'a DefDict) -> Result<Option<DefViewItemRef<'a>>, DefViewErr> {
         self.incr();
         self.peek(defs)
     }
 
-    pub fn prev(&mut self, defs: &'a DefDict) -> Result<Option<DefViewItemRef<'a>>, &'static str> {
+    pub fn prev(&mut self, defs: &'a DefDict) -> Result<Option<DefViewItemRef<'a>>, DefViewErr> {
         self.decr();
         self.peek(defs)
     }
@@ -107,32 +117,5 @@ impl<'a> DefViewItemRefChildrenCursor<'a> {
 
     pub fn index(&self) -> Option<usize> {
         self.index
-    }
-
-
-    pub fn iter_mut<'cur>(&'cur mut self, defs: &'a DefDict) -> DefViewItemRefChildrenIter<'a, 'cur> {
-        DefViewItemRefChildrenIter {
-            cursor: self,
-            defs,
-        }
-    }
-}
-
-pub struct DefViewItemRefChildrenIter<'defs, 'cur> {
-    cursor: &'cur mut DefViewItemRefChildrenCursor<'defs>,
-    defs: &'defs DefDict,
-}
-
-impl<'defs, 'cur> Iterator for DefViewItemRefChildrenIter<'defs, 'cur> {
-    type Item = Result<DefViewItemRef<'defs>, &'static str>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.cursor.next(self.defs) {
-            Ok(Some(val)) => Some(Ok(val)),
-
-            Ok(None) => None,
-
-            Err(msg) => Some(Err(msg)),
-        }
     }
 }

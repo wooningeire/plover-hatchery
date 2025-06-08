@@ -1,5 +1,5 @@
 use crate::defs::{
-    Def, DefViewCursor, DefViewItemRef, Entity, Keysymbol, RawableEntity, Sopheme
+    Def, DefViewCursor, DefViewItemRef, Entity, Keysymbol, RawableEntity, Sopheme, DefViewErr,
 };
 
 use pyo3::{exceptions::PyException, prelude::*};
@@ -14,9 +14,9 @@ pub fn map_def<'a>(
 
     let level = cur.stack.len() - 1;
 
-    while let Some(child) = cur.stack[level].next(cur.view.defs()).map_err(PyException::new_err)? {
-        if let Err(msg) = cur.step_in_at_start().unwrap() {
-            return Err(PyException::new_err(msg));
+    while let Some(child) = cur.stack[level].next(cur.view.defs()).map_err(|err| err.as_pyerr())? {
+        if !cur.step_in_at_start().map_err(|err| err.as_pyerr())? {
+            return Err(DefViewErr::UnexpectedNone.as_pyerr());
         }
 
         new_def.rawables.push(match child {
@@ -26,7 +26,7 @@ pub fn map_def<'a>(
 
             DefViewItemRef::Sopheme(sopheme) => RawableEntity::Entity(Entity::Sopheme(map_sopheme(&sopheme.chars, cur, handle_keysymbol)?)),
 
-            _ => return Err(PyException::new_err("malformed definition")),
+            _ => return Err(DefViewErr::UnexpectedChildItemType.as_pyerr()),
         });
 
         cur.step_out();
@@ -45,15 +45,15 @@ pub fn map_sopheme<'a>(
 
     let level = cur.stack.len() - 1;
 
-    while let Some(child) = cur.stack[level].next(cur.view.defs()).map_err(PyException::new_err)? {
-        if let Err(msg) = cur.step_in_at_start().unwrap() {
-            return Err(PyException::new_err(msg));
+    while let Some(child) = cur.stack[level].next(cur.view.defs()).map_err(|err| err.as_pyerr())? {
+        if !cur.step_in_at_start().map_err(|err| err.as_pyerr())? {
+            return Err(DefViewErr::UnexpectedNone.as_pyerr());
         }
 
         match child {
             DefViewItemRef::Keysymbol(keysymbol) => handle_keysymbol(&mut new_sopheme.keysymbols, keysymbol, cur)?,
 
-            _ => return Err(PyException::new_err("malformed definition")),
+            _ => return Err(PyException::new_err(DefViewErr::UnexpectedChildItemType.as_pyerr())),
         };
 
         cur.step_out();
