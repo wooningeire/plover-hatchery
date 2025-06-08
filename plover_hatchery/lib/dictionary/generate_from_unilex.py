@@ -176,7 +176,7 @@ class _UnilexHatcheryConverter:
         return " ".join(entry_parts)
 
 
-    def generate(self, in_path: Path, out_path: Path, failures_out_path: "Path | None"):
+    def generate(self, in_path: Path, out_path: Path, failures_out_path: Path | None):
         # with open(root / args.in_json_path, "r", encoding="utf-8") as file:
         #     lapwing_dict = json.load(file)
         
@@ -310,5 +310,5 @@ class _UnilexHatcheryConverter:
         with open(out_path, "w+", encoding="utf-8") as out_file:
             toml.dump(out_dict, out_file)
 
-def generate_from_unilex(in_path: Path, out_path: Path, failures_out_path: "Path | None"):
+def generate_from_unilex(in_path: Path, out_path: Path, failures_out_path: Path | None):
     return _UnilexHatcheryConverter().generate(in_path, out_path, failures_out_path)

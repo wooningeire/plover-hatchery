@@ -156,7 +156,7 @@ class match_chars_to_chords(AlignmentService, ABC):
         return tuple(key.asterisk for key in subseq_keys)
 
     @staticmethod
-    def construct_match(translation: str, keys: tuple[AsteriskableKey, ...], start_cell: Cell[_Cost, tuple[bool, ...]], end_cell: Cell[_Cost, tuple[bool, ...]], asterisk_matches: "tuple[bool, ...] | None"):
+    def construct_match(translation: str, keys: tuple[AsteriskableKey, ...], start_cell: Cell[_Cost, tuple[bool, ...]], end_cell: Cell[_Cost, tuple[bool, ...]], asterisk_matches: tuple[bool, ...] | None):
         return AnnotatedChord(
             data=translation[start_cell.x:end_cell.x],
             chord=AnnotatedChord.keys_to_strokes((key.key for key in keys[start_cell.y:end_cell.y]), asterisk_matches or (False,) * (end_cell.y - start_cell.y)),

@@ -46,7 +46,7 @@ class Cell(Generic[Cost, MatchData]):
     y: int
 
     has_match: bool
-    match_data: "MatchData | None" = None
+    match_data: MatchData | None = None
     # asterisk_matches: tuple[bool, ...] = ()
 
     def __lt__(self, cell: "Cell[Comparable[Cost], MatchData]") -> bool:
@@ -101,7 +101,7 @@ class AlignmentService(Generic[Cost, MatchData, InputX, InputY, MappingX, Mappin
         ...
 
     @staticmethod
-    def construct_match(seq_x: Sliceable[ItemX], seq_y: Sliceable[ItemY], start_cell: Cell[Cost, MatchData], end_cell: Cell[Cost, MatchData], match_data: "MatchData | None", /) -> Match:
+    def construct_match(seq_x: Sliceable[ItemX], seq_y: Sliceable[ItemY], start_cell: Cell[Cost, MatchData], end_cell: Cell[Cost, MatchData], match_data: MatchData | None, /) -> Match:
         ...
 
 

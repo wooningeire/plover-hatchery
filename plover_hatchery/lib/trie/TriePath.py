@@ -19,5 +19,5 @@ class JoinedTransitionSeq:
 @final
 @dataclass
 class JoinedTriePaths:
-    dst_node_id: "int | None"
+    dst_node_id: int | None
     transition_seqs: tuple[JoinedTransitionSeq, ...]

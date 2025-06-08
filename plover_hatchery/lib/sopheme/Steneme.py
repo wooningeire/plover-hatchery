@@ -14,7 +14,7 @@ from plover_hatchery_lib_rs import Sopheme
 class Steneme:
     sophemes: tuple[Sopheme, ...]
     steno: tuple[Stroke, ...]
-    phoneme: "Sophone | None"
+    phoneme: Sophone | None
 
     def __str__(self):
         out = " ".join(str(sopheme) for sopheme in self.sophemes)

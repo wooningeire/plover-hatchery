@@ -35,7 +35,7 @@ def linker_chord(
         @dataclass
         @final
         class LinkerChordState:
-            newest_post_linker_node: "int | None" = None
+            newest_post_linker_node: int | None = None
 
         
         @banks_hooks.begin.listen(linker_chord)
@@ -44,7 +44,7 @@ def linker_chord(
 
 
         @banks_hooks.before_complete_consonant.listen(linker_chord)
-        def _(banks_state: BanksState, state: LinkerChordState, left_node: "int | None", right_node: "int | None", **_):
+        def _(banks_state: BanksState, state: LinkerChordState, left_node: int | None", right_node: "int | None, **_):
             if right_node is None: return
 
             new_stroke_node = banks_state.trie.follow(right_node, TRIE_STROKE_BOUNDARY_KEY, TransitionCostInfo(0, banks_state.entry_id)).dst_node_id
@@ -69,7 +69,7 @@ def linker_chord(
 
 
         @banks_hooks.before_complete_vowel.listen(linker_chord)
-        def _(banks_state: BanksState, state: LinkerChordState, mid_node: "int | None", **_):
+        def _(banks_state: BanksState, state: LinkerChordState, mid_node: int | None, **_):
             if mid_node is None: return
 
             new_stroke_node = banks_state.trie.follow(mid_node, TRIE_STROKE_BOUNDARY_KEY, TransitionCostInfo(0, banks_state.entry_id)).dst_node_id

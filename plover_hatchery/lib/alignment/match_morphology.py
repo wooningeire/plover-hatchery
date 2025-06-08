@@ -106,8 +106,8 @@ class _MorphologyReconstructor:
         self.__translation = translation
 
 
-        self.__current_old_chunk: "Root | Affix | None" = None
-        self.__new_chunk: "Root | Affix | None" = None
+        self.__current_old_chunk: Root | Affix | None = None
+        self.__new_chunk: Root | Affix | None = None
 
         self.__new_parts: list[MorphologyPart] = []
         self.__new_chunks: list[MorphologyChunk] = []

@@ -9,7 +9,7 @@ V = TypeVar("V")
 
 class TransitionKey(NamedTuple):
     src_node_index: int
-    key_id: "int | None"
+    key_id: int | None
     transition_index: int
 
 class TransitionCostKey(NamedTuple):

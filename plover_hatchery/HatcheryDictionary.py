@@ -14,8 +14,8 @@ class HatcheryDictionary(StenoDictionary):
         """(override)"""
         self._longest_key = 12
 
-        self.__maybe_lookup: "Callable[[tuple[str, ...]], str | None] | None" = None
-        self.__maybe_reverse_lookup: "Callable[[str], list[tuple[str, ...]]] | None" = None
+        self.__maybe_lookup: Callable[[tuple[str, ...]], str | None] | None = None
+        self.__maybe_reverse_lookup: Callable[[str], list[tuple[str, ...]]] | None = None
 
     def _load(self, filepath: str):
         from .lib.theory_presets.amphitheory import theory

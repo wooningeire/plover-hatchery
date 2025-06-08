@@ -169,7 +169,7 @@ def consonant_inversions(*, consonant_sophs_str: str, inversion_domains_steno: s
 
         @dataclass
         class ConsonantInversionsLookupState:
-            current_domain: "Stroke | None" = None
+            current_domain: Stroke | None = None
             sophs_in_current_domain: list[tuple[ChordToSophSearchResultWithSrcIndex, ...]] = field(default_factory=list)
             first_key_index_in_current_domain: int = -1
 
@@ -234,10 +234,10 @@ def consonant_inversions(*, consonant_sophs_str: str, inversion_domains_steno: s
 
         # class Filterer:
         #     def __init__(self):
-        #         self.__current_domain: "Stroke | None" = None
+        #         self.__current_domain: Stroke | None = None
         #         self.__current_domain_phonemes: list[SophemeSeqPhoneme] = []
 
-        #         self.__next_phoneme_to_validate: "SophemeSeqPhoneme | None" = None
+        #         self.__next_phoneme_to_validate: SophemeSeqPhoneme | None = None
 
         #     def reset(self):
         #         self.__current_domain = None

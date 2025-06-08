@@ -1,0 +1,49 @@
+[build-system]
+requires = ["hatchling >= 1.26"]
+build-backend = "hatchling.build"
+
+[project]
+name = "plover-hatchery"
+version = "0.0.0"
+description = "Automatically derive writeout entries from the longest form"
+keywords = ["plover", "plover_plugin"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Plugins",
+    "Intended Audience :: End Users/Desktop",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13"
+]
+
+dependencies = [
+    "plover>=5.0.0dev1",
+    "toml>=0.10.2",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.3.2",
+]
+
+[project.entry-points."plover.dictionary"]
+writeouts-json = "plover_hatchery.WriteoutsDictionary:WriteoutsDictionary"
+hatchery = "plover_hatchery.HatcheryDictionary:HatcheryDictionary"
+
+[tool.setuptools]
+zip-safe = true
+packages = [
+    "plover_hatchery",
+    "plover_hatchery.lib",
+    "plover_hatchery.lib.alignment",
+    "plover_hatchery.lib.config",
+    "plover_hatchery.lib.dictionary",
+    "plover_hatchery.lib.lookup",
+    "plover_hatchery.lib.pipes",
+    "plover_hatchery.lib.sopheme",
+    "plover_hatchery.lib.sophone",
+    "plover_hatchery.lib.theory_presets",
+    "plover_hatchery.lib.trie"
+]
+
+[tool.pytest]
+python_files = "*__test.py"

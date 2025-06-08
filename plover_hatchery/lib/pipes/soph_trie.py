@@ -1,5 +1,5 @@
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Callable, Iterable, NamedTuple, Protocol, final
 
 from plover.steno import Stroke
@@ -36,7 +36,7 @@ class SophChordAssociationWithUnresolvedPhonemes(NamedTuple):
 
 @dataclass(frozen=True)
 class SophsToTranslationSearchPath:
-    trie_path: TriePath = TriePath(0, ())
+    trie_path: TriePath = field(default_factory=TriePath)
     sophs_and_chords_used: tuple[SophChordAssociationWithUnresolvedPhonemes, ...] = ()
 
 
@@ -72,7 +72,7 @@ class SophTrieApi:
     class BeginLookup(Protocol):
         def __call__(self, *, outline: tuple[Stroke, ...]) -> Any: ...
     class ProcessOutline(Protocol):
-        def __call__(self, *, state: Any, outline: tuple[Stroke, ...]) -> "tuple[Stroke, ...] | None": ...
+        def __call__(self, *, state: Any, outline: tuple[Stroke, ...]) -> tuple[Stroke, ...] | None: ...
     class ConsumeKey(Protocol):
         def __call__(
             self,
@@ -103,7 +103,7 @@ class SophTrieApi:
             translations: list[str],
             original_outline: tuple[Stroke, ...],
             outline: tuple[Stroke, ...],
-        ) -> "str | None": ...
+        ) -> str | None: ...
     class ModifyTranslation(Protocol):
         def __call__(
             self,
@@ -466,7 +466,7 @@ def soph_trie(
 
 
         @base_hooks.lookup.listen(soph_trie)
-        def _(stroke_stenos: tuple[str, ...], translations: list[str], **_) -> "str | None":
+        def _(stroke_stenos: tuple[str, ...], translations: list[str], **_) -> str | None:
             original_outline = tuple(Stroke.from_steno(steno) for steno in stroke_stenos)
 
 

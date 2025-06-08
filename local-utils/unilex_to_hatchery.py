@@ -41,9 +41,10 @@ def _main(args: argparse.Namespace):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # parser.add_argument("-j", "--in-json-path", "--in-json", help="path to the input JSON dictionary", required=True)  
-    parser.add_argument("-u", "--in-unilex-path", "--in-unilex", help="path to the input Unilex lexicon", required=True)
-    parser.add_argument("-o", "--out-path", "--out", help="path to output the Hatchery dictionary (to use in Plover, use the `hatchery` file extension)", required=True)
-    parser.add_argument("-f", "--failures-out-path", "--failout", help="path to output the failed entries")
+    filepath = Path(__file__)
+    _ = parser.add_argument("-u", "--in-unilex-path", "--in-unilex", help="path to the input Unilex lexicon", default=str(filepath / "./data/unilex"))
+    _ = parser.add_argument("-o", "--out-path", "--out", help="path to output the Hatchery dictionary (to use in Plover, use the `hatchery` file extension)", default=str(filepath / "./out/debug.hatchery"))
+    _ = parser.add_argument("-f", "--failures-out-path", "--failout", help="path to output the failed entries")
     args = parser.parse_args()
 
     _setup_plover()

@@ -82,7 +82,7 @@ class AnnotatedChord(Generic[T]):
 @dataclass(frozen=True)
 class Phono:
     keysymbols: tuple[str, ...]
-    phoneme: "Sophone | str | None"
+    phoneme: Sophone | str | None
     steno: tuple[Stroke, ...]
 
     def __str__(self):

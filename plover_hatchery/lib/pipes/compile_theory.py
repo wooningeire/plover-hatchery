@@ -28,7 +28,7 @@ class TheoryHooks:
     class AddEntry(Protocol):
         def __call__(self, *, view: DefView, entry_id: EntryIndex) -> None: ...
     class Lookup(Protocol):
-        def __call__(self, *, stroke_stenos: tuple[str, ...], translations: list[str]) -> "str | None": ...
+        def __call__(self, *, stroke_stenos: tuple[str, ...], translations: list[str]) -> str | None: ...
     class ReverseLookup(Protocol):
         def __call__(self, *, translation: str, reverse_translations: dict[str, list[EntryIndex]]) -> Iterable[tuple[str, ...]]: ...
     
@@ -179,7 +179,7 @@ Added {n_addable_entries} entries
             handler(view=new_view, entry_id=entry_id)
 
 
-    def lookup(states: dict[int, Any], stroke_stenos: tuple[str, ...], translations: list[str]) -> "str | None":
+    def lookup(states: dict[int, Any], stroke_stenos: tuple[str, ...], translations: list[str]) -> str | None:
         for plugin_id, handler in hooks.lookup.ids_handlers():
             result = handler(stroke_stenos=stroke_stenos, translations=translations)
             if result is not None:

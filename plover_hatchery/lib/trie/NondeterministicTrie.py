@@ -163,7 +163,7 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
     def link_join(
         self,
         src_nodes: Iterable[NodeSrc],
-        dst_node: "int | None",
+        dst_node: int | None,
         keys_iter: Iterable[_KeyVar],
         translation: _Translation,
     ):
@@ -173,7 +173,7 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
     def link_join_chain(
         self,
         src_nodes: Iterable[NodeSrc],
-        dst_node: "int | None",
+        dst_node: int | None,
         keys_iter: Iterable[tuple[_KeyVar, ...]],
         translation: _Translation,
     ):
@@ -433,7 +433,7 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
         self.__transitions.append({})
         return new_node_id
     
-    def __assign_transition_cost(self, src_node_id: int, key_id: _KeyId, new_transition_index: int, cost_info: "TransitionCostInfo[_Translation] | None"):
+    def __assign_transition_cost(self, src_node_id: int, key_id: _KeyId, new_transition_index: int, cost_info: TransitionCostInfo[_Translation] | None):
         if cost_info is None: return
         cost_key = TransitionCostKey(
             TransitionKey(src_node_id, key_id, new_transition_index),

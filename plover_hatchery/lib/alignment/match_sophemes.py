@@ -145,7 +145,7 @@ _PHONEME_TO_STENO_MAPPINGS = {
 
 @dataclass(frozen=True)
 class _Mapping:
-    phoneme: "Sophone | None"
+    phoneme: Sophone | None
     keys: tuple[AsteriskableKey, ...]
 
 _mappings = lambda phoneme: tuple(zip(cycle((phoneme,)), _PHONEME_TO_STENO_MAPPINGS[phoneme]))

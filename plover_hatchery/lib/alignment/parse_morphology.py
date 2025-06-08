@@ -143,7 +143,7 @@ class Morpheme:
 @final
 @dataclass(frozen=True)
 class Formatting:
-    parent: "Root | Affix | None"
+    parent: Root | Affix | None
     name: str
     ortho: str = ""
     @property
@@ -229,7 +229,7 @@ class _Parser:
             self.transcription_index += 1
 
 
-    def __check_formatting(self, parent: "Root | Affix | None"):
+    def __check_formatting(self, parent: Root | Affix | None):
         if self.morphology_index_at_last_part > self.morphology_index:
             yield Formatting(parent, self.morphology_since_last_part) 
 
