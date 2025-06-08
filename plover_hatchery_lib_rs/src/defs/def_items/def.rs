@@ -38,4 +38,26 @@ impl Def {
             varname,
         }
     }
+
+    pub fn to_string(&self) -> String {
+        format!(
+            "{} = {}",
+            self.varname,
+            self.rawables.iter()
+                .map(|rawable| rawable.to_string())
+                .collect::<Vec<_>>()
+                .join(" ")
+        )
+    }
+}
+
+#[pymethods]
+impl Def {
+    pub fn __str__(&self) -> String {
+        self.to_string()
+    }
+
+    pub fn __repr__(&self) -> String {
+        self.to_string()
+    }
 }

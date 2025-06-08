@@ -7,6 +7,8 @@ from typing import cast, TypeVar, Any, Protocol, Callable, final
 from plover_hatchery.lib.sopheme import parse_entry_definition
 
 from plover_hatchery_lib_rs import Def, EntitySeq, DefView, DefDict
+
+from plover_hatchery.lib.sopheme.parse.parse_sopheme_sequence import ParserException
 from .Hook import Hook
 from .Plugin import Plugin
 from .Theory import Theory, TheoryLookup
@@ -90,13 +92,13 @@ def compile_theory(
         defs = DefDict()
 
         for i, (varname, definition_str) in enumerate(entry_lines):
-            if i % 1000 == 0:
+            if i % 10000 == 0:
                 print(f"hatched {i}")
 
             try:
                 defs.add(varname, EntitySeq(list(parse_entry_definition(definition_str.strip()))))
                 n_passed_parses += 1
-            except Exception as e:
+            except ParserException as e:
                 # import traceback
                 # print(f"failed to parse {definition_str.strip()}: {e} ({''.join(traceback.format_tb(e.__traceback__))})")
                 pass
@@ -136,8 +138,8 @@ def compile_theory(
 
                 n_passed_additions += 1
             except Exception as e:
-                import traceback
-                print(f"failed to add {varname}: {e} ({''.join(traceback.format_tb(e.__traceback__))})")
+                # import traceback
+                # print(f"failed to add {varname}: {e} ({''.join(traceback.format_tb(e.__traceback__))})")
                 pass
 
 

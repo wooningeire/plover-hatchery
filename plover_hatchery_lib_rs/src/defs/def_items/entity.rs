@@ -31,6 +31,14 @@ impl Entity {
             _ => None,
         }
     }
+
+    pub fn __str__(&self) -> String {
+        self.to_string()
+    }
+
+    pub fn __repr__(&self) -> String {
+        self.to_string()
+    }
 }
 
 impl Entity {
@@ -41,6 +49,14 @@ impl Entity {
             },
 
             _ => None,
+        }
+    }
+
+    pub fn to_string(&self) -> String {
+        match self {
+            Entity::Sopheme(sopheme) => sopheme.to_string(),
+
+            Entity::Transclusion(transclusion) => transclusion.to_string(),
         }
     }
 }

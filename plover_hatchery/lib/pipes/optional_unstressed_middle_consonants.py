@@ -10,7 +10,7 @@ def _should_optionalize(optionalize_if: BaseOptionalizePredicate, cursor: DefVie
         return False
 
     # Filter out starting and ending consonants
-    if cursor.occurs_after_last_consonant() or cursor.occurs_after_last_consonant():
+    if cursor.occurs_before_first_vowel() or cursor.occurs_after_last_vowel():
         return False
 
     # Filter out consonants that are surrounded by stressed vowels

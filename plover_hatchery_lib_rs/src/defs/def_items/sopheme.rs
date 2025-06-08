@@ -28,6 +28,21 @@ impl Sopheme {
     }
 
     pub fn __str__(&self) -> String {
+        self.to_string()
+    }
+
+    pub fn __repr__(&self) -> String {
+        self.to_string()
+    }
+}
+
+
+impl Sopheme {
+    pub fn get_child<'a>(&'a self, index: usize) -> Option<&'a Keysymbol> {
+        self.keysymbols.get(index)
+    }
+
+    pub fn to_string(&self) -> String {
         let mut keysymbols_string = self.keysymbols.iter()
             .map(|keysymbol| keysymbol.to_string())
             .collect::<Vec<_>>()
@@ -38,17 +53,6 @@ impl Sopheme {
         }
 
         format!("{chars}.{keysymbols_string}", chars=self.chars)
-    }
-
-    pub fn __repr__(&self) -> String {
-        self.__str__()
-    }
-}
-
-
-impl Sopheme {
-    pub fn get_child<'a>(&'a self, index: usize) -> Option<&'a Keysymbol> {
-        self.keysymbols.get(index)
     }
 }
 

@@ -314,6 +314,21 @@ impl<'a> DefViewItemRef<'a> {
 }
 
 
+pub struct DefViewItemRefModified<'a> {
+    item_ref: DefViewItemRef<'a>,
+    stress_modifier: u8,
+}
+
+impl<'a> DefViewItemRefModified<'a> {
+    pub fn new(item_ref: DefViewItemRef<'a>, stress_modifier: u8) -> DefViewItemRefModified<'a> {
+        DefViewItemRefModified {
+            item_ref,
+            stress_modifier,
+        }
+    }
+}
+
+
 pub enum DefViewErr {
     MissingEntry {
         varname: String,
@@ -330,16 +345,20 @@ pub enum DefViewErr {
 impl DefViewErr {
     pub fn message(&self) -> String {
         match self {
-            DefViewErr::MissingEntry { varname } => format!("There is no entry for \"{varname}\""),
+            DefViewErr::MissingEntry { varname } =>
+                format!("There is no entry for \"{varname}\""),
 
-            DefViewErr::EmptyStack => "Cursor stack is empty".to_string(),
+            DefViewErr::EmptyStack =>
+                format!("Cursor stack is empty"),
 
-            DefViewErr::UnexpectedNone => "Expected this cursor to be pointing to an item".to_string(),
+            DefViewErr::UnexpectedNone =>
+                format!("Expected this cursor to be pointing to an item"),
 
             DefViewErr::CircularDependency { def_varname, varname } => 
                 format!("Definition for \"{def_varname}\" contains a circular dependency \"{varname}\""),
 
-            DefViewErr::UnexpectedChildItemType => format!("Unexpected child item type"),
+            DefViewErr::UnexpectedChildItemType =>
+                format!("Unexpected child item type"),
         }
     }
 

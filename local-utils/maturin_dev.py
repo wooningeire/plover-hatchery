@@ -8,6 +8,10 @@ def _main(args: argparse.Namespace):
     
     # os.unlink(wheels_path)
 
+    exit_code = os.system(fr"plover_console -s plover_send_command quit")
+    if exit_code != 0:
+        raise Exception
+
     exit_code = os.system(fr"maturin build --manifest-path ./plover_hatchery_lib_rs/Cargo.toml {args.options}")
     if exit_code != 0:
         raise Exception

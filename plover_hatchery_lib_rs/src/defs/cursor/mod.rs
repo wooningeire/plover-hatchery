@@ -209,7 +209,7 @@ impl<'defs, 'view> DefViewCursor<'defs, 'view> {
 
     pub fn occurs_before(&self, cur: Option<DefViewCursor>) -> bool {
         match cur {
-            Some(cur) => seqs_less_than(self.indexes(), cur.indexes()),
+            Some(cur) => seq_less_than(self.indexes(), cur.indexes()),
 
             None => true,
         }
@@ -217,7 +217,7 @@ impl<'defs, 'view> DefViewCursor<'defs, 'view> {
 
     pub fn occurs_after(&self, cur: Option<DefViewCursor>) -> bool {
         match cur {
-            Some(cur) => seqs_less_than(cur.indexes(), self.indexes()),
+            Some(cur) => seq_less_than(cur.indexes(), self.indexes()),
 
             None => true,
         }
@@ -297,9 +297,26 @@ impl<'defs, 'view> DefViewCursor<'defs, 'view> {
     }
 }
 
-fn seqs_less_than(seq_a: impl Iterator<Item = usize>, seq_b: impl Iterator<Item = usize>) -> bool {
-    seq_a.zip(seq_b)
-        .any(|(a, b)| a < b)
+fn seq_less_than(seq_a: impl Iterator<Item = usize>, mut seq_b: impl Iterator<Item = usize>) -> bool {
+    for a in seq_a {
+        if let Some(b) = seq_b.next() {
+            if a < b {
+                return true;
+            }
+
+            if a > b {
+                return false;
+            }
+        } else {
+            return false; // seq_a is longer than seq_b
+        }
+    }
+
+    if let Some(_) = seq_b.next() {
+        true // seq_a is shorter than seq_b
+    } else {
+        false // seq_a is the same length as seq_b
+    }
 }
 
 

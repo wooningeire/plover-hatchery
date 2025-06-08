@@ -71,7 +71,7 @@ def diphthong_transition_consonants(
                 nonlocal last_keysymbol_cur_if_vowel
 
                 keysymbol = cur.tip().keysymbol()
-                if last_keysymbol_cur_if_vowel is not None:
+                if keysymbol.is_vowel and last_keysymbol_cur_if_vowel is not None:
                     keysymbols = tuple(keysymbols_by_first_vowel(last_keysymbol_cur_if_vowel))
                 else:
                     keysymbols = ()

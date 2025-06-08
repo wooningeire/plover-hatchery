@@ -8,6 +8,18 @@ pub struct Transclusion {
     #[pyo3(get)] pub stress: u8
 }
 
+impl Transclusion {
+    pub fn to_string(&self) -> String {
+        let mut out = format!("{{{}}}", self.target_varname);
+
+        if self.stress > 0 {
+            out = format!("{}!{}", out, self.stress);
+        }
+
+        out
+    }
+}
+
 #[pymethods]
 impl Transclusion {
     #[new]
@@ -16,5 +28,13 @@ impl Transclusion {
             target_varname,
             stress,
         }
+    }
+
+    pub fn __str__(&self) -> String {
+        self.to_string()
+    }
+
+    pub fn __repr__(&self) -> String {
+        self.to_string()
     }
 }

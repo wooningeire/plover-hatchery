@@ -4,10 +4,7 @@ from plover_hatchery.lib.pipes.optionalizer import BaseOptionalizePredicate, cre
 
 
 def _should_optionalize(optionalize_if: BaseOptionalizePredicate, cursor: DefViewCursor):
-    if (tip := cursor.maybe_tip()) is None:
-        return False
-    if (keysymbol := tip.maybe_keysymbol) is None:
-        return False
+    keysymbol = cursor.tip().keysymbol()
 
     if not keysymbol.is_consonant:
         return False

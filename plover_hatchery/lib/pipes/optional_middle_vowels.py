@@ -8,8 +8,8 @@ def _should_optionalize(cursor: DefViewCursor):
     if not keysymbol.is_vowel:
         return False
 
-    # Filter out starting and ending consonants
-    if cursor.occurs_after_last_consonant() or cursor.occurs_after_last_consonant():
+    # Filter out starting and ending vowels
+    if cursor.occurs_before_first_consonant() or cursor.occurs_after_last_consonant():
         return False
 
     return True

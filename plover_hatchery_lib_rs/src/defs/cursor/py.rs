@@ -1,4 +1,4 @@
-use pyo3::{exceptions::{PyKeyError}, prelude::*, types::PyTuple};
+use pyo3::{exceptions::{PyException, PyKeyError}, prelude::*, types::PyTuple};
 
 use super::super::{
     py,
@@ -52,7 +52,7 @@ impl py::DefViewCursor {
     }
 
     pub fn tip(&self, py: Python<'_>) -> Result<py::DefViewItem, PyErr> {
-        self.maybe_tip(py)?.ok_or(DefViewErr::UnexpectedNone.as_pyerr())
+        self.maybe_tip(py)?.ok_or(PyException::new_err("cursor is not pointing to anything"))
     }
 
     pub fn maybe_tip(&self, py: Python<'_>) -> Result<Option<py::DefViewItem>, PyErr> {
