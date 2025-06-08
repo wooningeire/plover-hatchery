@@ -8,8 +8,8 @@ def _main(args: argparse.Namespace, rest: list[str]):
     root_path = Path(__file__).parent.parent
     wheels_path = root_path / Path(r"./plover_hatchery_lib_rs/target/wheels/")
 
-    if os.path.isdir(wheels_path):
-        os.unlink(wheels_path)
+    # if os.path.isdir(wheels_path):
+    #     os.unlink(wheels_path)
 
     exit_code = os.system(fr"plover_console -s plover_send_command quit")
     if exit_code != 0:

@@ -4,9 +4,7 @@ from typing import TypeVar, Generic, Callable, Any, cast
 from .Plugin import Plugin
 
 
-T = TypeVar("T", bound=Callable[..., Any])
-
-class HookObj(Generic[T]):
+class HookObj[T: Callable[..., Any]]:
     """A collection of event listeners"""
 
     def __init__(self):
@@ -61,7 +59,7 @@ class HookObj(Generic[T]):
         return validate(handler(state=state, **kwargs) for state, handler in self.states_handlers(states))
 
 
-class Hook(Generic[T]):
+class Hook[T: Callable[..., Any]]:
     def __init__(self, handler_protocol: type[T]):
         self.__private_attr_name: str
 

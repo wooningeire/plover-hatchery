@@ -9,7 +9,7 @@ use super::super::{
 #[derive(Clone)]
 pub struct DefViewItemRefChildrenCursor<'a> {
     item_ref: DefViewItemRef<'a>,
-    index: Option<usize>,
+    pub index: Option<usize>,
 }
 
 impl<'a> DefViewItemRefChildrenCursor<'a> {
@@ -113,9 +113,5 @@ impl<'a> DefViewItemRefChildrenCursor<'a> {
 
             _ => {},
         }
-    }
-
-    pub fn index(&self) -> Option<usize> {
-        self.index
     }
 }

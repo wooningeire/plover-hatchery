@@ -1,5 +1,7 @@
 use pyo3::{exceptions::{PyException, PyKeyError}, prelude::*, types::PyTuple};
 
+use crate::defs::cursor::seq_less_than;
+
 use super::super::{
     py,
     view::DefViewErr,
@@ -33,6 +35,22 @@ impl py::DefViewCursor {
     pub fn with_rs_result<T>(&self, py: Python<'_>, func: impl Fn(super::DefViewCursor) -> Result<T, DefViewErr>) -> Result<T, PyErr> {
         self.with_rs(py, func)?
             .map_err(|err| err.as_pyerr())
+    }
+
+    pub fn occurs_before(&self, maybe_cur: &Option<Vec<usize>>) -> bool {
+        match maybe_cur {
+            Some(cur) => seq_less_than(self.index_stack.iter(), cur.iter()),
+
+            None => true,
+        }
+    }
+
+    pub fn occurs_after(&self, maybe_cur: &Option<Vec<usize>>) -> bool {
+        match maybe_cur {
+            Some(cur) => seq_less_than(cur.iter(), self.index_stack.iter()),
+
+            None => true,
+        }
     }
 }
 
@@ -94,27 +112,19 @@ impl py::DefViewCursor {
         format!("{:?}", self.index_stack)
     }
 
-    pub fn occurs_before_first_consonant(&self, py: Python<'_>) -> Result<bool, PyErr> {
-        self.with_rs_result(py, |cursor_rs| {
-            cursor_rs.occurs_before_first_consonant()
-        })
+    pub fn occurs_before_first_consonant(&self, py: Python<'_>) -> bool {
+        self.occurs_before(&self.view.borrow(py).first_consonant_cur)
     }
 
-    pub fn occurs_after_last_consonant(&self, py: Python<'_>) -> Result<bool, PyErr> {
-        self.with_rs_result(py, |cursor_rs| {
-            cursor_rs.occurs_after_last_consonant()
-        })
+    pub fn occurs_after_last_consonant(&self, py: Python<'_>) -> bool {
+        self.occurs_after(&self.view.borrow(py).last_consonant_cur)
     }
 
-    pub fn occurs_before_first_vowel(&self, py: Python<'_>) -> Result<bool, PyErr> {
-        self.with_rs_result(py, |cursor_rs| {
-            cursor_rs.occurs_before_first_vowel()
-        })
+    pub fn occurs_before_first_vowel(&self, py: Python<'_>) -> bool {
+        self.occurs_before(&self.view.borrow(py).first_vowel_cur)
     }
 
-    pub fn occurs_after_last_vowel(&self, py: Python<'_>) -> Result<bool, PyErr> {
-        self.with_rs_result(py, |cursor_rs| {
-            cursor_rs.occurs_after_last_vowel()
-        })
+    pub fn occurs_after_last_vowel(&self, py: Python<'_>) -> bool {
+        self.occurs_after(&self.view.borrow(py).last_vowel_cur)
     }
 }

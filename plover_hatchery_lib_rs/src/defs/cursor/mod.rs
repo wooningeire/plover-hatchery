@@ -174,15 +174,17 @@ impl<'defs, 'view> DefViewCursor<'defs, 'view> {
         self.stack.pop();
     }
 
-    pub fn indexes<'a>(&'a self) -> impl Iterator<Item = usize> + 'a {
+    pub fn indexes<'a>(&'a self) -> impl Iterator<Item = &'a usize> + 'a {
         self.stack.iter()
-            .map(|iter| iter.index())
+            .map(|iter| &iter.index)
             .take_while(|iter| iter.is_some())
-            .map(|index| index.unwrap())
+            .map(|index| index.as_ref().unwrap())
     }
 
     pub fn index_stack(&self) -> Vec<usize> {
-        self.indexes().collect::<Vec<_>>()
+        self.indexes()
+            .map(|index| *index)
+            .collect::<Vec<_>>()
     }
 
     pub fn prev_keysymbol_cur(&self) -> Result<Option<DefViewCursor>, DefViewErr> {
@@ -297,7 +299,7 @@ impl<'defs, 'view> DefViewCursor<'defs, 'view> {
     }
 }
 
-fn seq_less_than(seq_a: impl Iterator<Item = usize>, mut seq_b: impl Iterator<Item = usize>) -> bool {
+pub fn seq_less_than<'a>(seq_a: impl Iterator<Item = &'a usize>, mut seq_b: impl Iterator<Item = &'a usize>) -> bool {
     for a in seq_a {
         if let Some(b) = seq_b.next() {
             if a < b {
