@@ -2,7 +2,7 @@ from typing import Callable
 from collections.abc import Iterable
 
 from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
-from plover_hatchery_lib_rs import Def, DefView, DefViewCursor
+from plover_hatchery_lib_rs import Def, DefView, DefViewCursor, Keysymbol, add_diphthong_keysymbols
 
 from ..sopheme import Sopheme
 from .Plugin import GetPluginApi, Plugin, define_plugin
@@ -59,66 +59,34 @@ from .Plugin import GetPluginApi, Plugin, define_plugin
 
 def diphthong_transition_consonants(
     *,
-    sophemes_by_first_vowel: Callable[[DefViewCursor], Iterable[Sopheme]],
+    keysymbols_by_first_vowel: Callable[[DefViewCursor], Iterable[Keysymbol]],
 ) -> Plugin[None]:
     @define_plugin(diphthong_transition_consonants)
     def plugin(base_hooks: TheoryHooks, **_):
         @base_hooks.process_def.listen(diphthong_transition_consonants)
         def _(view: DefView, **_):
-            return Def([], "")
+            last_keysymbol_cur_if_vowel = None
+
+            def map_keysymbols(cur: DefViewCursor):
+                nonlocal last_keysymbol_cur_if_vowel
+
+                keysymbol = cur.tip().keysymbol()
+                if last_keysymbol_cur_if_vowel is not None:
+                    keysymbols = tuple(keysymbols_by_first_vowel(last_keysymbol_cur_if_vowel))
+                else:
+                    keysymbols = ()
 
 
-            # prev_phoneme_if_was_vowel = None
+                if keysymbol.is_vowel:
+                    last_keysymbol_cur_if_vowel = cur
+                else:
+                    last_keysymbol_cur_if_vowel = None
 
 
-            # entities: list[OverridableEntity] = []
-            # any_changes = False
+                return keysymbols
 
-
-            # def process_def(cursor: DefCursorController):
-
-            #     def process_sopheme(sopheme: Sopheme):
-            #         nonlocal prev_phoneme_if_was_vowel, any_changes
-
-
-            #         keysymbols: list[Keysymbol] = []
-
-            #         for i, keysymbol in enumerate(sopheme.keysymbols):
-            #             if keysymbol.is_vowel and prev_phoneme_if_was_vowel is not None:
-            #                 # Add the diphthong transition consonant
-            #                 diphthong_transition_sophemes = sophemes_by_first_vowel(prev_phoneme_if_was_vowel)
-            #                 for diphthong_sopheme in diphthong_transition_sophemes:
-            #                     any_changes = True
-
-            #                     if i == 0:
-            #                         entities.append(OverridableEntity.sopheme(Sopheme("", diphthong_sopheme.keysymbols)))
-            #                     else:
-            #                         keysymbols.extend(diphthong_sopheme.keysymbols)
-                                    
-            #                     break
-            #                     # TODO multiple options
-                            
-            #             keysymbols.append(keysymbol)
-
-            #             if keysymbol.is_vowel:
-            #                 prev_phoneme_if_was_vowel = (sopheme, keysymbol)
-            #             else:
-            #                 prev_phoneme_if_was_vowel = None
-                    
-            #         entities.append(Sopheme(sopheme.chars, list(keysymbols)))
-                    
-
-            #         return any_changes
-
-
-            #     def process_inner_def(cursor: )
-
-
-            #     return Def(cursor.map_def_entities(process_sopheme, process_def), cursor.get_def_varname()), any_changes
-
-
-            # return Def(items, view.base_def.varname)
-
+            
+            return add_diphthong_keysymbols(view, map_keysymbols)
 
         return None
 

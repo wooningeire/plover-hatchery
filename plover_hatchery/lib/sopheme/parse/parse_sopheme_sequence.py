@@ -99,6 +99,16 @@ def consume_keysymbol(cursor: _TokenCursor):
 
     return _ParseResult(Keysymbol(chars, stress, True), cursor)
 
+def consume_keysymbol_seq(cursor: _TokenCursor):
+    keysymbols: list[Keysymbol] = []
+    while cursor.token.type is not TokenType.SYMBOL or cursor.token.value != ")":
+        keysymbol, cursor = consume_keysymbol(cursor)
+        keysymbols.append(keysymbol)
+
+        if cursor.token.type is TokenType.WHITESPACE:
+            cursor = cursor.next()
+
+    return _ParseResult(keysymbols, cursor)
 
 def consume_sopheme_ortho(cursor: _TokenCursor):
     if cursor.token.type is TokenType.CHARS:
@@ -125,13 +135,7 @@ def consume_sopheme_phono(cursor: _TokenCursor):
     if cursor.token.type is TokenType.SYMBOL and cursor.token.value == "(":
         cursor = cursor.next()
 
-        keysymbols: list[Keysymbol] = []
-        while cursor.token.type is not TokenType.SYMBOL or cursor.token.value != ")":
-            keysymbol, cursor = consume_keysymbol(cursor)
-            keysymbols.append(keysymbol)
-
-            if cursor.token.type is TokenType.WHITESPACE:
-                cursor = cursor.next()
+        keysymbols, cursor = consume_keysymbol_seq(cursor)
 
         cursor = cursor.next()
 
@@ -225,6 +229,24 @@ def parse_sopheme_seq_line(tokens: tuple[Token, ...]):
         else:
             raise ParserException("Expected whitespace here", cursor)
 
+
+def parse_keysymbol_seq(seq: str):
+    cursor = _TokenCursor(lex_sopheme_sequence(seq), 0)
+
+    if cursor.done:
+        return
+
+    while True:
+        keysymbol, cursor = consume_keysymbol(cursor)
+        yield keysymbol
+
+        if cursor.done:
+            break
+
+        if cursor.token.type is TokenType.WHITESPACE:
+            cursor = cursor.next()
+        else:
+            raise ParserException("Expected whitespace here", cursor)
 
 def parse_sopheme_seq(seq: str):
     return parse_sopheme_seq_line(lex_sopheme_sequence(seq))

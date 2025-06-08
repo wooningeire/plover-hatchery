@@ -117,7 +117,7 @@ theory = compile_theory(
     consonants_vowels_enumeration(),
 
     diphthong_transition_consonants(
-        sophemes_by_first_vowel=sophone_type.mapper_to_sophemes({
+        keysymbols_by_first_vowel=sophone_type.mapper_to_sophemes({
             "E": ".y?",
             "OO": ".w?",
             "OU": ".w?",

@@ -1,7 +1,9 @@
 from collections.abc import Generator
+from typing import Any, Generator
 
-from plover_hatchery_lib_rs import DefViewCursor
+from plover_hatchery_lib_rs import DefViewCursor, Keysymbol
 from plover_hatchery.lib.pipes import *
+from plover_hatchery.lib.sopheme.parse.parse_sopheme_sequence import parse_keysymbol_seq
 
 @compile_theory
 def theory():
@@ -305,38 +307,34 @@ def theory():
     )
 
 
-    # def map_keysymbols_to_sophemes_by_sophs(mappings: dict[str, str]):
-    #     def parse_sopheme(sopheme_str: str):
-    #         return next(parse_sopheme_seq(sopheme_str))
+    def map_keysymbols_to_keysymbols_by_sophs(mappings: dict[str, str]):
+        chords = {
+            Soph(key): parse_keysymbol_seq(keysymbols_str)
+            for key, keysymbols_str in mappings.items()
+        }
 
 
-    #     chords = {
-    #         Soph(key): parse_sopheme(sopheme_str)
-    #         for key, sopheme_str in mappings.items()
-    #     }
+        def generate(cursor: DefViewCursor) -> Generator[Keysymbol, None, None]:
+            for soph in map_keysymbol_to_sophs(cursor):
+                if soph not in chords: continue
+                yield from chords[soph]
+
+        return generate
 
 
-    #     def generate(cursor: DefViewCursor):
-    #         for soph in map_keysymbol_to_sophs(cursor):
-    #             if soph not in chords: continue
-    #             yield chords[soph]
-
-    #     return generate
-
-
-    # yield diphthong_transition_consonants(
-    #     sophemes_by_first_vowel=map_keysymbols_to_sophemes_by_sophs({
-    #         "E": ".y?",
-    #         "OO": ".w?",
-    #         "OU": ".w?",
-    #         "I": ".y?",
-    #         "EE": ".y?",
-    #         "UU": ".w?",
-    #         "AA": ".y?",
-    #         "OI": ".y?",
-    #         "II": ".y?",
-    #     }),
-    # )
+    yield diphthong_transition_consonants(
+        keysymbols_by_first_vowel=map_keysymbols_to_keysymbols_by_sophs({
+            "E": "y?",
+            "OO": "w?",
+            "OU": "w?",
+            "I": "y?",
+            "EE": "y?",
+            "UU": "w?",
+            "AA": "y?",
+            "OI": "y?",
+            "II": "y?",
+        }),
+    )
 
 
     yield optional_middle_vowels()

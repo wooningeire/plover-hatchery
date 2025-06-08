@@ -21,6 +21,7 @@ use defs::{
 mod pipes;
 use pipes::{
     optionalize_keysymbols,
+    add_diphthong_keysymbols,
 };
 
 
@@ -40,6 +41,7 @@ pub fn plover_hatchery_lib_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Transclusion>()?;
 
     m.add_function(wrap_pyfunction!(optionalize_keysymbols, m)?)?;
+    m.add_function(wrap_pyfunction!(add_diphthong_keysymbols, m)?)?;
 
     Ok(())
 }
