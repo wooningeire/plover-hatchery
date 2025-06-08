@@ -10,13 +10,17 @@ use super::super::{
     py,
 };
 
-use pyo3::{exceptions::PyException, prelude::*};
+use pyo3::{exceptions::{PyException, PyTypeError}, prelude::*};
 
 
-#[pyclass(get_all)]
+#[pyclass]
 pub struct DefView {
-    pub defs: Py<py::DefDict>,
-    pub root_def: Py<Def>,
+    #[pyo3(get)] pub defs: Py<py::DefDict>,
+    #[pyo3(get)] pub root_def: Py<Def>,
+    // pub first_consonant_loc_cache: Option<Option<Vec<usize>>>,
+    // pub last_consonant_loc_cache: Option<Option<Vec<usize>>>,
+    // pub first_vowel_loc_cache: Option<Option<Vec<usize>>>,
+    // pub last_vowel_loc_cache: Option<Option<Vec<usize>>>,
 }
 
 impl DefView {
@@ -41,6 +45,10 @@ impl DefView {
         DefView {
             defs,
             root_def,
+            // first_consonant_loc_cache: None,
+            // last_consonant_loc_cache: None,
+            // first_vowel_loc_cache: None,
+            // last_vowel_loc_cache: None,
         }
     }
 
@@ -70,16 +78,58 @@ impl DefView {
     }
 
     #[getter]
-    pub fn first_consonant_loc(pyself: Py<Self>, py: Python<'_>) -> Result<Option<Vec<usize>>, PyErr> {
-        pyself.borrow(py).with_rs_result(py, |view_rs| {
-            view_rs.first_consonant_loc()
+    pub fn first_consonant_loc(&self, py: Python<'_>) -> Result<Option<Vec<usize>>, PyErr> {
+        self.with_rs_result(py, |view_rs| {
+            Ok(
+                view_rs.first_index(|item_ref| match item_ref {
+                    DefViewItemRef::Keysymbol(keysymbol) => keysymbol.is_consonant(),
+
+                    _ => false,
+                })?
+                    .map(|cur| cur.index_stack())
+            )
         })
     }
 
     #[getter]
-    pub fn last_consonant_loc(pyself: Py<Self>, py: Python<'_>) -> Result<Option<Vec<usize>>, PyErr> {
-        pyself.borrow(py).with_rs_result(py, |view_rs| {
-            view_rs.last_consonant_loc()
+    pub fn last_consonant_loc(&self, py: Python<'_>) -> Result<Option<Vec<usize>>, PyErr> {
+        self.with_rs_result(py, |view_rs| {
+            Ok(
+                view_rs.last_index(|item_ref| match item_ref {
+                    DefViewItemRef::Keysymbol(keysymbol) => keysymbol.is_consonant(),
+
+                    _ => false,
+                })?
+                    .map(|cur| cur.index_stack())
+            )
+        })
+    }
+
+    #[getter]
+    pub fn first_vowel_loc(&self, py: Python<'_>) -> Result<Option<Vec<usize>>, PyErr> {
+        self.with_rs_result(py, |view_rs| {
+            Ok(
+                view_rs.first_index(|item_ref| match item_ref {
+                    DefViewItemRef::Keysymbol(keysymbol) => keysymbol.is_vowel(),
+
+                    _ => false,
+                })?
+                    .map(|cur| cur.index_stack())
+            )
+        })
+    }
+
+    #[getter]
+    pub fn last_vowel_loc(&self, py: Python<'_>) -> Result<Option<Vec<usize>>, PyErr> {
+        self.with_rs_result(py, |view_rs| {
+            Ok(
+                view_rs.last_index(|item_ref| match item_ref {
+                    DefViewItemRef::Keysymbol(keysymbol) => keysymbol.is_vowel(),
+
+                    _ => false,
+                })?
+                    .map(|cur| cur.index_stack())
+            )
         })
     }
 }
@@ -92,8 +142,8 @@ pub enum DefViewItem {
 }
 
 impl DefViewItem {
-    pub fn of(item_ref: DefViewItemRef) -> Option<DefViewItem> {
-        Some(match item_ref {
+    pub fn of(item_ref: DefViewItemRef) -> DefViewItem {
+        match item_ref {
             DefViewItemRef::Keysymbol(keysymbol) => DefViewItem::Keysymbol(keysymbol.clone()),
 
             DefViewItemRef::Sopheme(sopheme) => DefViewItem::Sopheme(sopheme.clone()),
@@ -101,12 +151,28 @@ impl DefViewItem {
             DefViewItemRef::Def(def) => DefViewItem::Def(def.clone()),
 
             DefViewItemRef::EntitySeq(seq, varname) => DefViewItem::Def(Def::of(seq.clone(), varname)),
-        })
+        }
     }
 }
 
 #[pymethods]
 impl DefViewItem {
+    pub fn keysymbol(&self) -> Result<Keysymbol, PyErr> {
+        match self {
+            DefViewItem::Keysymbol(keysymbol) => Ok(keysymbol.clone()),
+            
+            _ => Err(PyTypeError::new_err("not a keysymbol")),
+        }
+    }
+
+    pub fn sopheme(&self) -> Result<Sopheme, PyErr> {
+        match self {
+            DefViewItem::Sopheme(sopheme) => Ok(sopheme.clone()),
+            
+            _ => Err(PyTypeError::new_err("not a sopheme")),
+        }
+    }
+
     #[getter]
     pub fn maybe_keysymbol(&self) -> Option<Keysymbol> {
         match self {

@@ -56,7 +56,7 @@ def consonant_inversions(*, consonant_sophs_str: str, inversion_domains_steno: s
         def get_inversion_sophs(past_consonants: list[PastConsonant]):
             def get_product_choices():
                 for consonant in past_consonants:
-                    tip = consonant.cursor.tip()
+                    tip = consonant.cursor.maybe_tip()
                     assert tip is not None
 
                     keysymbol = tip.maybe_keysymbol
@@ -83,7 +83,7 @@ def consonant_inversions(*, consonant_sophs_str: str, inversion_domains_steno: s
             **_,
         ):
             if any(soph not in consonant_sophs for soph in sophs):
-                tip = cursor.tip()
+                tip = cursor.maybe_tip()
                 assert tip is not None
 
                 keysymbol = tip.maybe_keysymbol

@@ -13,17 +13,17 @@ pub fn optionalize_keysymbols(view: Py<py::DefView>, condition: PyObject, py: Py
     })
 }
 
-fn map_def<'a>(varname: &str, view: &DefView<'a>, pyview: Py<py::DefView>, cur: &mut DefViewCursor<'a>, condition: &PyObject, py: Python<'_>) -> Result<Def, PyErr> {
+fn map_def<'a>(varname: &str, view: &DefView<'a>, pyview: Py<py::DefView>, cur: &mut DefViewCursor<'a, '_>, condition: &PyObject, py: Python<'_>) -> Result<Def, PyErr> {
     let mut new_def = Def::new(vec![], varname.to_string());
 
     let level = cur.stack.len() - 1;
 
-    while let Some(child) = cur.stack[level].next(view.defs()) {
+    while let Some(child) = cur.stack[level].next(view.defs()).map_err(PyException::new_err)? {
         if let Err(msg) = cur.step_in_at_start().unwrap() {
             return Err(PyException::new_err(msg));
         }
 
-        new_def.rawables.push(match child.map_err(PyException::new_err)? {
+        new_def.rawables.push(match child {
             DefViewItemRef::Def(ref def) => RawableEntity::RawDef(map_def(&def.varname, &view, pyview.clone_ref(py), cur, condition, py)?),
 
             DefViewItemRef::EntitySeq(_, varname) => RawableEntity::RawDef(map_def(&varname, &view, pyview.clone_ref(py), cur, condition, py)?),
@@ -40,17 +40,17 @@ fn map_def<'a>(varname: &str, view: &DefView<'a>, pyview: Py<py::DefView>, cur: 
 }
 
 
-fn map_sopheme<'a>(chars: &str, view: &DefView<'a>, pyview: Py<py::DefView>, cur: &mut DefViewCursor<'a>, condition: &PyObject, py: Python<'_>) -> Result<Sopheme, PyErr> {
+fn map_sopheme<'a>(chars: &str, view: &DefView<'a>, pyview: Py<py::DefView>, cur: &mut DefViewCursor<'a, '_>, condition: &PyObject, py: Python<'_>) -> Result<Sopheme, PyErr> {
     let mut new_sopheme = Sopheme::new(chars.to_string(), vec![]);
 
     let level = cur.stack.len() - 1;
 
-    while let Some(child) = cur.stack[level].next(view.defs()) {
+    while let Some(child) = cur.stack[level].next(view.defs()).map_err(PyException::new_err)? {
         if let Err(msg) = cur.step_in_at_start().unwrap() {
             return Err(PyException::new_err(msg));
         }
 
-        new_sopheme.keysymbols.push(match child.map_err(PyException::new_err)? {
+        new_sopheme.keysymbols.push(match child {
             DefViewItemRef::Keysymbol(keysymbol) => map_keysymbol(keysymbol, pyview.clone_ref(py), cur, condition, py)?,
 
             _ => return Err(PyException::new_err("malformed definition")),
@@ -62,7 +62,7 @@ fn map_sopheme<'a>(chars: &str, view: &DefView<'a>, pyview: Py<py::DefView>, cur
     Ok(new_sopheme)
 }
 
-fn map_keysymbol<'a>(keysymbol: &Keysymbol, pyview: Py<py::DefView>, cur: &mut DefViewCursor<'a>, condition: &PyObject, py: Python<'_>) -> Result<Keysymbol, PyErr> {
+fn map_keysymbol<'a>(keysymbol: &Keysymbol, pyview: Py<py::DefView>, cur: &mut DefViewCursor<'a, '_>, condition: &PyObject, py: Python<'_>) -> Result<Keysymbol, PyErr> {
     let obj = condition.call(py, (py::DefViewCursor::of(pyview, cur),), None)?;
 
     if obj.extract(py)? {

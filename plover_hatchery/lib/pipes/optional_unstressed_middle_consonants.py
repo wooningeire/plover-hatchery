@@ -1,30 +1,38 @@
+from plover_hatchery_lib_rs import DefViewCursor
 from plover_hatchery.lib.pipes.optionalizer import BaseOptionalizePredicate, create_optionalizer_with_user_condition
 from plover_hatchery.lib.sopheme import DefinitionCursor
 
 
-def _should_optionalize(optionalize_if: BaseOptionalizePredicate, phoneme: DefinitionCursor):
-    if not phoneme.keysymbol.is_consonant:
+def _should_optionalize(optionalize_if: BaseOptionalizePredicate, cursor: DefViewCursor):
+    keysymbol = cursor.tip().keysymbol()
+
+
+    if not keysymbol.is_consonant:
         return False
 
     # Filter out starting and ending consonants
-    if phoneme.appears_before_first_vowel() or phoneme.appears_after_last_vowel():
+    if (
+        tuple(cursor.index_stack) < tuple(cursor.view.first_consonant_loc)
+        or tuple(cursor.view.last_consonant_loc) < tuple(cursor.index_stack)
+    ):
         return False
 
     # Filter out consonants that are surrounded by stressed vowels
-    prev_vowel = phoneme.prev_vowel()
-    if prev_vowel is not None and prev_vowel.keysymbol.stress != 0:
-        return False
-
-    next_vowel = phoneme.next_vowel()
-    if next_vowel is not None and next_vowel.keysymbol.stress != 0:
-        return False
-        
     # Filter out consonants that are not alone
-    if not phoneme.is_lone_consonant():
-        return False
+    prev_keysymbol = cursor.prev_keysymbol_loc()
+    if prev_keysymbol is not None:
+        keysymbol = prev_keysymbol.tip().keysymbol()
+        if keysymbol.is_consonant or keysymbol.stress != 0:
+            return False
 
+    next_keysymbol = cursor.next_keysymbol_loc()
+    if next_keysymbol is not None:
+        keysymbol = next_keysymbol.tip().keysymbol()
+        if keysymbol.is_consonant or keysymbol.stress != 0:
+            return False
+        
     # Custom condition
-    if not optionalize_if(phoneme):
+    if not optionalize_if(cursor):
         return False
 
     return True

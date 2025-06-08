@@ -33,7 +33,7 @@ impl<'a> DefViewRoot<'a> {
         }
     }
 
-    pub fn as_item(&'a self) -> DefViewItemRef<'a> {
+    pub fn as_item_ref(&'a self) -> DefViewItemRef<'a> {
         DefViewItemRef::Def(&self.def_ref())
     }
 }
@@ -138,92 +138,80 @@ impl<'a> DefView<'a> {
     }
 
 
-    pub fn read(&'a self, indexes: &[usize]) -> Option<Result<DefViewItemRef<'a>, &'static str>> {
-        let mut cur_item_ref = self.root.as_item();
+    pub fn read(&'a self, indexes: &[usize]) -> Result<Option<DefViewItemRef<'a>>, &'static str> {
+        let mut cur_item_ref = self.root.as_item_ref();
 
         for &index in indexes {
-            cur_item_ref = match cur_item_ref.get_child(index, self.defs)? {
-                Ok(item_ref) => item_ref,
+            cur_item_ref = match cur_item_ref.get_child(index, self.defs) {
+                Some(Ok(item_ref)) => item_ref,
 
-                Err(msg) => return Some(Err(msg)),
+                Some(Err(msg)) => return Err(msg),
+
+                None => return Ok(None),
             }
         }
 
-        Some(Ok(cur_item_ref))
+        Ok(Some(cur_item_ref))
     }
 
     pub fn foreach(&self, func: impl Fn(DefViewItemRef, &DefViewCursor)) -> Result<(), &'static str> {
         let mut cursor = DefViewCursor::of_view_at_start(self);
 
-        while let Some(item_ref) = cursor.step_forward() {
-            func(item_ref?, &cursor);
+        while let Some(item_ref) = cursor.step_forward()? {
+            func(item_ref, &cursor);
         }
 
         Ok(())
     }
 
-    pub fn first_consonant_loc(&self) -> Result<Option<Vec<usize>>, &'static str> {
-        let mut cursor = DefViewCursor::of_view_at_start(self);
-
-        match cursor.stack.last().and_then(|iter| iter.peek(self.defs)) {
-            Some(item_ref) => match item_ref? {
-                DefViewItemRef::Keysymbol(keysymbol) => {
-                    if keysymbol.is_consonant() {
-                        return Ok(Some(cursor.index_stack()));
-                    }
-                },
-
-                _ => {},
-            },
-            
-            _ => {},
-        }
-
-        while let Some(item_ref) = cursor.step_forward() {
-            match item_ref? {
-                DefViewItemRef::Keysymbol(keysymbol) => {
-                    if keysymbol.is_consonant() {
-                        return Ok(Some(cursor.index_stack()));
-                    }
-                },
-                
-                _ => {},
+    pub fn first_index_after(&self, mut cursor: DefViewCursor<'a, '_>, predicate: impl Fn(DefViewItemRef) -> bool) -> Result<Option<DefViewCursor<'a, '_>>, &'static str> {
+        while let Some(item_ref) = cursor.step_forward()? {
+            if predicate(item_ref) {
+                return Ok(Some(cursor));
             }
         }
 
         Ok(None)
     }
 
-    pub fn last_consonant_loc(&self) -> Result<Option<Vec<usize>>, &'static str> {
-        let mut cursor = DefViewCursor::of_view_at_end(self);
-
-        match cursor.stack.last().and_then(|iter| iter.peek(self.defs)) {
-            Some(item_ref) => match item_ref? {
-                DefViewItemRef::Keysymbol(keysymbol) => {
-                    if keysymbol.is_consonant() {
-                        return Ok(Some(cursor.index_stack()));
-                    }
-                },
-                
-                _ => {},
-            },
-            
-            _ => {},
-        }
-
-        while let Some(item_ref) = cursor.step_backward() {
-            match item_ref? {
-                DefViewItemRef::Keysymbol(keysymbol) => {
-                    if keysymbol.is_consonant() {
-                        return Ok(Some(cursor.index_stack()));
-                    }
-                },
-                
-                _ => {},
+    pub fn first_index_before(&self, mut cursor: DefViewCursor<'a, '_>, predicate: impl Fn(DefViewItemRef) -> bool) -> Result<Option<DefViewCursor<'a, '_>>, &'static str> {
+        while let Some(item_ref) = cursor.step_backward()? {
+            if predicate(item_ref) {
+                return Ok(Some(cursor));
             }
         }
 
         Ok(None)
+    }
+    
+
+    pub fn first_index_since(&self, cursor: DefViewCursor<'a, '_>, predicate: impl Fn(DefViewItemRef) -> bool) -> Result<Option<DefViewCursor<'a, '_>>, &'static str> {
+        if let Some(item_ref) = cursor.peek()? {
+            if predicate(item_ref) {
+                return Ok(Some(cursor));
+            }
+        }
+
+        self.first_index_after(cursor, predicate)
+    }
+    
+    pub fn last_index_until(&self, cursor: DefViewCursor<'a, '_>, predicate: impl Fn(DefViewItemRef) -> bool) -> Result<Option<DefViewCursor<'a, '_>>, &'static str> {
+        if let Some(item_ref) = cursor.peek()? {
+            if predicate(item_ref) {
+                return Ok(Some(cursor));
+            }
+        }
+
+        self.first_index_before(cursor, predicate)
+    }
+
+
+    pub fn first_index(&self, predicate: impl Fn(DefViewItemRef) -> bool) -> Result<Option<DefViewCursor>, &'static str> {
+        self.first_index_since(DefViewCursor::of_view_at_start(self), predicate)
+    }
+
+    pub fn last_index(&self, predicate: fn (item_ref: DefViewItemRef) -> bool) -> Result<Option<DefViewCursor>, &'static str> {
+        self.last_index_until(DefViewCursor::of_view_at_end(self), predicate)
     }
 }
 

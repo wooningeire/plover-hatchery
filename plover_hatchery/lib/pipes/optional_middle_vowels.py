@@ -5,11 +5,7 @@ from plover_hatchery.lib.sopheme import DefinitionCursor
 
 
 def _should_optionalize(cursor: DefViewCursor):
-    if (tip := cursor.tip()) is None:
-        return False
-    if (keysymbol := tip.maybe_keysymbol) is None:
-        return False
-
+    keysymbol = cursor.tip().keysymbol()
 
     if not keysymbol.is_vowel:
         return False

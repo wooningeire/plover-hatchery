@@ -8,7 +8,7 @@ def theory():
 
 
     def map_phoneme_to_soph_values_base(cursor: DefViewCursor):
-        if (maybe_sopheme := cursor.nth(cursor.stack_len - 1)) is None:
+        if (maybe_sopheme := cursor.maybe_nth(cursor.stack_len - 1)) is None:
             return
 
         if (sopheme := maybe_sopheme.maybe_sopheme) is None:
@@ -341,21 +341,21 @@ def theory():
     yield optional_middle_vowels()
 
 
-    # def if_phoneme_maps_to(soph_values: str):
-    #     sophs = set(Soph(value) for value in soph_values.split())
-    #     def check(cursor: DefViewCursor):
-    #         return any(soph in sophs for soph in map_keysymbol_to_sophs(cursor))
+    def if_phoneme_maps_to(soph_values: str):
+        sophs = set(Soph(value) for value in soph_values.split())
+        def check(cursor: DefViewCursor):
+            return any(soph in sophs for soph in map_keysymbol_to_sophs(cursor))
 
-    #     return check
+        return check
 
 
-    # yield optional_middle_consonants(
-    #     make_optional_if=if_phoneme_maps_to("Y W"),
-    # )
+    yield optional_middle_consonants(
+        make_optional_if=if_phoneme_maps_to("Y W"),
+    )
 
-    # yield optional_unstressed_middle_consonants(
-    #     make_optional_if=if_phoneme_maps_to("R N L"),
-    # )
+    yield optional_unstressed_middle_consonants(
+        make_optional_if=if_phoneme_maps_to("R N L"),
+    )
 
 
 
