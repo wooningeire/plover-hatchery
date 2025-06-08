@@ -1,11 +1,15 @@
 {
-  "version": "4",
+  "version": "5",
   "specifiers": {
-    "jsr:@eemeli/yaml@^2.7.1": "2.7.1"
+    "jsr:@eemeli/yaml@^2.7.1": "2.7.1",
+    "jsr:@std/fs@*": "1.0.17"
   },
   "jsr": {
     "@eemeli/yaml@2.7.1": {
       "integrity": "a06ce11988c2fe2136090add47f183a68860d5da2cd6619239a54bf0a364d327"
+    },
+    "@std/fs@1.0.17": {
+      "integrity": "1c00c632677c1158988ef7a004cb16137f870aafdb8163b9dce86ec652f3952b"
     }
   },
   "workspace": {

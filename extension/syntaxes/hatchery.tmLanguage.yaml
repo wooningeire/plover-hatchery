@@ -1,118 +1,123 @@
 $schema: https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json
 name: Hatchery dictionary
+scopeName: source.hatchery
 
 patterns: 
-  - { include: "#keywords" }
-  - { include: "#section-headings" }
-  - { include: "#declarations" }
+  - { include: "#headings" }
+  - { include: "#comments" }
   - { include: "#strings" }
+  - { include: "#unquoted-strings" }
+#   - { include: "#sopheme_seqs" }
+
 
 repository:
-  section-headings:
+  headings:
     patterns:
-      - name: meta.heading.hatchery
-        match: ^(\[)([^\[\]]*)(\])$
-        captures:
-          1: { name: punctuation.definition.heading.begin.hatchery }
-          2: { name: variable.name.heading.hatchery }
-          3: { name: punctuation.definition.heading.end.hatchery }
+      - name: meta.heading.section.hatchery
+        begin: \[
+        end: \]
 
-  declarations:
+        patterns:
+          - name: variable.section.hatchery
+            match: \w*
+
+
+  comments:
     patterns:
-      - name: meta.declaration.hatchery
-        match: ^(\S+) (=) (.*)$
-        captures:
-          1:
-            patterns:
-              - { include: "#keys" }
-          2: { name: punctuation.separator.hatchery }
-          3:
-            patterns:
-              - { include: "#values" }
-      - name: meta.declaration.hatchery
-        match: ^(.*)$
-        captures:
-          1:
-            patterns:
-              - { include: "#sopheme_seqs" }
+      - name: comment.hatchery
+        begin: \#
+        end: $
+
+
+  strings:
+    patterns:
+      - name: definition.hatchery # string.quoted.double.hatchery
+        begin: \"
+        end: \"
+
+        patterns:
+          - { include: "#transclusions" }
+          - { include: "#sophemes" }
+          - { include: "#keys" }
+
+
+  unquoted-strings:
+    patterns:
+      - { include: "#keys" }
+
 
   keys:
     patterns:
-      - { include: "#ids" }
       - name: meta.key.hatchery
-        match: ([@#^])([^ @#^]+)
+        match: ([@#^])?(\w+)([@#^])?(?:(:)(\d+))?
         captures:
           1: { name: storage.hatchery }
           2:
             patterns:
               - { include: "#ids" }
-      - name: meta.key.hatchery
-        match: ([^ @#^]+)(\^)
-        captures:
-          1:
-            patterns:
-              - { include: "#ids" }
-          2: { name: storage.hatchery }
+          3: { name: storage.hatchery }
+          4: { name: storage.hatchery }
+          5: { name: constant.numeric.variation.hatchery }
   
-  values:
-    patterns:
-      - { include: "#sopheme_seqs" }
-      - name: string.unquoted.hatchery
-        match: .*
+#   values:
+#     patterns:
+#       - { include: "#sopheme_seqs" }
+#       - name: string.unquoted.hatchery
+#         match: .*
 
-  sopheme_seqs:
-    patterns:
-      - name: meta.sopheme_seqs.hatchery
-        match: "(.*)(?: (.*))?"
-        captures:
-          1:
-            patterns:
-              - { include: "#sophemes" }
-              - { include: "#transclusions" }
-          2:
-            patterns:
-              - { include: "#sopheme_seqs" }
+#   sopheme_seqs:
+#     patterns:
+#       - name: meta.sopheme_seqs.hatchery
+#         match: "(.*)(?: (.*))?"
+#         captures:
+#           1:
+#             patterns:
+#               - { include: "#sophemes" }
+#               - { include: "#transclusions" }
+#           2:
+#             patterns:
+#               - { include: "#sopheme_seqs" }
 
   sophemes:
     patterns:
       - name: meta.sopheme.hatchery
-        match: ([^ {}]*)?(\.)(\(.*\)|\S*)?
+        match: (\w*)(\.)(\([ \w@\d!?]*\)|[\w@\d!?]*)
         captures:
           1: { name: string.ortho.hatchery }
           2: { name: punctuation.separator.sopheme.hatchery }
           3:
             patterns:
-              - { include: "#phonos" }
-
-  phonos:
-    patterns:
-      - name: meta.sopheme.phono.hatchery
-        match: (\()(.*)(\))
-        captures:
-          1: { name: punctuation.separator.sopheme.phono.begin.hatchery }
-          2:
-            patterns:
-              - { include: "#keysymbol_seqs" }
-          3: { name: punctuation.separator.sopheme.phono.end.hatchery }
-      - { include: "#keysymbols" }
-
-  keysymbol_seqs:
-    patterns:
-      - name: meta.sopheme.phono.keysymbol_seq.hatchery
-        match: "(\\S+)(?: (.*))?"
-        captures:
-          1:
-            patterns:
               - { include: "#keysymbols" }
-          2:
-            patterns:
-              - { include: "#keysymbol_seqs" }
+
+#   phonos:
+#     patterns:
+#       - name: meta.sopheme.phono.hatchery
+#         match: (\()(.*)(\))
+#         captures:
+#           1: { name: punctuation.separator.sopheme.phono.begin.hatchery }
+#           2:
+#             patterns:
+#               - { include: "#keysymbol_seqs" }
+#           3: { name: punctuation.separator.sopheme.phono.end.hatchery }
+#       - { include: "#keysymbols" }
+
+#   keysymbol_seqs:
+#     patterns:
+#       - name: meta.sopheme.phono.keysymbol_seq.hatchery
+#         match: "(\\S+)(?: (.*))?"
+#         captures:
+#           1:
+#             patterns:
+#               - { include: "#keysymbols" }
+#           2:
+#             patterns:
+#               - { include: "#keysymbol_seqs" }
 
 
   keysymbols:
     patterns:
       - name: meta.sopheme.phono.keysymbol.hatchery
-        match: ([^ !?]+)(![123]?)?(\?)?
+        match: ([@\w]+)(!\d*)?(\?)?
         captures:
           1: { name: keyword.hatchery }
           2:
@@ -124,7 +129,7 @@ repository:
   stresses:
     patterns:
       - name: meta.stress.hatchery
-        match: (!)([123])?
+        match: (!)(\d*)
         captures:
           1: { name: punctuation.stress.hatchery }
           2: { name: constant.numeric.stress.hatchery }
@@ -133,7 +138,7 @@ repository:
   transclusions:
     patterns:
       - name: meta.transclusion.hatchery
-        match: (\{)(\S*)(\})(\S+)?
+        match: (\{)([ @#^:\w\d]*)(\})(!\d*)?
         captures:
           1: { name: punctuation.transclusion.begin.hatchery }
           2:
@@ -147,21 +152,7 @@ repository:
   ids:
     patterns:
       - name: meta.id.hatchery
-        match: ([^ @#^!?.\[\]()]+)
+        match: (\w+)
         captures:
           1: { name: variable.hatchery }
 
-  keywords:
-    patterns: 
-      - name: keyword.control.hatchery
-        match: \b(if|while|for|return)\b
-
-  strings:
-    name: string.quoted.double.hatchery
-    begin: \"
-    end: \"
-    patterns:
-    - name: constant.character.escape.hatchery
-      match: \\\\.
-
-scopeName: source.hatchery
