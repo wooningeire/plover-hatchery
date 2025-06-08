@@ -178,7 +178,7 @@ impl<'defs, 'view> DefViewCursor<'defs, 'view> {
     }
 
     pub fn prev_keysymbol_cur(&self) -> Result<Option<DefViewCursor>, &'static str> {
-        let cur = self.view.first_index_before(
+        let cur = self.view.last_index_before(
             self.clone(),
             |item_ref| match item_ref {
                 DefViewItemRef::Keysymbol(_) => true,
@@ -233,6 +233,61 @@ impl<'defs, 'view> DefViewCursor<'defs, 'view> {
 
     pub fn occurs_after_last_vowel(&self) -> Result<bool, &'static str> {
         Ok(self.occurs_after(self.view.last_vowel_cur()?))
+    }
+
+    pub fn spelling_including_silent(&self) -> Result<String, &'static str> {
+        let mut backward_parts = Vec::new();
+        {
+            let mut cur = self.clone();
+            while let Some(item_ref) = cur.step_backward()? {
+                match item_ref {
+                    DefViewItemRef::Sopheme(sopheme) => {
+                        if !sopheme.can_be_silent() {
+                            break;
+                        }
+
+                        backward_parts.push(sopheme.chars.as_str());
+                    },
+
+                    _ => {},
+                }
+            }
+
+        };
+        
+        
+        let mut all_parts = backward_parts.into_iter()
+            .rev()
+            .collect::<Vec<_>>();
+
+        
+        match self.peek()? {
+            Some(DefViewItemRef::Sopheme(sopheme)) => {
+                all_parts.push(sopheme.chars.as_str());
+            },
+
+            _ => {},
+        }
+
+
+        {
+            let mut cur = self.clone();
+            while let Some(item_ref) = cur.step_forward()? {
+                match item_ref {
+                    DefViewItemRef::Sopheme(sopheme) => {
+                        if !sopheme.can_be_silent() {
+                            break;
+                        }
+
+                        all_parts.push(sopheme.chars.as_str());
+                    },
+
+                    _ => {},
+                }
+            }
+        }
+
+        Ok(all_parts.join(""))
     }
 }
 

@@ -1,16 +1,12 @@
 from plover_hatchery.lib.pipes.types import EntryIndex
 
 from collections import defaultdict
-from collections.abc import Iterable
-from typing import Generator, cast, TypeVar, Generic, Any, Protocol, Callable, final
+from collections.abc import Iterable, Generator
+from typing import cast, TypeVar, Any, Protocol, Callable, final
 
-from plover.steno import Stroke
+from plover_hatchery.lib.sopheme import parse_entry_definition
 
-from plover_hatchery.lib.sopheme import Sopheme, DefinitionSophemes, parse_entry_definition
-
-from plover_hatchery_lib_rs import Def, EntitySeq, DefView, Transclusion, Entity, DefDict
-
-from ..trie import  NondeterministicTrie
+from plover_hatchery_lib_rs import Def, EntitySeq, DefView, DefDict
 from .Hook import Hook
 from .Plugin import Plugin
 from .Theory import Theory, TheoryLookup

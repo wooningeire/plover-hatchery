@@ -2,7 +2,6 @@ from typing import Callable
 from collections.abc import Iterable
 
 from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
-from plover_hatchery.lib.sopheme import DefinitionSophemes, DefinitionCursor
 from plover_hatchery_lib_rs import Def, DefView, DefViewCursor
 
 from ..sopheme import Sopheme

@@ -1,11 +1,8 @@
-from collections.abc import Callable
-import dataclasses
-from typing import Any, Protocol
-from plover_hatchery.lib.pipes.Plugin import GetPluginApi, Plugin, define_plugin
+from typing import Protocol
+from plover_hatchery.lib.pipes.Plugin import Plugin, define_plugin
 from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
-from plover_hatchery.lib.sopheme import Sopheme, DefinitionSophemes, DefinitionCursor
 
-from plover_hatchery_lib_rs import Def, DefView, DefViewCursor, DefViewItem, Entity, Keysymbol, RawableEntity, optionalize_keysymbols
+from plover_hatchery_lib_rs import DefView, DefViewCursor, optionalize_keysymbols
 
 class BaseOptionalizePredicate(Protocol):
     def __call__(self, cursor: DefViewCursor, /) -> bool: ...

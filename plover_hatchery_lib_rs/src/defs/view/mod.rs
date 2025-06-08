@@ -174,7 +174,7 @@ impl<'a> DefView<'a> {
         Ok(None)
     }
 
-    pub fn first_index_before(&self, mut cursor: DefViewCursor<'a, '_>, predicate: impl Fn(DefViewItemRef) -> bool) -> Result<Option<DefViewCursor<'a, '_>>, &'static str> {
+    pub fn last_index_before(&self, mut cursor: DefViewCursor<'a, '_>, predicate: impl Fn(DefViewItemRef) -> bool) -> Result<Option<DefViewCursor<'a, '_>>, &'static str> {
         while let Some(item_ref) = cursor.step_backward()? {
             if predicate(item_ref) {
                 return Ok(Some(cursor));
@@ -183,7 +183,6 @@ impl<'a> DefView<'a> {
 
         Ok(None)
     }
-    
 
     pub fn first_index_since(&self, cursor: DefViewCursor<'a, '_>, predicate: impl Fn(DefViewItemRef) -> bool) -> Result<Option<DefViewCursor<'a, '_>>, &'static str> {
         if let Some(item_ref) = cursor.peek()? {
@@ -202,7 +201,7 @@ impl<'a> DefView<'a> {
             }
         }
 
-        self.first_index_before(cursor, predicate)
+        self.last_index_before(cursor, predicate)
     }
 
 

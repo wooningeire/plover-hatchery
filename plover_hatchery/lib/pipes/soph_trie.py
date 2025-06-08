@@ -3,13 +3,12 @@ from dataclasses import dataclass
 from typing import Any, Callable, Iterable, NamedTuple, Protocol, final
 
 from plover.steno import Stroke
-from plover_hatchery_lib_rs import DefView, DefViewCursor, Keysymbol, Sopheme
+from plover_hatchery_lib_rs import DefView, DefViewCursor, Keysymbol, Sopheme, SophemeSeq
 
 from plover_hatchery.lib.pipes.Hook import Hook
 from plover_hatchery.lib.pipes.Plugin import GetPluginApi, Plugin, define_plugin
 from plover_hatchery.lib.pipes.floating_keys import floating_keys
 from plover_hatchery.lib.pipes.plugin_utils import iife, join_sophs_to_chords_dicts
-from plover_hatchery.lib.sopheme import DefinitionSophemes, DefinitionCursor
 from plover_hatchery.lib.trie import LookupResult, NondeterministicTrie, NodeSrc, Trie, TriePath, JoinedTriePaths, TransitionCostKey, TransitionKey
 from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
 from plover_hatchery.lib.pipes.types import Soph, EntryIndex
@@ -56,7 +55,7 @@ class ChordToSophSearchResultWithSrcIndex(NamedTuple):
 @dataclass
 class SophTrieApi:
     class BeginAddEntry(Protocol):
-        def __call__(self, *, trie: NondeterministicTrie[Soph, EntryIndex], sophemes: DefinitionSophemes, entry_id: EntryIndex) -> Any: ...
+        def __call__(self, *, trie: NondeterministicTrie[Soph, EntryIndex], sophemes: SophemeSeq, entry_id: EntryIndex) -> Any: ...
     class AddSophTransition(Protocol):
         def __call__(
             self,
