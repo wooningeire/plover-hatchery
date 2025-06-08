@@ -1,13 +1,14 @@
+from collections.abc import Generator
+
 from plover_hatchery_lib_rs import DefViewCursor
 from plover_hatchery.lib.pipes import *
-from plover_hatchery.lib.sopheme.parse.parse_sopheme_sequence import parse_sopheme_seq
 
 @compile_theory
 def theory():
     yield floating_keys("*")
 
 
-    def map_phoneme_to_soph_values_base(cursor: DefViewCursor):
+    def map_phoneme_to_soph_values_base(cursor: DefViewCursor) -> Generator[str, None, None]:
         if (maybe_sopheme := cursor.maybe_nth(cursor.stack_len - 1)) is None:
             return
 
@@ -172,7 +173,7 @@ def theory():
     
     vowel_sophs = set(value for value in "A AA E EE I II O OO U UU AU OI OU".split())
 
-    def map_phoneme_to_soph_values(cursor: DefViewCursor):
+    def map_phoneme_to_soph_values(cursor: DefViewCursor) -> Generator[str, None, None]:
         sophs = tuple(map_phoneme_to_soph_values_base(cursor))
         yield from sophs
 

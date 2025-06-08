@@ -210,8 +210,40 @@ impl<'a> DefView<'a> {
         self.first_index_since(DefViewCursor::of_view_at_start(self), predicate)
     }
 
-    pub fn last_index(&self, predicate: fn (item_ref: DefViewItemRef) -> bool) -> Result<Option<DefViewCursor>, &'static str> {
+    pub fn last_index(&self, predicate: impl Fn(DefViewItemRef) -> bool) -> Result<Option<DefViewCursor>, &'static str> {
         self.last_index_until(DefViewCursor::of_view_at_end(self), predicate)
+    }
+
+    pub fn first_keysymbol_cur(&self, predicate: impl Fn(&Keysymbol) -> bool) -> Result<Option<DefViewCursor>, &'static str> {
+        self.first_index(|item_ref| match item_ref {
+            DefViewItemRef::Keysymbol(keysymbol) => predicate(keysymbol),
+
+            _ => false,
+        })
+    }
+
+    pub fn last_keysymbol_cur(&self, predicate: impl Fn(&Keysymbol) -> bool) -> Result<Option<DefViewCursor>, &'static str> {
+        self.last_index(|item_ref| match item_ref {
+            DefViewItemRef::Keysymbol(keysymbol) => predicate(keysymbol),
+
+            _ => false,
+        })
+    }
+
+    pub fn first_consonant_cur(&self) -> Result<Option<DefViewCursor>, &'static str> {
+        self.first_keysymbol_cur(|keysymbol| keysymbol.is_consonant())
+    }
+
+    pub fn last_consonant_cur(&self) -> Result<Option<DefViewCursor>, &'static str> {
+        self.last_keysymbol_cur(|keysymbol| keysymbol.is_consonant())
+    }
+
+    pub fn first_vowel_cur(&self) -> Result<Option<DefViewCursor>, &'static str> {
+        self.first_keysymbol_cur(|keysymbol| keysymbol.is_vowel())
+    }
+
+    pub fn last_vowel_cur(&self) -> Result<Option<DefViewCursor>, &'static str> {
+        self.last_keysymbol_cur(|keysymbol| keysymbol.is_vowel())
     }
 }
 

@@ -24,8 +24,6 @@ pub use view::{
 mod cursor;
 pub use cursor::{
     DefViewCursor,
-    DefViewItemRefChildrenCursor,
-    DefViewItemRefChildrenIter,
 };
 
 

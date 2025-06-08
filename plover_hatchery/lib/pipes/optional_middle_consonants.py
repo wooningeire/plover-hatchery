@@ -1,6 +1,5 @@
 from plover_hatchery_lib_rs import DefViewCursor
 from plover_hatchery.lib.pipes.optionalizer import BaseOptionalizePredicate, create_optionalizer_with_user_condition
-from plover_hatchery.lib.sopheme import DefinitionCursor
 
 
 
@@ -14,10 +13,7 @@ def _should_optionalize(optionalize_if: BaseOptionalizePredicate, cursor: DefVie
         return False
 
     # Filter out starting and ending consonants
-    if (
-        tuple(cursor.index_stack) < tuple(cursor.view.first_vowel_loc)
-        or tuple(cursor.view.last_vowel_loc) < tuple(cursor.index_stack)
-    ):
+    if cursor.occurs_before_first_vowel() or cursor.occurs_after_last_vowel():
         return False
 
     # Custom condition

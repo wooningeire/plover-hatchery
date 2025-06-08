@@ -1,6 +1,5 @@
 from plover_hatchery_lib_rs import DefViewCursor
 from plover_hatchery.lib.pipes.optionalizer import BaseOptionalizePredicate, create_optionalizer_with_user_condition
-from plover_hatchery.lib.sopheme import DefinitionCursor
 
 
 def _should_optionalize(optionalize_if: BaseOptionalizePredicate, cursor: DefViewCursor):
@@ -11,21 +10,18 @@ def _should_optionalize(optionalize_if: BaseOptionalizePredicate, cursor: DefVie
         return False
 
     # Filter out starting and ending consonants
-    if (
-        tuple(cursor.index_stack) < tuple(cursor.view.first_consonant_loc)
-        or tuple(cursor.view.last_consonant_loc) < tuple(cursor.index_stack)
-    ):
+    if cursor.occurs_after_last_consonant() or cursor.occurs_after_last_consonant():
         return False
 
     # Filter out consonants that are surrounded by stressed vowels
     # Filter out consonants that are not alone
-    prev_keysymbol = cursor.prev_keysymbol_loc()
+    prev_keysymbol = cursor.prev_keysymbol_cur()
     if prev_keysymbol is not None:
         keysymbol = prev_keysymbol.tip().keysymbol()
         if keysymbol.is_consonant or keysymbol.stress != 0:
             return False
 
-    next_keysymbol = cursor.next_keysymbol_loc()
+    next_keysymbol = cursor.next_keysymbol_cur()
     if next_keysymbol is not None:
         keysymbol = next_keysymbol.tip().keysymbol()
         if keysymbol.is_consonant or keysymbol.stress != 0:

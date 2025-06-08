@@ -1,7 +1,5 @@
 from plover_hatchery_lib_rs import DefViewCursor
-from plover_hatchery.lib.pipes.optionalizer import BaseOptionalizePredicate, create_optionalizer
-from plover_hatchery.lib.sopheme import DefinitionCursor
-
+from plover_hatchery.lib.pipes.optionalizer import create_optionalizer
 
 
 def _should_optionalize(cursor: DefViewCursor):
@@ -11,10 +9,7 @@ def _should_optionalize(cursor: DefViewCursor):
         return False
 
     # Filter out starting and ending consonants
-    if (
-        tuple(cursor.index_stack) < tuple(cursor.view.first_consonant_loc)
-        or tuple(cursor.view.last_consonant_loc) < tuple(cursor.index_stack)
-    ):
+    if cursor.occurs_after_last_consonant() or cursor.occurs_after_last_consonant():
         return False
 
     return True

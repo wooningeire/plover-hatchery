@@ -10,7 +10,7 @@ use super::super::{
     py,
 };
 
-use pyo3::{exceptions::{PyException, PyTypeError}, prelude::*};
+use pyo3::{exceptions::{PyException, PyTypeError}, prelude::*, types::PyTuple};
 
 
 #[pyclass]
@@ -78,58 +78,46 @@ impl DefView {
     }
 
     #[getter]
-    pub fn first_consonant_loc(&self, py: Python<'_>) -> Result<Option<Vec<usize>>, PyErr> {
-        self.with_rs_result(py, |view_rs| {
-            Ok(
-                view_rs.first_index(|item_ref| match item_ref {
-                    DefViewItemRef::Keysymbol(keysymbol) => keysymbol.is_consonant(),
+    pub fn first_consonant_cur<'py>(&self, py: Python<'py>) -> Result<Option<Bound<'py, PyTuple>>, PyErr> {
+        self.with_rs(py, |view_rs| {
+            Ok(match view_rs.first_consonant_cur().map_err(PyException::new_err)? {
+                Some(cur) => Some(PyTuple::new(py, cur.index_stack())?),
 
-                    _ => false,
-                })?
-                    .map(|cur| cur.index_stack())
-            )
+                None => None,
+            })
         })
     }
 
     #[getter]
-    pub fn last_consonant_loc(&self, py: Python<'_>) -> Result<Option<Vec<usize>>, PyErr> {
-        self.with_rs_result(py, |view_rs| {
-            Ok(
-                view_rs.last_index(|item_ref| match item_ref {
-                    DefViewItemRef::Keysymbol(keysymbol) => keysymbol.is_consonant(),
+    pub fn last_consonant_cur<'py>(&self, py: Python<'py>) -> Result<Option<Bound<'py, PyTuple>>, PyErr> {
+        self.with_rs(py, |view_rs| {
+            Ok(match view_rs.last_consonant_cur().map_err(PyException::new_err)? {
+                Some(cur) => Some(PyTuple::new(py, cur.index_stack())?),
 
-                    _ => false,
-                })?
-                    .map(|cur| cur.index_stack())
-            )
+                None => None,
+            })
         })
     }
 
     #[getter]
-    pub fn first_vowel_loc(&self, py: Python<'_>) -> Result<Option<Vec<usize>>, PyErr> {
-        self.with_rs_result(py, |view_rs| {
-            Ok(
-                view_rs.first_index(|item_ref| match item_ref {
-                    DefViewItemRef::Keysymbol(keysymbol) => keysymbol.is_vowel(),
+    pub fn first_vowel_cur<'py>(&self, py: Python<'py>) -> Result<Option<Bound<'py, PyTuple>>, PyErr> {
+        self.with_rs(py, |view_rs| {
+            Ok(match view_rs.first_vowel_cur().map_err(PyException::new_err)? {
+                Some(cur) => Some(PyTuple::new(py, cur.index_stack())?),
 
-                    _ => false,
-                })?
-                    .map(|cur| cur.index_stack())
-            )
+                None => None,
+            })
         })
     }
 
     #[getter]
-    pub fn last_vowel_loc(&self, py: Python<'_>) -> Result<Option<Vec<usize>>, PyErr> {
-        self.with_rs_result(py, |view_rs| {
-            Ok(
-                view_rs.last_index(|item_ref| match item_ref {
-                    DefViewItemRef::Keysymbol(keysymbol) => keysymbol.is_vowel(),
+    pub fn last_vowel_cur<'py>(&self, py: Python<'py>) -> Result<Option<Bound<'py, PyTuple>>, PyErr> {
+        self.with_rs(py, |view_rs| {
+            Ok(match view_rs.last_vowel_cur().map_err(PyException::new_err)? {
+                Some(cur) => Some(PyTuple::new(py, cur.index_stack())?),
 
-                    _ => false,
-                })?
-                    .map(|cur| cur.index_stack())
-            )
+                None => None,
+            })
         })
     }
 }

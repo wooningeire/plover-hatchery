@@ -3,7 +3,6 @@ use super::*;
 mod iter;
 pub use iter::{
     DefViewItemRefChildrenCursor,
-    DefViewItemRefChildrenIter,
 };
 
 pub mod py;
@@ -167,13 +166,79 @@ impl<'defs, 'view> DefViewCursor<'defs, 'view> {
         self.stack.pop();
     }
 
-    pub fn index_stack(&self) -> Vec<usize> {
+    pub fn indexes<'a>(&'a self) -> impl Iterator<Item = usize> + 'a {
         self.stack.iter()
-            .map(|iter| iter.index() )
+            .map(|iter| iter.index())
             .take_while(|iter| iter.is_some())
             .map(|index| index.unwrap())
-            .collect::<Vec<_>>()
     }
+
+    pub fn index_stack(&self) -> Vec<usize> {
+        self.indexes().collect::<Vec<_>>()
+    }
+
+    pub fn prev_keysymbol_cur(&self) -> Result<Option<DefViewCursor>, &'static str> {
+        let cur = self.view.first_index_before(
+            self.clone(),
+            |item_ref| match item_ref {
+                DefViewItemRef::Keysymbol(_) => true,
+
+                _ => false,
+            },
+        )?;
+        
+        Ok(cur)
+    }
+
+    pub fn next_keysymbol_cur(&self) -> Result<Option<DefViewCursor>, &'static str> {
+        let cur = self.view.first_index_after(
+            self.clone(),
+            |item_ref| match item_ref {
+                DefViewItemRef::Keysymbol(_) => true,
+
+                _ => false,
+            },
+        )?;
+        
+        Ok(cur)
+    }
+
+    pub fn occurs_before(&self, cur: Option<DefViewCursor>) -> bool {
+        match cur {
+            Some(cur) => seqs_less_than(self.indexes(), cur.indexes()),
+
+            None => true,
+        }
+    }
+
+    pub fn occurs_after(&self, cur: Option<DefViewCursor>) -> bool {
+        match cur {
+            Some(cur) => seqs_less_than(cur.indexes(), self.indexes()),
+
+            None => true,
+        }
+    }
+
+    pub fn occurs_before_first_consonant(&self) -> Result<bool, &'static str> {
+        Ok(self.occurs_before(self.view.first_consonant_cur()?))
+    }
+
+    pub fn occurs_after_last_consonant(&self) -> Result<bool, &'static str> {
+        Ok(self.occurs_after(self.view.last_consonant_cur()?))
+    }
+
+    pub fn occurs_before_first_vowel(&self) -> Result<bool, &'static str> {
+        Ok(self.occurs_before(self.view.first_vowel_cur()?))
+    }
+
+    pub fn occurs_after_last_vowel(&self) -> Result<bool, &'static str> {
+        Ok(self.occurs_after(self.view.last_vowel_cur()?))
+    }
+}
+
+fn seqs_less_than(seq_a: impl Iterator<Item = usize>, seq_b: impl Iterator<Item = usize>) -> bool {
+    seq_a.zip(seq_b)
+        .any(|(a, b)| a < b)
 }
 
 

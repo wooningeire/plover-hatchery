@@ -1,15 +1,13 @@
-use pyo3::{exceptions::{PyException, PyKeyError, PyTypeError}, prelude::*};
+use pyo3::{exceptions::{PyException, PyKeyError, PyTypeError}, prelude::*, types::PyTuple};
 
 use super::super::{
-    DefViewItemRef,
-    DefView,
     py,
 };
 
 
-#[pyclass(get_all)]
+#[pyclass]
 pub struct DefViewCursor {
-    view: Py<py::DefView>,
+    #[pyo3(get)] view: Py<py::DefView>,
     index_stack: Vec<usize>,
 }
 
@@ -21,15 +19,17 @@ impl py::DefViewCursor {
         }
     }
 
-    pub fn with_rs<T>(&self, view_rs: &DefView, func: impl Fn(super::DefViewCursor) -> T) -> Result<T, PyErr> {
-        let cursor_rs = super::DefViewCursor::with_index_stack(view_rs, self.index_stack.clone().into_iter().map(Some))
-            .map_err(PyException::new_err)?;
+    pub fn with_rs<T>(&self, py: Python<'_>, func: impl Fn(super::DefViewCursor) -> T) -> Result<T, PyErr> {
+        self.view.borrow(py).with_rs(py, |view_rs| {
+            let cursor_rs = super::DefViewCursor::with_index_stack(&view_rs, self.index_stack.clone().into_iter().map(Some))
+                .map_err(PyException::new_err)?;
 
-        Ok(func(cursor_rs))
+            Ok(func(cursor_rs))
+        })
     }
 
-    pub fn with_rs_result<T>(&self, view_rs: &DefView, func: impl Fn(super::DefViewCursor) -> Result<T, &'static str>) -> Result<T, PyErr> {
-        self.with_rs(view_rs, func)?
+    pub fn with_rs_result<T>(&self, py: Python<'_>, func: impl Fn(super::DefViewCursor) -> Result<T, &'static str>) -> Result<T, PyErr> {
+        self.with_rs(py, func)?
             .map_err(PyException::new_err)
     }
 }
@@ -42,6 +42,11 @@ impl py::DefViewCursor {
             view,
             index_stack,
         }
+    }
+
+    #[getter]
+    pub fn index_stack<'py>(&self, py: Python<'py>) -> Result<Bound<'py, PyTuple>, PyErr> {
+        PyTuple::new(py, &self.index_stack)
     }
 
     pub fn tip(&self, py: Python<'_>) -> Result<py::DefViewItem, PyErr> {
@@ -64,39 +69,17 @@ impl py::DefViewCursor {
         })
     }
 
-    pub fn prev_keysymbol_loc(&self, py: Python<'_>) -> Result<Option<py::DefViewCursor>, PyErr> {
-        self.view.borrow(py).with_rs(py, |view_rs| {
-            self.with_rs_result(&view_rs, |cursor_rs| {
-                Ok(
-                    view_rs.first_index_before(
-                        cursor_rs,
-                        |item_ref| match item_ref {
-                            DefViewItemRef::Keysymbol(_) => true,
-
-                            _ => false,
-                        },
-                    )?
-                        .map(|cur| py::DefViewCursor::of(self.view.clone_ref(py), &cur))
-                )
-            })
+    pub fn prev_keysymbol_cur(&self, py: Python<'_>) -> Result<Option<py::DefViewCursor>, PyErr> {
+        self.with_rs_result(py, |cursor_rs| {
+            cursor_rs.prev_keysymbol_cur()
+                .map(|result| result.map(|cur| py::DefViewCursor::of(self.view.clone_ref(py), &cur)))
         })
     }
 
-    pub fn next_keysymbol_loc(&self, py: Python<'_>) -> Result<Option<py::DefViewCursor>, PyErr> {
-        self.view.borrow(py).with_rs(py, |view_rs| {
-            self.with_rs_result(&view_rs, |cursor_rs| {
-                Ok(
-                    view_rs.first_index_after(
-                        cursor_rs,
-                        |item_ref| match item_ref {
-                            DefViewItemRef::Keysymbol(_) => true,
-
-                            _ => false,
-                        },
-                    )?
-                        .map(|cur| py::DefViewCursor::of(self.view.clone_ref(py), &cur))
-                )
-            })
+    pub fn next_keysymbol_cur(&self, py: Python<'_>) -> Result<Option<py::DefViewCursor>, PyErr> {
+        self.with_rs_result(py, |cursor_rs| {
+            cursor_rs.next_keysymbol_cur()
+                .map(|result| result.map(|cur| py::DefViewCursor::of(self.view.clone_ref(py), &cur)))
         })
     }
 
@@ -107,5 +90,29 @@ impl py::DefViewCursor {
 
     pub fn __repr__(&self) -> String {
         format!("{:?}", self.index_stack)
+    }
+
+    pub fn occurs_before_first_consonant(&self, py: Python<'_>) -> Result<bool, PyErr> {
+        self.with_rs_result(py, |cursor_rs| {
+            cursor_rs.occurs_before_first_consonant()
+        })
+    }
+
+    pub fn occurs_after_last_consonant(&self, py: Python<'_>) -> Result<bool, PyErr> {
+        self.with_rs_result(py, |cursor_rs| {
+            cursor_rs.occurs_after_last_consonant()
+        })
+    }
+
+    pub fn occurs_before_first_vowel(&self, py: Python<'_>) -> Result<bool, PyErr> {
+        self.with_rs_result(py, |cursor_rs| {
+            cursor_rs.occurs_before_first_vowel()
+        })
+    }
+
+    pub fn occurs_after_last_vowel(&self, py: Python<'_>) -> Result<bool, PyErr> {
+        self.with_rs_result(py, |cursor_rs| {
+            cursor_rs.occurs_after_last_vowel()
+        })
     }
 }
