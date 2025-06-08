@@ -1,3 +1,4 @@
+import timeit
 from plover_hatchery.lib.pipes.types import EntryIndex
 
 from collections import defaultdict
@@ -73,7 +74,7 @@ def compile_theory(
         pass
 
 
-    def build_lookup(entry_lines: Iterable[tuple[str, str]]):
+    def build_lookup(entry_lines: Iterable[tuple[str, str]], filename: str=""):
         states: dict[int, Any] = {}
         for plugin_id, handler in hooks.begin_build_lookup.ids_handlers():
             states[plugin_id] = handler()
@@ -91,71 +92,83 @@ def compile_theory(
 
         defs = DefDict()
 
-        for i, (varname, definition_str) in enumerate(entry_lines):
-            if i % 10000 == 0:
-                print(f"hatched {i}")
+        def populate_dict():
+            nonlocal n_entries, n_passed_parses
 
-            try:
-                defs.add(varname, EntitySeq(list(parse_entry_definition(definition_str.strip()))))
-                n_passed_parses += 1
-            except ParserException as e:
-                # import traceback
-                # print(f"failed to parse {definition_str.strip()}: {e} ({''.join(traceback.format_tb(e.__traceback__))})")
-                pass
+            for i, (varname, definition_str) in enumerate(entry_lines):
+                if i % 10000 == 0:
+                    print(f"\x1b[FParsed {i} entries")
 
-            n_entries += 1
-        # while len(line := file.readline()) > 0:
-        #     _add_entry(trie, Sopheme.parse_seq())
+                try:
+                    defs.add(varname, EntitySeq(list(parse_entry_definition(definition_str.strip()))))
+                    n_passed_parses += 1
+                except ParserException as e:
+                    # import traceback
+                    # print(f"failed to parse {definition_str.strip()}: {e} ({''.join(traceback.format_tb(e.__traceback__))})")
+                    pass
 
-        i = 0
+                n_entries += 1
 
-        @defs.foreach_key
-        def _(varname: str):
-            nonlocal i, n_addable_entries, n_passed_additions
+        print(f"\x1b[1;36mHatching {filename}…\x1b[0m")
+        print("\x1b[35m")
+        duration = timeit.timeit(populate_dict, number=1)
+        n_failed_parses = n_entries - n_passed_parses
+        print(f""""\x1b[FParsed {n_entries} entries
+    \x1b[31m{n_failed_parses} ({n_failed_parses / n_entries * 100:.2f}%) failed
+    \x1b[32mTook {duration} s""")
 
-            if i % 10000 == 0:
-                print(f"checked/wrote {i}")
 
-            i += 1
+        def add_entries():
+            nonlocal n_addable_entries, n_passed_additions
 
-            if any(varname.startswith(modifier) for modifier in "@#") or "^" in varname:
-                return
+            i = 0
+            @defs.foreach_key
+            def _(varname: str):
+                nonlocal i, n_addable_entries, n_passed_additions
 
-            translations.append("")
+                if any(varname.startswith(modifier) for modifier in "@#") or "^" in varname:
+                    return
 
-            n_addable_entries += 1
 
-            try:
-                entry_id = EntryIndex(len(translations) - 1)
+                if i % 1000 == 0:
+                    print(f"\x1b[FAdded {i} entries")
 
-                view = DefView(defs, defs.get_def(varname))
+                i += 1
 
-                add_entry(states, view, entry_id)
+                translations.append("")
 
-                translation = view.translation()
-                translations[-1] = translation
-                reverse_translations[translation].append(entry_id)
+                n_addable_entries += 1
 
-                n_passed_additions += 1
-            except Exception as e:
-                # import traceback
-                # print(f"failed to add {varname}: {e} ({''.join(traceback.format_tb(e.__traceback__))})")
-                pass
+                try:
+                    entry_id = EntryIndex(len(translations) - 1)
 
+                    view = DefView(defs, defs.get_def(varname))
+
+                    add_entry(states, view, entry_id)
+
+                    translation = view.translation()
+                    translations[-1] = translation
+                    reverse_translations[translation].append(entry_id)
+
+                    n_passed_additions += 1
+                except Exception as e:
+                    # import traceback
+                    # print(f"failed to add {varname}: {e} ({''.join(traceback.format_tb(e.__traceback__))})")
+                    pass
+
+
+        print("\x1b[35m")
+        duration = timeit.timeit(add_entries, number=1)
+        n_failed_additions = n_addable_entries - n_passed_additions
+        print(f""""\x1b[FAdded {n_addable_entries} entries
+    \x1b[31m{n_failed_additions} ({f"{n_failed_additions / n_addable_entries * 100:.2f}" if n_addable_entries > 0 else "nan"}%) failed
+    \x1b[32mTook {duration} s""")
+
+        print("\x1b[0m")
 
         for plugin_id, handler in hooks.complete_build_lookup.ids_handlers():
             handler()
             
-
-        n_failed_additions = n_addable_entries - n_passed_additions
-        n_failed_parses = n_entries - n_passed_parses
-
-        print(f"""
-Parsed {n_entries} entries
-    ({n_failed_parses} ({n_failed_parses / n_entries * 100:.2f}%) failed)
-Added {n_addable_entries} entries
-    ({n_failed_additions} ({f"{n_failed_additions / n_addable_entries * 100:.2f}" if n_addable_entries > 0 else "nan"}%) failed)
-""")
 
         def true_lookup(stroke_stenos: tuple[str, ...]):
             return lookup(states, stroke_stenos, translations)

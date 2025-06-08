@@ -24,7 +24,7 @@ class HatcheryDictionary(StenoDictionary):
 
         dictionary = read_hatchery_dictionary(filepath)
 
-        lookup = theory.build_lookup(entry_lines=all_entries(dictionary))
+        lookup = theory.build_lookup(entry_lines=all_entries(dictionary), filename=filepath)
 
         self.__maybe_lookup = lookup.lookup
         self.__maybe_reverse_lookup = lookup.reverse_lookup
