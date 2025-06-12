@@ -158,25 +158,25 @@ pub enum DefViewItem {
     Def(Def),
 }
 
-impl DefViewItem {
-    pub fn of(item_ref: DefViewItemRef) -> DefViewItem {
+impl py::DefViewItem {
+    pub fn of(item_ref: DefViewItemRef) -> py::DefViewItem {
         match item_ref {
-            DefViewItemRef::Keysymbol(keysymbol) => DefViewItem::Keysymbol(keysymbol.clone()),
+            DefViewItemRef::Keysymbol(keysymbol) => py::DefViewItem::Keysymbol(keysymbol.clone()),
 
-            DefViewItemRef::Sopheme(sopheme) => DefViewItem::Sopheme(sopheme.clone()),
+            DefViewItemRef::Sopheme(sopheme) => py::DefViewItem::Sopheme(sopheme.clone()),
 
-            DefViewItemRef::Def(def) => DefViewItem::Def(def.clone()),
+            DefViewItemRef::Def(def) => py::DefViewItem::Def(def.clone()),
 
-            DefViewItemRef::Entities(seq, varname) => DefViewItem::Def(Def::of(seq.clone(), varname)),
+            DefViewItemRef::Entities(seq, varname) => py::DefViewItem::Def(Def::of(seq.clone(), varname)),
         }
     }
 }
 
 #[pymethods]
-impl DefViewItem {
+impl py::DefViewItem {
     pub fn keysymbol(&self) -> Result<Keysymbol, PyErr> {
         match self {
-            DefViewItem::Keysymbol(keysymbol) => Ok(keysymbol.clone()),
+            py::DefViewItem::Keysymbol(keysymbol) => Ok(keysymbol.clone()),
             
             _ => Err(PyTypeError::new_err("not a keysymbol")),
         }
@@ -184,36 +184,21 @@ impl DefViewItem {
 
     pub fn sopheme(&self) -> Result<Sopheme, PyErr> {
         match self {
-            DefViewItem::Sopheme(sopheme) => Ok(sopheme.clone()),
+            py::DefViewItem::Sopheme(sopheme) => Ok(sopheme.clone()),
             
             _ => Err(PyTypeError::new_err("not a sopheme")),
         }
     }
 
-    #[getter]
-    pub fn maybe_keysymbol(&self) -> Option<Keysymbol> {
-        match self {
-            DefViewItem::Keysymbol(keysymbol) => Some(keysymbol.clone()),
-            
-            _ => None,
-        }
-    }
 
     #[getter]
-    pub fn maybe_sopheme(&self) -> Option<Sopheme> {
+    pub fn n_children(&self) -> usize {
         match self {
-            DefViewItem::Sopheme(sopheme) => Some(sopheme.clone()),
-            
-            _ => None,
-        }
-    }
+            py::DefViewItem::Keysymbol(_) => 0,
 
-    #[getter]
-    pub fn maybe_def(&self) -> Option<Def> {
-        match self {
-            DefViewItem::Def(def) => Some(def.clone()),
-            
-            _ => None,
+            py::DefViewItem::Sopheme(sopheme) => sopheme.keysymbols.len(),
+
+            py::DefViewItem::Def(def) => def.entities.len(),
         }
-    }
+    } 
 }

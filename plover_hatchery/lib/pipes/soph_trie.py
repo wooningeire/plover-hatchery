@@ -167,52 +167,71 @@ def soph_trie(
 
 
             src_nodes: list[NodeSrc] = [NodeSrc(0)]
-            new_src_nodes: list[NodeSrc] = []
+            positions_and_src_nodes_stack: list[tuple[DefViewCursor, list[NodeSrc]]] = []
+
+
+            def step_in(cursor: DefViewCursor):
+                while cursor.stack_len > len(positions_and_src_nodes_stack):
+                    positions_and_src_nodes_stack.append((cursor, list(src_nodes)))
+
+            def step_out(n_steps: int):
+                dst_node_id = None
+                for _ in range(n_steps):
+                    old_cursor, old_src_nodes = positions_and_src_nodes_stack.pop()
+    
+
+                    sophs = set(Soph(value) for value in map_to_sophs(old_cursor))
+                    paths = trie.link_join(old_src_nodes, dst_node_id, sophs, entry_id)
+                    if dst_node_id is None and paths.dst_node_id is not None:
+                        dst_node_id = paths.dst_node_id
+
+                    for seq in paths.transition_seqs:
+                        api.register_transition(seq.transitions[0], entry_id, old_cursor)
+
+                    api.add_soph_transition.emit_with_states(
+                        states,
+                        cursor=old_cursor,
+                        sophs=sophs,
+                        paths=paths,
+                        node_srcs=tuple(old_src_nodes),
+                        new_node_srcs=src_nodes,
+                        trie=trie,
+                        entry_id=entry_id,
+                    )
+
+                return dst_node_id
 
 
             @view.foreach
             def _(cursor: DefViewCursor):
-                nonlocal src_nodes, new_src_nodes
+                nonlocal src_nodes
 
-                match cursor.tip():
-                    case DefViewItem.Keysymbol(keysymbol):
-                        if not keysymbol.optional:
-                            new_src_nodes = []
-                        else:
-                            new_src_nodes = list(NodeSrc.increment_costs(new_src_nodes, 5))
+                if cursor.stack_len <= len(positions_and_src_nodes_stack):
+                    match cursor.tip():
+                        case DefViewItem.Keysymbol(keysymbol):
+                            if not keysymbol.optional:
+                                src_nodes = []
+                            else:
+                                src_nodes = list(NodeSrc.increment_costs(src_nodes, 5))
 
-
-                        sophs = set(Soph(value) for value in map_to_sophs(cursor))
-
-
-                        paths = trie.join(src_nodes, sophs, entry_id)
-                        if paths.dst_node_id is not None:
-                            new_src_nodes.append(NodeSrc(paths.dst_node_id))
-
-                        for seq in paths.transition_seqs:
-                            api.register_transition(seq.transitions[0], entry_id, cursor)
+                        case _:
+                            pass
 
 
-                        api.add_soph_transition.emit_with_states(
-                            states,
-                            cursor=cursor,
-                            sophs=sophs,
-                            paths=paths,
-                            node_srcs=tuple(src_nodes),
-                            new_node_srcs=new_src_nodes,
-                            trie=trie,
-                            entry_id=entry_id,
-                        )
+                    dst_node_id = step_out(len(positions_and_src_nodes_stack) - cursor.stack_len + 1)
+                    if dst_node_id is not None:
+                        src_nodes.append(NodeSrc(dst_node_id))
 
 
-                        src_nodes = new_src_nodes
-
-
-                    case _: pass
+                step_in(cursor)
 
 
             for src in src_nodes:
                 trie.set_translation(src.node, entry_id)
+
+            final_dst_node_id = step_out(len(positions_and_src_nodes_stack))
+            if final_dst_node_id is not None:
+                trie.set_translation(final_dst_node_id, entry_id)
 
 
         # @base_hooks.complete_build_lookup.listen(soph_trie)

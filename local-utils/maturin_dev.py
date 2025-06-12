@@ -31,6 +31,10 @@ def _main(args: argparse.Namespace, rest: list[str]):
         if exit_code != 0:
             raise Exception
 
+    exit_code = os.system(fr"""plover_console -l debug""")
+    if exit_code != 0:
+        raise Exception
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

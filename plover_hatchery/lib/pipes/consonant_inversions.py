@@ -5,7 +5,7 @@ from typing import Any, Generator
 from dataclasses import dataclass, field
 
 from plover.steno import Stroke
-from plover_hatchery_lib_rs import DefViewCursor
+from plover_hatchery_lib_rs import DefViewCursor, DefViewItem
 from plover_hatchery.lib.pipes.Plugin import define_plugin, GetPluginApi
 from plover_hatchery.lib.pipes.soph_trie import ChordToSophSearchResult, ChordToSophSearchResultWithSrcIndex, LookupResultWithAssociations, SophChordAssociation, SophsToTranslationSearchPath, soph_trie
 from plover_hatchery.lib.pipes.types import EntryIndex, Soph
@@ -54,11 +54,7 @@ def consonant_inversions(*, consonant_sophs_str: str, inversion_domains_steno: s
         def get_inversion_sophs(past_consonants: list[PastConsonant]):
             def get_product_choices():
                 for consonant in past_consonants:
-                    tip = consonant.cursor.maybe_tip()
-                    assert tip is not None
-
-                    keysymbol = tip.maybe_keysymbol
-                    assert keysymbol is not None
+                    keysymbol = consonant.cursor.tip().keysymbol()
 
                     if keysymbol.optional:
                         yield (*consonant.sophs, None)
@@ -80,12 +76,16 @@ def consonant_inversions(*, consonant_sophs_str: str, inversion_domains_steno: s
             entry_id: EntryIndex,
             **_,
         ):
-            if any(soph not in consonant_sophs for soph in sophs):
-                tip = cursor.maybe_tip()
-                assert tip is not None
+            match cursor.tip():
+                case DefViewItem.Keysymbol(keysymbol):
+                    pass
 
-                keysymbol = tip.maybe_keysymbol
-                assert keysymbol is not None
+                case _:
+                    return
+                    
+                    
+            if any(soph not in consonant_sophs for soph in sophs):
+                keysymbol = cursor.tip().keysymbol()
 
                 # TODO verify this
                 if not keysymbol.optional:

@@ -1,7 +1,7 @@
 from collections.abc import Generator
 from typing import Any, Generator
 
-from plover_hatchery_lib_rs import DefViewCursor, Keysymbol
+from plover_hatchery_lib_rs import DefViewCursor, DefViewItem, Keysymbol
 from plover_hatchery.lib.pipes import *
 from plover_hatchery.lib.sopheme.parse.parse_sopheme_sequence import parse_keysymbol_seq
 
@@ -11,167 +11,167 @@ def theory():
 
 
     def map_phoneme_to_soph_values_base(cursor: DefViewCursor) -> Generator[str, None, None]:
-        if (maybe_sopheme := cursor.maybe_nth(cursor.stack_len - 1)) is None:
-            return
+        match cursor.nth(cursor.stack_len - 1):
+            case DefViewItem.Sopheme(sopheme):
+                keysymbol = sopheme.keysymbols[cursor.index_stack[-1]]
 
-        if (sopheme := maybe_sopheme.maybe_sopheme) is None:
-            return
+
+                if keysymbol.symbol == "s":
+                    if "sc" in sopheme.chars:
+                        yield "SC"
+                        return
+                    elif "c" in sopheme.chars:
+                        yield "C"
+                        return
+                
+                
+                if keysymbol.stress > 1:
+                    if any(chars in sopheme.chars for chars in ("ai", "ay")):
+                        yield "AA"
+                    elif any(chars in sopheme.chars for chars in ("oi", "oy")):
+                        yield "OI"
+                    elif any(chars in sopheme.chars for chars in ("au", "aw")):
+                        yield "AU"
+                    elif any(chars in sopheme.chars for chars in ("ou", "ow")):
+                        yield "OU"
+                    elif any(chars in sopheme.chars for chars in ("a",)):
+                        yield "A"
+                        yield "AA"
+                    elif any(chars in sopheme.chars for chars in ("o",)):
+                        yield "O"
+                        yield "OO"
+                    elif any(chars in sopheme.chars for chars in ("e",)):
+                        yield "E"
+                        yield "EE"
+                    elif any(chars in sopheme.chars for chars in ("u",)):
+                        yield "U"
+                        yield "UU"
+                    elif any(chars in sopheme.chars for chars in ("i",)):
+                        yield "I"
+                        yield "II"
+
+
+
+
+
+                as_spelled = ""
+                if any(part in sopheme.chars for part in ("aw", "au")):
+                    as_spelled = "AU"
+                elif any(part in sopheme.chars for part in ("ow", "ou")):
+                    as_spelled = "OU"
+                elif any(part in sopheme.chars for part in ("oi", "oy")):
+                    as_spelled = "OI"
+                elif any(part in sopheme.chars for part in ("ai", "ay")):
+                    as_spelled = "AA"
+                elif any(part in sopheme.chars for part in ("ew",)):
+                    as_spelled = "UU"
+                elif any(part in sopheme.chars for part in ("ei",)):
+                    as_spelled = "E"
+                elif any(part in sopheme.chars for part in ("a",)):
+                    as_spelled = "A AA"
+                elif any(part in sopheme.chars for part in ("e",)):
+                    as_spelled = "E EE"
+                elif any(part in sopheme.chars for part in ("i",)):
+                    as_spelled = "I II"
+                elif any(part in sopheme.chars for part in ("o",)):
+                    as_spelled = "O OO"
+                elif any(part in sopheme.chars for part in ("u",)):
+                    as_spelled = "U UU"
+
+                mapping = {
+                    "p": "P",
+                    "t": "T",
+                    "?": "",  # glottal stop
+                    "t^": "T",  # tapped R
+                    "k": "K",
+                    "x": "K",
+                    "b": "B",
+                    "d": "D",
+                    "g": "G",
+                    "ch": "CH",
+                    "jh": "J",
+                    "s": "S",
+                    "z": "Z",
+                    "sh": "SH",
+                    "zh": "SH J",
+                    "f": "F",
+                    "v": "V",
+                    "th": "TH",
+                    "dh": "TH",
+                    "h": "H",
+                    "m": "M",
+                    "m!": "M",
+                    "n": "N",
+                    "n!": "N",
+                    "ng": "NG",
+                    "l": "L",
+                    "ll": "L",
+                    "lw": "L",
+                    "l!": "L",
+                    "r": "R",
+                    "y": "Y",
+                    "w": "W",
+                    "hw": "W",
+                    
+                    "e": "E",
+                    "ao": "A",
+                    "a": "A",
+                    "ah": "A",
+                    "oa": "A",
+                    "aa": "O",
+                    "ar": "A",
+                    "eh": "A",
+                    "ou": "OO",
+                    "ouw": "OO",
+                    "oou": "OO",
+                    "o": "O",
+                    "au": "O",
+                    "oo": "O",
+                    "or": "O",
+                    "our": "O",
+                    "ii": "EE",
+                    "iy": "EE",
+                    "i": "I",
+                    "@r": as_spelled,
+                    "@": as_spelled,
+                    "uh": "U",
+                    "u": "U",
+                    "uu": "UU",
+                    "iu": "UU",
+                    "ei": "AA E",
+                    "ee": "AA",
+                    "ai": "II",
+                    "ae": "II",
+                    "aer": "II",
+                    "aai": "II",
+                    "oi": "OI",
+                    "oir": "OI",
+                    "ow": "OU",
+                    "owr": "OU",
+                    "oow": "OU",
+                    "ir": "EE",
+                    "@@r": as_spelled,
+                    "er": "E",
+                    "eir": "AA E",
+                    "ur": "U",
+                    "i@": as_spelled,
+                }
+
+                sophones = mapping.get(keysymbol.symbol, keysymbol.symbol).split()
+
+                if any(sophone in sophones for sophone in ("O", "AU")) and "a" in sopheme.chars:
+                    yield "A"
+                    yield "AU"
+                
+                if "EE" in sophones and any(chars in sopheme.chars for chars in ("i", "y")) and "e" not in sopheme.chars:
+                    yield "I"
+                    return
+
+                yield from sophones
+
         
-        keysymbol = sopheme.keysymbols[cursor.index_stack[-1]]
-
-
-        if keysymbol.symbol == "s":
-            if "sc" in sopheme.chars:
-                yield "SC"
+            case _:
                 return
-            elif "c" in sopheme.chars:
-                yield "C"
-                return
-        
-        
-        if keysymbol.stress > 1:
-            if any(chars in sopheme.chars for chars in ("ai", "ay")):
-                yield "AA"
-            elif any(chars in sopheme.chars for chars in ("oi", "oy")):
-                yield "OI"
-            elif any(chars in sopheme.chars for chars in ("au", "aw")):
-                yield "AU"
-            elif any(chars in sopheme.chars for chars in ("ou", "ow")):
-                yield "OU"
-            elif any(chars in sopheme.chars for chars in ("a",)):
-                yield "A"
-                yield "AA"
-            elif any(chars in sopheme.chars for chars in ("o",)):
-                yield "O"
-                yield "OO"
-            elif any(chars in sopheme.chars for chars in ("e",)):
-                yield "E"
-                yield "EE"
-            elif any(chars in sopheme.chars for chars in ("u",)):
-                yield "U"
-                yield "UU"
-            elif any(chars in sopheme.chars for chars in ("i",)):
-                yield "I"
-                yield "II"
-
-
-
-
-
-        as_spelled = ""
-        if any(part in sopheme.chars for part in ("aw", "au")):
-            as_spelled = "AU"
-        elif any(part in sopheme.chars for part in ("ow", "ou")):
-            as_spelled = "OU"
-        elif any(part in sopheme.chars for part in ("oi", "oy")):
-            as_spelled = "OI"
-        elif any(part in sopheme.chars for part in ("ai", "ay")):
-            as_spelled = "AA"
-        elif any(part in sopheme.chars for part in ("ew",)):
-            as_spelled = "UU"
-        elif any(part in sopheme.chars for part in ("ei",)):
-            as_spelled = "E"
-        elif any(part in sopheme.chars for part in ("a",)):
-            as_spelled = "A AA"
-        elif any(part in sopheme.chars for part in ("e",)):
-            as_spelled = "E EE"
-        elif any(part in sopheme.chars for part in ("i",)):
-            as_spelled = "I II"
-        elif any(part in sopheme.chars for part in ("o",)):
-            as_spelled = "O OO"
-        elif any(part in sopheme.chars for part in ("u",)):
-            as_spelled = "U UU"
-
-        mapping = {
-            "p": "P",
-            "t": "T",
-            "?": "",  # glottal stop
-            "t^": "T",  # tapped R
-            "k": "K",
-            "x": "K",
-            "b": "B",
-            "d": "D",
-            "g": "G",
-            "ch": "CH",
-            "jh": "J",
-            "s": "S",
-            "z": "Z",
-            "sh": "SH",
-            "zh": "SH J",
-            "f": "F",
-            "v": "V",
-            "th": "TH",
-            "dh": "TH",
-            "h": "H",
-            "m": "M",
-            "m!": "M",
-            "n": "N",
-            "n!": "N",
-            "ng": "NG",
-            "l": "L",
-            "ll": "L",
-            "lw": "L",
-            "l!": "L",
-            "r": "R",
-            "y": "Y",
-            "w": "W",
-            "hw": "W",
-            
-            "e": "E",
-            "ao": "A",
-            "a": "A",
-            "ah": "A",
-            "oa": "A",
-            "aa": "O",
-            "ar": "A",
-            "eh": "A",
-            "ou": "OO",
-            "ouw": "OO",
-            "oou": "OO",
-            "o": "O",
-            "au": "O",
-            "oo": "O",
-            "or": "O",
-            "our": "O",
-            "ii": "EE",
-            "iy": "EE",
-            "i": "I",
-            "@r": as_spelled,
-            "@": as_spelled,
-            "uh": "U",
-            "u": "U",
-            "uu": "UU",
-            "iu": "UU",
-            "ei": "AA E",
-            "ee": "AA",
-            "ai": "II",
-            "ae": "II",
-            "aer": "II",
-            "aai": "II",
-            "oi": "OI",
-            "oir": "OI",
-            "ow": "OU",
-            "owr": "OU",
-            "oow": "OU",
-            "ir": "EE",
-            "@@r": as_spelled,
-            "er": "E",
-            "eir": "AA E",
-            "ur": "U",
-            "i@": as_spelled,
-        }
-
-        sophones = mapping.get(keysymbol.symbol, keysymbol.symbol).split()
-
-        if any(sophone in sophones for sophone in ("O", "AU")) and "a" in sopheme.chars:
-            yield "A"
-            yield "AU"
-        
-        if "EE" in sophones and any(chars in sopheme.chars for chars in ("i", "y")) and "e" not in sopheme.chars:
-            yield "I"
-            return
-
-        yield from sophones
     
     vowel_sophs = set(value for value in "A AA E EE I II O OO U UU AU OI OU".split())
 

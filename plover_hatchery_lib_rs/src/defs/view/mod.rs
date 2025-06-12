@@ -304,7 +304,7 @@ impl<'a> DefViewItemRef<'a> {
 
             DefViewItemRef::Entities(entities, _) => entities.len(),
 
-            _ => 0,
+            DefViewItemRef::Keysymbol(_) => 0,
         }
     }
 }

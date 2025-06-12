@@ -98,12 +98,11 @@ class DefView:
 
 
 class DefViewItem:
+    @property
+    def n_children(self) -> int: ...
+
     def keysymbol(self) -> Keysymbol: ...
     def sopheme(self) -> Sopheme: ...
-    @property
-    def maybe_keysymbol(self) -> Keysymbol | None: ...
-    @property
-    def maybe_sopheme(self) -> Sopheme | None: ...
 
     @final
     class Keysymbol(DefViewItem):
@@ -111,6 +110,13 @@ class DefViewItem:
 
         __keysymbol: Keysymbol
         def __init__(self, keysymbol: Keysymbol, /) -> None: ...
+
+    @final
+    class Sopheme(DefViewItem):
+        __match_args__ = ("__sopheme",)
+
+        __sopheme: Sopheme
+        def __init__(self, sopheme: Sopheme, /) -> None: ...
 
 class DefViewCursor:
     def __init__(self, view: DefView, index_stack: Sequence[int], /) -> None: ...
