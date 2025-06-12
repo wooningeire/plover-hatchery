@@ -1,6 +1,6 @@
 
 use super::{
-    rawable::{
+    entity::{
         Entity,
     },
 };
