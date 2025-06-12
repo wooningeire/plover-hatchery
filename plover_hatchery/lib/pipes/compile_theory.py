@@ -152,8 +152,8 @@ def compile_theory(
 
                     n_passed_additions += 1
                 except Exception as e:
-                    # import traceback
-                    # print(f"failed to add {varname}: {e} ({''.join(traceback.format_tb(e.__traceback__))})")
+                    import traceback
+                    print(f"failed to add {varname}: {e} ({''.join(traceback.format_tb(e.__traceback__))})")
                     pass
 
 

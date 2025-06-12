@@ -127,4 +127,10 @@ impl py::DefViewCursor {
     pub fn occurs_after_last_vowel(&self, py: Python) -> bool {
         self.occurs_after(&self.view.borrow(py).last_vowel_cur)
     }
+
+    pub fn spelling_including_silent(&self, py: Python) -> Result<String, PyErr> {
+        self.with_rs_result(py, |cursor_rs| {
+            cursor_rs.spelling_including_silent()
+        })
+    }
 }

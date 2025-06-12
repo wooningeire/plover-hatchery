@@ -11,9 +11,23 @@ def theory():
 
 
     def map_phoneme_to_soph_values_base(cursor: DefViewCursor) -> Generator[str, None, None]:
-        match cursor.nth(cursor.stack_len - 1):
+        match cursor.tip():
             case DefViewItem.Sopheme(sopheme):
-                keysymbol = sopheme.keysymbols[cursor.index_stack[-1]]
+                if len(sopheme.keysymbols) > 0: return
+
+                spelling = cursor.spelling_including_silent()
+
+                if "ou" in spelling:
+                    yield "OU"
+                    return
+
+                if "o" in spelling:
+                    yield "O"
+                    return
+
+            
+            case DefViewItem.Keysymbol(keysymbol):
+                sopheme = cursor.nth(cursor.stack_len - 1).sopheme()
 
 
                 if keysymbol.symbol == "s":

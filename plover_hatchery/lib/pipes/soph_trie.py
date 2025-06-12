@@ -240,7 +240,6 @@ def soph_trie(
 
                 step_in(cursor)
 
-                print(cursor, positions_and_src_nodes_stack)
 
 
             step_out(len(positions_and_src_nodes_stack))
@@ -249,9 +248,9 @@ def soph_trie(
                 trie.set_translation(src.node, entry_id)
 
 
-        @base_hooks.complete_build_lookup.listen(soph_trie)
-        def _(**_):
-            print(trie)
+        # @base_hooks.complete_build_lookup.listen(soph_trie)
+        # def _(**_):
+        #     print(trie)
 
 
 
