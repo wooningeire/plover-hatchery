@@ -30,7 +30,7 @@ impl DefDict {
         self.dict.get_def(varname)
     }
 
-    pub fn foreach_key(&self, py: Python<'_>, callable: PyObject) {
+    pub fn foreach_key(&self, py: Python, callable: PyObject) {
         for varname in self.dict.entries.keys() {
             _ = callable.call(py, (varname.to_string(),), None);
         }

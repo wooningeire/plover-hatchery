@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Iterable, NamedTuple, Protocol, final
 
 from plover.steno import Stroke
-from plover_hatchery_lib_rs import DefView, DefViewCursor, Keysymbol, Sopheme, SophemeSeq
+from plover_hatchery_lib_rs import DefView, DefViewCursor, DefViewItem, Keysymbol, Sopheme, SophemeSeq
 
 from plover_hatchery.lib.pipes.Hook import Hook
 from plover_hatchery.lib.pipes.Plugin import GetPluginApi, Plugin, define_plugin
@@ -169,40 +169,46 @@ def soph_trie(
             src_nodes: list[NodeSrc] = [NodeSrc(0)]
             new_src_nodes: list[NodeSrc] = []
 
-            @view.foreach_keysymbol
-            def _(cursor: DefViewCursor, keysymbol: Keysymbol):
+
+            @view.foreach
+            def _(cursor: DefViewCursor):
                 nonlocal src_nodes, new_src_nodes
 
-                if not keysymbol.optional:
-                    new_src_nodes = []
-                else:
-                    new_src_nodes = list(NodeSrc.increment_costs(new_src_nodes, 5))
+                match cursor.tip():
+                    case DefViewItem.Keysymbol(keysymbol):
+                        if not keysymbol.optional:
+                            new_src_nodes = []
+                        else:
+                            new_src_nodes = list(NodeSrc.increment_costs(new_src_nodes, 5))
 
 
-                sophs = set(Soph(value) for value in map_to_sophs(cursor))
+                        sophs = set(Soph(value) for value in map_to_sophs(cursor))
 
 
-                paths = trie.join(src_nodes, sophs, entry_id)
-                if paths.dst_node_id is not None:
-                    new_src_nodes.append(NodeSrc(paths.dst_node_id))
+                        paths = trie.join(src_nodes, sophs, entry_id)
+                        if paths.dst_node_id is not None:
+                            new_src_nodes.append(NodeSrc(paths.dst_node_id))
 
-                for seq in paths.transition_seqs:
-                    api.register_transition(seq.transitions[0], entry_id, cursor)
-
-
-                api.add_soph_transition.emit_with_states(
-                    states,
-                    cursor=cursor,
-                    sophs=sophs,
-                    paths=paths,
-                    node_srcs=tuple(src_nodes),
-                    new_node_srcs=new_src_nodes,
-                    trie=trie,
-                    entry_id=entry_id,
-                )
+                        for seq in paths.transition_seqs:
+                            api.register_transition(seq.transitions[0], entry_id, cursor)
 
 
-                src_nodes = new_src_nodes
+                        api.add_soph_transition.emit_with_states(
+                            states,
+                            cursor=cursor,
+                            sophs=sophs,
+                            paths=paths,
+                            node_srcs=tuple(src_nodes),
+                            new_node_srcs=new_src_nodes,
+                            trie=trie,
+                            entry_id=entry_id,
+                        )
+
+
+                        src_nodes = new_src_nodes
+
+
+                    case _: pass
 
 
             for src in src_nodes:

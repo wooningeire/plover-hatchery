@@ -1,4 +1,5 @@
 from collections.abc import Callable, Sequence
+from typing import Literal, final
 
 
 class Keysymbol:
@@ -83,6 +84,7 @@ class DefView:
     def collect_sophemes(self) -> SophemeSeq: ...
     def translation(self) -> str: ...
 
+    def foreach(self, callable: Callable[[DefViewCursor], None], /) -> None: ...
     def foreach_keysymbol(self, callable: Callable[[DefViewCursor, Keysymbol], None], /) -> None: ...
 
     @property
@@ -103,7 +105,11 @@ class DefViewItem:
     @property
     def maybe_sopheme(self) -> Sopheme | None: ...
 
+    @final
     class Keysymbol(DefViewItem):
+        __match_args__ = ("__keysymbol",)
+
+        __keysymbol: Keysymbol
         def __init__(self, keysymbol: Keysymbol, /) -> None: ...
 
 class DefViewCursor:

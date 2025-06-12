@@ -26,7 +26,7 @@ pub struct DefView {
 }
 
 impl py::DefView {
-    pub fn with_rs_of<T>(py: Python<'_>, defs: Py<py::DefDict>, root_def: Py<Def>, func: impl Fn(super::DefView) -> T) -> T {
+    pub fn with_rs_of<T>(py: Python, defs: Py<py::DefDict>, root_def: Py<Def>, func: impl Fn(super::DefView) -> T) -> T {
         let defs = defs.borrow(py);
         let root_def = root_def.borrow(py);
         let view_rs = super::DefView::new_ref(&defs.dict, &root_def);
@@ -34,7 +34,7 @@ impl py::DefView {
         func(view_rs)
     }
 
-    pub fn with_rs<T>(&self, py: Python<'_>, func: impl Fn(super::DefView) -> T) -> T {
+    pub fn with_rs<T>(&self, py: Python, func: impl Fn(super::DefView) -> T) -> T {
         let defs = self.defs.borrow(py);
         let root_def = self.root_def.borrow(py);
         let view_rs = super::DefView::new_ref(&defs.dict, &root_def);
@@ -42,7 +42,7 @@ impl py::DefView {
         func(view_rs)
     }
 
-    pub fn with_rs_result<T>(&self, py: Python<'_>, func: impl Fn(super::DefView) -> Result<T, DefViewErr>) -> Result<T, PyErr> {
+    pub fn with_rs_result<T>(&self, py: Python, func: impl Fn(super::DefView) -> Result<T, DefViewErr>) -> Result<T, PyErr> {
         self.with_rs(py, func)
             .map_err(|err| PyException::new_err(err.message()))
     }
@@ -51,7 +51,7 @@ impl py::DefView {
 #[pymethods]
 impl py::DefView {
     #[new]
-    pub fn new(defs: Py<py::DefDict>, root_def: Py<Def>, py: Python<'_>) -> Result<Self, PyErr> {
+    pub fn new(defs: Py<py::DefDict>, root_def: Py<Def>, py: Python) -> Result<Self, PyErr> {
         py::DefView::with_rs_of(py, defs.clone_ref(py), root_def.clone_ref(py), |view_rs| {
             Ok(py::DefView {
                 defs: defs.clone_ref(py),
@@ -81,28 +81,35 @@ impl py::DefView {
         })
     }
 
-    pub fn collect_sophemes(&self, py: Python<'_>) -> Result<SophemeSeq, PyErr> {
+    pub fn collect_sophemes(&self, py: Python) -> Result<SophemeSeq, PyErr> {
         self.with_rs_result(py, |view_rs| view_rs.collect_sophemes())
     }
 
 
-    pub fn translation(&self, py: Python<'_>) -> Result<String, PyErr> {
+    pub fn translation(&self, py: Python) -> Result<String, PyErr> {
         self.with_rs_result(py, |view_rs| view_rs.translation())
     }
 
-    pub fn foreach_keysymbol(pyself: Py<Self>, callable: PyObject, py: Python<'_>) -> Result<(), PyErr> {
+
+    pub fn foreach(pyself: Py<Self>, callable: PyObject, py: Python) -> Result<(), PyErr> {
         pyself.borrow(py).with_rs_result(py, |view_rs| {
-            view_rs.foreach(|item_ref, cursor| {
+            view_rs.foreach(|_, cur| {
+                _ = callable.call(py, (py::DefViewCursor::of(pyself.clone_ref(py), &cur),), None);
+            })
+        })
+    }
+
+    pub fn foreach_keysymbol(pyself: Py<Self>, callable: PyObject, py: Python) -> Result<(), PyErr> {
+        pyself.borrow(py).with_rs_result(py, |view_rs| {
+            view_rs.foreach(|item_ref, cur| {
                 match item_ref {
                     super::DefViewItemRef::Keysymbol(keysymbol) => {
-                        _ = callable.call(py, (py::DefViewCursor::of(pyself.clone_ref(py), &cursor), keysymbol.clone()), None);
+                        _ = callable.call(py, (py::DefViewCursor::of(pyself.clone_ref(py), &cur), keysymbol.clone()), None);
                     },
 
                     _ => {},
                 }
-            })?;
-
-            Ok(())
+            })
         })
     }
 
@@ -142,6 +149,7 @@ impl py::DefView {
         })
     }
 }
+
 
 #[pyclass]
 pub enum DefViewItem {

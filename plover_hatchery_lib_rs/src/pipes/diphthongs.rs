@@ -7,7 +7,7 @@ use crate::defs::{
 use pyo3::prelude::*;
 
 #[pyfunction]
-pub fn add_diphthong_keysymbols(view: Py<py::DefView>, map_keysymbols: PyObject, py: Python<'_>) -> Result<Def, PyErr> {
+pub fn add_diphthong_keysymbols(view: Py<py::DefView>, map_keysymbols: PyObject, py: Python) -> Result<Def, PyErr> {
     view.borrow(py).with_rs(py, |view_rs| {
         let mut cur = DefViewCursor::of_view_at_start(&view_rs);
 

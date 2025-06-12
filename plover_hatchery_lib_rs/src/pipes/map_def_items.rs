@@ -61,3 +61,25 @@ pub fn map_sopheme<'a>(
 
     Ok(new_sopheme)
 }
+
+
+fn foreach_entity<'a>(
+    cur: &mut DefViewCursor<'a, '_>,
+    handle_item: &impl Fn(&mut DefViewCursor) -> Result<(), DefViewErr>,
+) -> Result<(), DefViewErr> {
+    handle_item(cur)?;
+
+    let level = cur.stack.len() - 1;
+
+    while let Some(_) = cur.stack[level].next(cur.view.defs())? {
+        if !cur.step_in_at_start()? {
+            return Err(DefViewErr::UnexpectedNone);
+        }
+
+        foreach_entity(cur, handle_item)?;
+
+        cur.step_out();
+    }
+
+    Ok(())
+}
