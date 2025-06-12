@@ -1,10 +1,7 @@
 
 use super::{
     rawable::{
-        RawableEntity,
-    },
-    entity::{
-        EntitySeq,
+        Entity,
     },
 };
 
@@ -14,27 +11,25 @@ use pyo3::prelude::*;
 #[pyclass(get_all)]
 #[derive(Clone, Debug)]
 pub struct Def {
-    pub rawables: Vec<RawableEntity>,
+    pub entities: Vec<Entity>,
     pub varname: String,
 }
 
 impl Def {
-    pub fn of(entity_seq: EntitySeq, varname: String) -> Def {
+    pub fn of(entities: Vec<Entity>, varname: String) -> Def {
         Def {
-            rawables: entity_seq.entities.into_iter()
-                .map(|entity| RawableEntity::Entity(entity))
-                .collect::<Vec<_>>(),
+            entities,
             varname,
         }
     }
 
-    pub fn get_child(&self, index: usize) -> Option<&RawableEntity> {
-        self.rawables.get(index)
+    pub fn get_child(&self, index: usize) -> Option<&Entity> {
+        self.entities.get(index)
     }
 
-    pub fn new(rawables: Vec<RawableEntity>, varname: String) -> Def {
+    pub fn new(entities: Vec<Entity>, varname: String) -> Def {
         Def {
-            rawables,
+            entities,
             varname,
         }
     }
@@ -43,8 +38,8 @@ impl Def {
         format!(
             "{} = {}",
             self.varname,
-            self.rawables.iter()
-                .map(|rawable| rawable.to_string())
+            self.entities.iter()
+                .map(|entities| entities.to_string())
                 .collect::<Vec<_>>()
                 .join(" ")
         )

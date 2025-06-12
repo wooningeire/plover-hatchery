@@ -159,7 +159,7 @@ impl DefViewItem {
 
             DefViewItemRef::Def(def) => DefViewItem::Def(def.clone()),
 
-            DefViewItemRef::EntitySeq(seq, varname) => DefViewItem::Def(Def::of(seq.clone(), varname)),
+            DefViewItemRef::Entities(seq, varname) => DefViewItem::Def(Def::of(seq.clone(), varname)),
         }
     }
 }

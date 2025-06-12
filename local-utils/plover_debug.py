@@ -5,6 +5,10 @@ from pathlib import Path
 def _main(args: argparse.Namespace):
     os.chdir(args.plover_path)
 
+    exit_code = os.system(fr"plover_console -s plover_send_command quit")
+    if exit_code != 0:
+        raise Exception
+
     exit_code = os.system(fr"""plover_console -l debug""")
     if exit_code != 0:
         raise Exception

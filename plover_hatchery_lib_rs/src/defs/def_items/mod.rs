@@ -10,15 +10,9 @@ pub use sopheme::{
 mod transclusion;
 pub use transclusion::Transclusion;
 
-mod entity;
-pub use entity::{
-    Entity,
-    EntitySeq,
-};
-
 mod rawable;
 pub use rawable::{
-    RawableEntity,
+    Entity,
 };
 
 mod def;

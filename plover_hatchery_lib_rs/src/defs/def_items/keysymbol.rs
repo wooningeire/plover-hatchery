@@ -1,9 +1,11 @@
 use std::{
-    collections::HashSet, sync::OnceLock
+    collections::{HashSet}, sync::OnceLock
 };
 
 use pyo3::{prelude::*};
 use regex::Regex;
+
+use crate::defs::def_items::keysymbol;
 
 
 
@@ -152,3 +154,46 @@ impl Keysymbol {
         self.optional
     }
 }
+
+#[pyclass]
+#[derive(Clone, Debug)]
+pub enum KeysymbolOptions {
+    Leaf(Keysymbol),
+    Leaves(Vec<Keysymbol>),
+    Options(Vec<KeysymbolOptions>),
+}
+
+impl KeysymbolOptions {
+    pub fn to_string(&self) -> String {
+        let out = match self {
+            KeysymbolOptions::Leaf(keysymbol) => keysymbol.to_string(),
+
+            KeysymbolOptions::Leaves(keysymbols) => keysymbols.iter()
+                .map(|keysymbol| keysymbol.to_string())
+                .collect::<Vec<_>>()
+                .join(" "),
+
+            KeysymbolOptions::Options(options) => options.iter()
+                .map(|option| option.to_string())
+                .collect::<Vec<_>>()
+                .join(" | "),
+        };
+
+        if self.needs_grouping() {
+            format!("({out})")
+        } else {
+            out
+        }
+    }
+
+    pub fn needs_grouping(&self) -> bool {
+        match self {
+            KeysymbolOptions::Leaf(_) => false,
+
+            KeysymbolOptions::Leaves(keysymbols) => keysymbols.len() > 1,
+
+            KeysymbolOptions::Options(options) => options.len() > 1,
+        }
+    }
+}
+

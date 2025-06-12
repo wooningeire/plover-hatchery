@@ -7,7 +7,7 @@ from typing import cast, TypeVar, Any, Protocol, Callable, final
 
 from plover_hatchery.lib.sopheme import parse_entry_definition
 
-from plover_hatchery_lib_rs import Def, EntitySeq, DefView, DefDict
+from plover_hatchery_lib_rs import Def, DefView, DefDict, Entity
 
 from plover_hatchery.lib.sopheme.parse.parse_sopheme_sequence import ParserException
 from .Hook import Hook
@@ -100,7 +100,7 @@ def compile_theory(
                     print(f"\x1b[FParsed {i} entries")
 
                 try:
-                    defs.add(varname, EntitySeq(list(parse_entry_definition(definition_str.strip()))))
+                    defs.add(varname, list(parse_entry_definition(definition_str.strip())))
                     n_passed_parses += 1
                 except ParserException as e:
                     # import traceback

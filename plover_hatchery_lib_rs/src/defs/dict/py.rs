@@ -1,6 +1,8 @@
-use super::{
-    EntitySeq,
-    Def,
+use super::super::{
+    def_items::{
+        Entity,
+        Def,
+    },
 };
 
 use pyo3::prelude::*;
@@ -20,8 +22,8 @@ impl DefDict {
         }
     }
 
-    pub fn add(&mut self, varname: String, seq: EntitySeq) {
-        self.dict.add(varname, seq);
+    pub fn add(&mut self, varname: String, entities: Vec<Entity>) {
+        self.dict.add(varname, entities);
     }
 
     pub fn get_def(&self, varname: &str) -> Option<Def> {

@@ -1,9 +1,7 @@
 mod def_items;
 pub use def_items::{
     Def,
-    RawableEntity,
     Entity,
-    EntitySeq,
     Sopheme,
     SophemeSeq,
     Keysymbol,

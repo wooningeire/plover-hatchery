@@ -8,7 +8,6 @@ from plover.steno import Stroke
 
 from ..sophone.Sophone import Sophone
 from ..sopheme.Keysymbol import Keysymbol
-from ..sopheme.Steneme import Steneme
 from .steno_annotations import AsteriskableKey, AnnotatedChord
 from .alignment import AlignmentService, Cell, Comparable, aligner
 

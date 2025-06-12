@@ -1,5 +1,5 @@
 use crate::defs::{
-    Def, DefViewCursor, DefViewItemRef, Entity, Keysymbol, RawableEntity, Sopheme, DefViewErr,
+    Def, DefViewCursor, DefViewItemRef, Entity, Keysymbol, Sopheme, DefViewErr,
 };
 
 use pyo3::{exceptions::PyException, prelude::*};
@@ -19,12 +19,12 @@ pub fn map_def<'a>(
             return Err(DefViewErr::UnexpectedNone.as_pyerr());
         }
 
-        new_def.rawables.push(match child {
-            DefViewItemRef::Def(def) => RawableEntity::RawDef(map_def(&def.varname, cur, handle_keysymbol)?),
+        new_def.entities.push(match child {
+            DefViewItemRef::Def(def) => Entity::RawDef(map_def(&def.varname, cur, handle_keysymbol)?),
 
-            DefViewItemRef::EntitySeq(_, varname) => RawableEntity::RawDef(map_def(&varname, cur, handle_keysymbol)?),
+            DefViewItemRef::Entities(_, varname) => Entity::RawDef(map_def(&varname, cur, handle_keysymbol)?),
 
-            DefViewItemRef::Sopheme(sopheme) => RawableEntity::Entity(Entity::Sopheme(map_sopheme(&sopheme.chars, cur, handle_keysymbol)?)),
+            DefViewItemRef::Sopheme(sopheme) => Entity::Sopheme(map_sopheme(&sopheme.chars, cur, handle_keysymbol)?),
 
             _ => return Err(DefViewErr::UnexpectedChildItemType.as_pyerr()),
         });

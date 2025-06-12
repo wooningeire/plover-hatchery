@@ -4,10 +4,8 @@ use super::{
     def_items::{
         Keysymbol,
         Entity,
-        EntitySeq,
         Sopheme,
         SophemeSeq,
-        RawableEntity,
         Def,
     },
     dict::DefDict,
@@ -79,28 +77,26 @@ impl<'a> DefView<'a> {
     }
     
     pub fn collect_sophemes(&self) -> Result<SophemeSeq, DefViewErr> {
-        fn dfs(entity: &RawableEntity, dict: &DefDict, sophemes: &mut Vec<Sopheme>, visited: &mut HashSet<String>) -> Result<(), DefViewErr> {
+        fn dfs(entity: &Entity, dict: &DefDict, sophemes: &mut Vec<Sopheme>, visited: &mut HashSet<String>) -> Result<(), DefViewErr> {
             match entity {
-                RawableEntity::Entity(entity) => match entity {
-                    Entity::Sopheme(sopheme) => {
-                        sophemes.push(sopheme.clone());
-                    },
-
-                    Entity::Transclusion(transclusion) => {
-                        if visited.contains(&transclusion.target_varname) {
-                            return Err(DefViewErr::UnexpectedNone);
-                        }
-
-                        match dict.get_def(&transclusion.target_varname) {
-                            Some(inner_def) => {
-                                dfs_def(&inner_def, dict, sophemes, visited)?;
-                            },
-                            None => return Err(DefViewErr::MissingEntry { varname: transclusion.target_varname.clone() }),
-                        };
-                    },
+                Entity::Sopheme(sopheme) => {
+                    sophemes.push(sopheme.clone());
                 },
 
-                RawableEntity::RawDef(child_def) => {
+                Entity::Transclusion(transclusion) => {
+                    if visited.contains(&transclusion.target_varname) {
+                        return Err(DefViewErr::UnexpectedNone);
+                    }
+
+                    match dict.get_def(&transclusion.target_varname) {
+                        Some(inner_def) => {
+                            dfs_def(&inner_def, dict, sophemes, visited)?;
+                        },
+                        None => return Err(DefViewErr::MissingEntry { varname: transclusion.target_varname.clone() }),
+                    };
+                },
+
+                Entity::RawDef(child_def) => {
                     dfs_def(child_def, dict, sophemes, visited)?;
                 },
             }
@@ -112,7 +108,7 @@ impl<'a> DefView<'a> {
         fn dfs_def(def: &Def, dict: &DefDict, sophemes: &mut Vec<Sopheme>, visited: &mut HashSet<String>) -> Result<(), DefViewErr> {
             visited.insert(def.varname.clone());
 
-            for overridable_entity in def.rawables.iter() {
+            for overridable_entity in def.entities.iter() {
                 dfs(overridable_entity, dict, sophemes, visited)?;
             }
             
@@ -252,7 +248,7 @@ pub enum DefViewItemRef<'a> {
     Keysymbol(&'a Keysymbol),
     Sopheme(&'a Sopheme),
     Def(&'a Def),
-    EntitySeq(&'a EntitySeq, String),
+    Entities(&'a Vec<Entity>, String),
 }
 
 impl<'a> DefViewItemRef<'a> {
@@ -265,32 +261,32 @@ impl<'a> DefViewItemRef<'a> {
             },
 
             DefViewItemRef::Def(def) => match def.get_child(index) {
-                Some(rawable) => match rawable {
-                    RawableEntity::Entity(entity) => match entity {
-                        Entity::Sopheme(sopheme) => Some(DefViewItemRef::Sopheme(sopheme)),
+                Some(entity) => match entity {
+                    Entity::Sopheme(sopheme) => Some(DefViewItemRef::Sopheme(sopheme)),
 
-                        Entity::Transclusion(transclusion) => match defs.get(&transclusion.target_varname) {
-                            Some(seq) => Some(DefViewItemRef::EntitySeq(seq, transclusion.target_varname.clone())),
+                    Entity::Transclusion(transclusion) => match defs.get(&transclusion.target_varname) {
+                        Some(seq) => Some(DefViewItemRef::Entities(seq, transclusion.target_varname.clone())),
 
-                            None => return Err(DefViewErr::MissingEntry { varname: transclusion.target_varname.clone() }),
-                        },
+                        None => return Err(DefViewErr::MissingEntry { varname: transclusion.target_varname.clone() }),
                     },
 
-                    RawableEntity::RawDef(def) => Some(DefViewItemRef::Def(def)),
+                    Entity::RawDef(def) => Some(DefViewItemRef::Def(def)),
                 },
 
                 None => None,
             },
 
-            DefViewItemRef::EntitySeq(seq, _) => match seq.entities.get(index) {
+            DefViewItemRef::Entities(seq, _) => match seq.get(index) {
                 Some(entity) => match entity {
                     Entity::Sopheme(sopheme) => Some(DefViewItemRef::Sopheme(sopheme)),
 
                     Entity::Transclusion(transclusion) => match defs.get(&transclusion.target_varname) {
-                        Some(seq) => Some(DefViewItemRef::EntitySeq(seq, transclusion.target_varname.clone())),
+                        Some(seq) => Some(DefViewItemRef::Entities(seq, transclusion.target_varname.clone())),
 
                         None => return Err(DefViewErr::MissingEntry { varname: transclusion.target_varname.clone() }),
                     },
+
+                    Entity::RawDef(def) => Some(DefViewItemRef::Def(def)),
                 },
 
                 None => None,
@@ -304,9 +300,9 @@ impl<'a> DefViewItemRef<'a> {
         match self {
             DefViewItemRef::Sopheme(sopheme) => sopheme.keysymbols.len(),
 
-            DefViewItemRef::Def(def) => def.rawables.len(),
+            DefViewItemRef::Def(def) => def.entities.len(),
 
-            DefViewItemRef::EntitySeq(seq, _) => seq.entities.len(),
+            DefViewItemRef::Entities(entities, _) => entities.len(),
 
             _ => 0,
         }

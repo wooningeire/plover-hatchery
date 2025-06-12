@@ -3,14 +3,14 @@ use std::collections::HashMap;
 use super::{
     def_items::{
         Def,
-        EntitySeq,
+        Entity,
     },
 };
 
 pub mod py;
 
 pub struct DefDict {
-    pub entries: HashMap<String, EntitySeq>,
+    pub entries: HashMap<String, Vec<Entity>>,
 }
 
 impl DefDict {
@@ -21,8 +21,8 @@ impl DefDict {
     }
 
 
-    pub fn add(&mut self, varname: String, seq: EntitySeq) {
-        self.entries.insert(varname, seq);
+    pub fn add(&mut self, varname: String, entities: Vec<Entity>) {
+        self.entries.insert(varname, entities);
     }
 
     pub fn get_def(&self, varname: &str) -> Option<Def> {
@@ -30,7 +30,7 @@ impl DefDict {
             .map(|entity_seq| Def::of(entity_seq.clone(), varname.to_string()))
     }
 
-    pub fn get<'a>(&'a self, varname: &str) -> Option<&'a EntitySeq> {
+    pub fn get<'a>(&'a self, varname: &str) -> Option<&'a Vec<Entity>> {
         self.entries.get(varname)
     }
 }

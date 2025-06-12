@@ -1,6 +1,7 @@
 use super::{
-    entity::Entity,
-    Def,
+    sopheme::Sopheme,
+    transclusion::Transclusion,
+    def::Def,
 };
 
 use pyo3::prelude::*;
@@ -8,39 +9,26 @@ use pyo3::prelude::*;
 
 #[pyclass]
 #[derive(Clone, Debug)]
-pub enum RawableEntity {
-    Entity(Entity),
+pub enum Entity {
+    Sopheme(Sopheme),
+    Transclusion(Transclusion),
     RawDef(Def),
 }
 
-impl RawableEntity {
+impl Entity {
     pub fn to_string(&self) -> String {
         match self {
-            RawableEntity::Entity(entity) => entity.to_string(),
+            Entity::Sopheme(sopheme) => sopheme.to_string(),
 
-            RawableEntity::RawDef(def) => format!("({})", def.to_string()),
+            Entity::Transclusion(transclusion) => transclusion.to_string(),
+
+            Entity::RawDef(def) => format!("({})", def.to_string()),
         }
     }
 }
 
 #[pymethods]
-impl RawableEntity {
-    pub fn maybe_entity(&self) -> Option<Entity> {
-        match self {
-            RawableEntity::Entity(entity) => Some(entity.clone()),
-
-            _ => None,
-        }
-    }
-
-    pub fn maybe_raw_def(&self) -> Option<Def> {
-        match self {
-            RawableEntity::RawDef(def) => Some(def.clone()),
-
-            _ => None,
-        }
-    }
-
+impl Entity {
     pub fn __str__(&self) -> String {
         self.to_string()
     }
