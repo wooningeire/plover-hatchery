@@ -175,9 +175,28 @@ def soph_trie(
                     positions_and_src_nodes_stack.append((cursor, list(src_nodes)))
 
             def step_out(n_steps: int):
+                nonlocal src_nodes
+
+
+                has_keysymbols = False
+                new_src_nodes: list[NodeSrc] = []
+
+
                 dst_node_id = None
                 for _ in range(n_steps):
                     old_cursor, old_src_nodes = positions_and_src_nodes_stack.pop()
+
+                    match old_cursor.tip():
+                        case DefViewItem.Keysymbol(keysymbol):
+                            has_keysymbols = True
+
+                            if keysymbol.optional:
+                                new_src_nodes.extend(NodeSrc.increment_costs(old_src_nodes, 5))
+
+                        case _:
+                            if not has_keysymbols:
+                                new_src_nodes.extend(old_src_nodes)
+
     
 
                     sophs = set(Soph(value) for value in map_to_sophs(old_cursor))
@@ -199,7 +218,12 @@ def soph_trie(
                         entry_id=entry_id,
                     )
 
-                return dst_node_id
+
+                if dst_node_id is not None:
+                    new_src_nodes.append(NodeSrc(dst_node_id))
+
+
+                src_nodes = new_src_nodes
 
 
             @view.foreach
@@ -207,15 +231,6 @@ def soph_trie(
                 nonlocal src_nodes
 
                 if cursor.stack_len <= len(positions_and_src_nodes_stack):
-                    match cursor.tip():
-                        case DefViewItem.Keysymbol(keysymbol):
-                            if not keysymbol.optional:
-                                src_nodes = []
-                            else:
-                                src_nodes = list(NodeSrc.increment_costs(src_nodes, 5))
-
-                        case _:
-                            pass
 
 
                     dst_node_id = step_out(len(positions_and_src_nodes_stack) - cursor.stack_len + 1)
@@ -225,18 +240,18 @@ def soph_trie(
 
                 step_in(cursor)
 
+                print(cursor, positions_and_src_nodes_stack)
+
+
+            step_out(len(positions_and_src_nodes_stack))
 
             for src in src_nodes:
                 trie.set_translation(src.node, entry_id)
 
-            final_dst_node_id = step_out(len(positions_and_src_nodes_stack))
-            if final_dst_node_id is not None:
-                trie.set_translation(final_dst_node_id, entry_id)
 
-
-        # @base_hooks.complete_build_lookup.listen(soph_trie)
-        # def _(**_):
-        #     print(trie)
+        @base_hooks.complete_build_lookup.listen(soph_trie)
+        def _(**_):
+            print(trie)
 
 
 
