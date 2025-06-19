@@ -1,9 +1,14 @@
 
 pub use super::{
-    dict::py::DefDict,
+    dict::py::PyDefDict,
     view::py::{
-        DefView,
-        DefViewItem,
+        PyDefView,
+        PyDefViewItem,
     },
-    cursor::py::DefViewCursor,
+    cursor::py::PyDefViewCursor,
+    parse::py::{
+        py_parse_entry_definition,
+        py_parse_sopheme_seq,
+        py_parse_keysymbol_seq,
+    },
 };

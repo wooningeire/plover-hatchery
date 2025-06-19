@@ -9,7 +9,6 @@ from plover_hatchery.lib.sopheme import parse_entry_definition
 
 from plover_hatchery_lib_rs import Def, DefView, DefDict, Entity
 
-from plover_hatchery.lib.sopheme.parse.parse_sopheme_sequence import ParserException
 from .Hook import Hook
 from .Plugin import Plugin
 from .Theory import Theory, TheoryLookup
@@ -102,7 +101,7 @@ def compile_theory(
                 try:
                     defs.add(varname, list(parse_entry_definition(definition_str.strip())))
                     n_passed_parses += 1
-                except ParserException as e:
+                except ValueError as e:
                     # import traceback
                     # print(f"failed to parse {definition_str.strip()}: {e} ({''.join(traceback.format_tb(e.__traceback__))})")
                     pass

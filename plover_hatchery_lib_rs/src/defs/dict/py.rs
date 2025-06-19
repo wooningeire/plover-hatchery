@@ -3,22 +3,24 @@ use super::super::{
         Entity,
         Def,
     },
+    dict::DefDict,
 };
 
 use pyo3::prelude::*;
 
 
 #[pyclass]
-pub struct DefDict {
-    pub dict: Box<super::DefDict>,
+#[pyo3(name = "DefDict")]
+pub struct PyDefDict {
+    pub dict: Box<DefDict>,
 }
 
 #[pymethods]
-impl DefDict {
+impl PyDefDict {
     #[new]
     pub fn new() -> Self {
-        DefDict {
-            dict: Box::new(super::DefDict::new()),
+        PyDefDict {
+            dict: Box::new(DefDict::new()),
         }
     }
 

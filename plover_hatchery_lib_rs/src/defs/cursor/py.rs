@@ -3,20 +3,24 @@ use pyo3::{exceptions::{PyException, PyKeyError}, prelude::*, types::PyTuple};
 use crate::defs::cursor::seq_less_than;
 
 use super::super::{
-    py,
+    py::{
+        PyDefView,
+        PyDefViewItem,
+    },
     view::DefViewErr,
 };
 
 
 #[pyclass]
-pub struct DefViewCursor {
-    #[pyo3(get)] view: Py<py::DefView>,
+#[pyo3(name = "DefViewCursor")]
+pub struct PyDefViewCursor {
+    #[pyo3(get)] view: Py<PyDefView>,
     index_stack: Vec<usize>,
 }
 
-impl py::DefViewCursor {
-    pub fn of(view: Py<py::DefView>, cursor: &super::DefViewCursor) -> py::DefViewCursor {
-        py::DefViewCursor {
+impl PyDefViewCursor {
+    pub fn of(view: Py<PyDefView>, cursor: &super::DefViewCursor) -> PyDefViewCursor {
+        PyDefViewCursor {
             view,
             index_stack: cursor.index_stack(),
         }
@@ -55,10 +59,10 @@ impl py::DefViewCursor {
 }
 
 #[pymethods]
-impl py::DefViewCursor {
+impl PyDefViewCursor {
     #[new]
-    pub fn new(view: Py<py::DefView>, index_stack: Vec<usize>) -> py::DefViewCursor {
-        py::DefViewCursor {
+    pub fn new(view: Py<PyDefView>, index_stack: Vec<usize>) -> PyDefViewCursor {
+        PyDefViewCursor {
             view,
             index_stack,
         }
@@ -69,37 +73,37 @@ impl py::DefViewCursor {
         PyTuple::new(py, &self.index_stack)
     }
 
-    pub fn tip(&self, py: Python) -> Result<py::DefViewItem, PyErr> {
+    pub fn tip(&self, py: Python) -> Result<PyDefViewItem, PyErr> {
         self.maybe_tip(py)?.ok_or(PyException::new_err("cursor is not pointing to anything"))
     }
 
-    pub fn maybe_tip(&self, py: Python) -> Result<Option<py::DefViewItem>, PyErr> {
+    pub fn maybe_tip(&self, py: Python) -> Result<Option<PyDefViewItem>, PyErr> {
         self.view.borrow(py).with_rs_result(py, |view_rs| {
-            Ok(view_rs.get(&self.index_stack)?.map(py::DefViewItem::of))
+            Ok(view_rs.get(&self.index_stack)?.map(PyDefViewItem::of))
         })
     }
 
-    pub fn nth(&self, level: usize, py: Python) -> Result<py::DefViewItem, PyErr> {
+    pub fn nth(&self, level: usize, py: Python) -> Result<PyDefViewItem, PyErr> {
         self.maybe_nth(level, py)?.ok_or(PyKeyError::new_err("cursor has nothing at this level"))
     }
 
-    pub fn maybe_nth(&self, level: usize, py: Python) -> Result<Option<py::DefViewItem>, PyErr> {
+    pub fn maybe_nth(&self, level: usize, py: Python) -> Result<Option<PyDefViewItem>, PyErr> {
         self.view.borrow(py).with_rs_result(py, |view_rs| {
-            Ok(view_rs.get(&self.index_stack[..level])?.map(py::DefViewItem::of))
+            Ok(view_rs.get(&self.index_stack[..level])?.map(PyDefViewItem::of))
         })
     }
 
-    pub fn prev_keysymbol_cur(&self, py: Python) -> Result<Option<py::DefViewCursor>, PyErr> {
+    pub fn prev_keysymbol_cur(&self, py: Python) -> Result<Option<PyDefViewCursor>, PyErr> {
         self.with_rs_result(py, |cursor_rs| {
             cursor_rs.prev_keysymbol_cur()
-                .map(|result| result.map(|cur| py::DefViewCursor::of(self.view.clone_ref(py), &cur)))
+                .map(|result| result.map(|cur| PyDefViewCursor::of(self.view.clone_ref(py), &cur)))
         })
     }
 
-    pub fn next_keysymbol_cur(&self, py: Python) -> Result<Option<py::DefViewCursor>, PyErr> {
+    pub fn next_keysymbol_cur(&self, py: Python) -> Result<Option<PyDefViewCursor>, PyErr> {
         self.with_rs_result(py, |cursor_rs| {
             cursor_rs.next_keysymbol_cur()
-                .map(|result| result.map(|cur| py::DefViewCursor::of(self.view.clone_ref(py), &cur)))
+                .map(|result| result.map(|cur| PyDefViewCursor::of(self.view.clone_ref(py), &cur)))
         })
     }
 

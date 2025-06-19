@@ -10,14 +10,18 @@ use super::super::{
         DefViewItemRef,
         DefViewErr,
     },
-    py,
+    py::{
+        PyDefDict,
+        PyDefViewCursor,
+    },
 };
 
 use pyo3::{exceptions::{PyException, PyTypeError}, prelude::*, types::PyTuple};
 
 #[pyclass]
-pub struct DefView {
-    #[pyo3(get)] pub defs: Py<py::DefDict>,
+#[pyo3(name = "DefView")]
+pub struct PyDefView {
+    #[pyo3(get)] pub defs: Py<PyDefDict>,
     #[pyo3(get)] pub root_def: Py<Def>,
     pub first_consonant_cur: Option<Vec<usize>>,
     pub last_consonant_cur: Option<Vec<usize>>,
@@ -25,8 +29,8 @@ pub struct DefView {
     pub last_vowel_cur: Option<Vec<usize>>,
 }
 
-impl py::DefView {
-    pub fn with_rs_of<T>(py: Python, defs: Py<py::DefDict>, root_def: Py<Def>, func: impl Fn(super::DefView) -> T) -> T {
+impl PyDefView {
+    pub fn with_rs_of<T>(py: Python, defs: Py<PyDefDict>, root_def: Py<Def>, func: impl Fn(super::DefView) -> T) -> T {
         let defs = defs.borrow(py);
         let root_def = root_def.borrow(py);
         let view_rs = super::DefView::new_ref(&defs.dict, &root_def);
@@ -49,11 +53,11 @@ impl py::DefView {
 }
 
 #[pymethods]
-impl py::DefView {
+impl PyDefView {
     #[new]
-    pub fn new(defs: Py<py::DefDict>, root_def: Py<Def>, py: Python) -> Result<Self, PyErr> {
-        py::DefView::with_rs_of(py, defs.clone_ref(py), root_def.clone_ref(py), |view_rs| {
-            Ok(py::DefView {
+    pub fn new(defs: Py<PyDefDict>, root_def: Py<Def>, py: Python) -> Result<Self, PyErr> {
+        PyDefView::with_rs_of(py, defs.clone_ref(py), root_def.clone_ref(py), |view_rs| {
+            Ok(PyDefView {
                 defs: defs.clone_ref(py),
                 root_def: root_def.clone_ref(py),
 
@@ -94,7 +98,7 @@ impl py::DefView {
     pub fn foreach(pyself: Py<Self>, callable: PyObject, py: Python) -> Result<(), PyErr> {
         pyself.borrow(py).with_rs_result(py, |view_rs| {
             view_rs.foreach(|_, cur| {
-                _ = callable.call(py, (py::DefViewCursor::of(pyself.clone_ref(py), &cur),), None);
+                _ = callable.call(py, (PyDefViewCursor::of(pyself.clone_ref(py), &cur),), None);
             })
         })
     }
@@ -104,7 +108,7 @@ impl py::DefView {
             view_rs.foreach(|item_ref, cur| {
                 match item_ref {
                     super::DefViewItemRef::Keysymbol(keysymbol) => {
-                        _ = callable.call(py, (py::DefViewCursor::of(pyself.clone_ref(py), &cur), keysymbol.clone()), None);
+                        _ = callable.call(py, (PyDefViewCursor::of(pyself.clone_ref(py), &cur), keysymbol.clone()), None);
                     },
 
                     _ => {},
@@ -152,31 +156,32 @@ impl py::DefView {
 
 
 #[pyclass]
-pub enum DefViewItem {
+#[pyo3(name = "DefViewItem")]
+pub enum PyDefViewItem {
     Keysymbol(Keysymbol),
     Sopheme(Sopheme),
     Def(Def),
 }
 
-impl py::DefViewItem {
-    pub fn of(item_ref: DefViewItemRef) -> py::DefViewItem {
+impl PyDefViewItem {
+    pub fn of(item_ref: DefViewItemRef) -> PyDefViewItem {
         match item_ref {
-            DefViewItemRef::Keysymbol(keysymbol) => py::DefViewItem::Keysymbol(keysymbol.clone()),
+            DefViewItemRef::Keysymbol(keysymbol) => PyDefViewItem::Keysymbol(keysymbol.clone()),
 
-            DefViewItemRef::Sopheme(sopheme) => py::DefViewItem::Sopheme(sopheme.clone()),
+            DefViewItemRef::Sopheme(sopheme) => PyDefViewItem::Sopheme(sopheme.clone()),
 
-            DefViewItemRef::Def(def) => py::DefViewItem::Def(def.clone()),
+            DefViewItemRef::Def(def) => PyDefViewItem::Def(def.clone()),
 
-            DefViewItemRef::Entities(seq, varname) => py::DefViewItem::Def(Def::of(seq.clone(), varname)),
+            DefViewItemRef::Entities(seq, varname) => PyDefViewItem::Def(Def::of(seq.clone(), varname)),
         }
     }
 }
 
 #[pymethods]
-impl py::DefViewItem {
+impl PyDefViewItem {
     pub fn keysymbol(&self) -> Result<Keysymbol, PyErr> {
         match self {
-            py::DefViewItem::Keysymbol(keysymbol) => Ok(keysymbol.clone()),
+            PyDefViewItem::Keysymbol(keysymbol) => Ok(keysymbol.clone()),
             
             _ => Err(PyTypeError::new_err("not a keysymbol")),
         }
@@ -184,7 +189,7 @@ impl py::DefViewItem {
 
     pub fn sopheme(&self) -> Result<Sopheme, PyErr> {
         match self {
-            py::DefViewItem::Sopheme(sopheme) => Ok(sopheme.clone()),
+            PyDefViewItem::Sopheme(sopheme) => Ok(sopheme.clone()),
             
             _ => Err(PyTypeError::new_err("not a sopheme")),
         }
@@ -194,11 +199,11 @@ impl py::DefViewItem {
     #[getter]
     pub fn n_children(&self) -> usize {
         match self {
-            py::DefViewItem::Keysymbol(_) => 0,
+            PyDefViewItem::Keysymbol(_) => 0,
 
-            py::DefViewItem::Sopheme(sopheme) => sopheme.keysymbols.len(),
+            PyDefViewItem::Sopheme(sopheme) => sopheme.keysymbols.len(),
 
-            py::DefViewItem::Def(def) => def.entities.len(),
+            PyDefViewItem::Def(def) => def.entities.len(),
         }
     } 
 }

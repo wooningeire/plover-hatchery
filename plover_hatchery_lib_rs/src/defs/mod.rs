@@ -21,6 +21,7 @@ pub use cursor::{
     DefViewCursor,
 };
 
+mod parse;
 
 
 pub mod py;

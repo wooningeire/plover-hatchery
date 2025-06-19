@@ -1,20 +1,17 @@
 from dataclasses import dataclass
-from typing import Any, Generator, Generic, SupportsIndex, TypeVar, Mapping, Protocol, Iterable, cast, overload
-from abc import ABC
+from typing import Generic, SupportsIndex, TypeVar, Protocol, cast, overload
+from collections.abc import Generator, Iterable
+from abc import ABC, abstractmethod
 
-from ..trie import Trie
-
-_Item = TypeVar("_Item")
-
-class Sliceable(Protocol[_Item]):
+class Sliceable[_Item](Protocol):
     @overload
     def __getitem__(self: "Sliceable[_Item]", key: SupportsIndex, /) -> _Item: ...
     @overload
-    def __getitem__(self, key: "slice[Any, Any, Any]", /) -> "Sliceable[_Item]": ...
+    def __getitem__(self, key: slice, /) -> "Sliceable[_Item]": ...
     def __len__(self: "Sliceable[_Item]") -> int: ...
     def __iter__(self: "Sliceable[_Item]") -> Iterable[_Item]: ...
 
-class Comparable(Protocol[_Item]):
+class Comparable[_Item](Protocol):
     def __lt__(self: "Comparable[_Item]", other: _Item, /) -> bool: ...
     def __gt__(self: "Comparable[_Item]", other: _Item, /) -> bool: ...
 
@@ -55,7 +52,7 @@ class Cell(Generic[Cost, MatchData]):
     def __gt__(self, cell: "Cell[Comparable[Cost], MatchData]") -> bool:
         return self.cost > cell.cost
 
-class AlignmentService(Generic[Cost, MatchData, InputX, InputY, MappingX, MappingY, ItemX, ItemY, Match], ABC):
+class AlignmentService[Cost, MatchData, InputX, InputY, MappingX, MappingY, ItemX, ItemY, Match](ABC):
     @staticmethod
     def process_input(x_input: InputX, y_input: InputY, /) -> tuple[Sliceable[ItemX], Sliceable[ItemY]]:
         return (cast(Sliceable[ItemX], x_input), cast(Sliceable[ItemY], y_input))
@@ -65,6 +62,7 @@ class AlignmentService(Generic[Cost, MatchData, InputX, InputY, MappingX, Mappin
         ...
 
     @staticmethod
+    @abstractmethod
     def mismatch_cost(mismatch_parent: Cell[Cost, MatchData], increment_x: bool, increment_y: bool, /) -> Comparable[Cost]:
         ...
 
@@ -77,10 +75,12 @@ class AlignmentService(Generic[Cost, MatchData, InputX, InputY, MappingX, Mappin
         return cast(Sliceable[MappingY], candidate_subseq_y)
         
     @staticmethod
+    @abstractmethod
     def has_mapping(candidate_x_key: Sliceable[MappingX], /) -> bool:
         ...
     
     @staticmethod
+    @abstractmethod
     def get_mapping_options(candidate_x_key: Sliceable[MappingX], /) -> Iterable[Sliceable[ItemY]]:
         ...
     
@@ -89,18 +89,22 @@ class AlignmentService(Generic[Cost, MatchData, InputX, InputY, MappingX, Mappin
         return len(candidate_subseq_y)
 
     @staticmethod
+    @abstractmethod
     def is_match(actual_subseq_y: Sliceable[ItemY], candidate_subseq_y: Sliceable[MappingY], /) -> bool:
         ...
 
     @staticmethod
+    @abstractmethod
     def match_cost(parent: Cell[Cost, MatchData], /) -> Comparable[Cost]:
         ...
 
     @staticmethod
+    @abstractmethod
     def match_data(subseq_x: Sliceable[MappingX], subseq_y: Sliceable[MappingY], pre_subseq_x: Sliceable[ItemX], pre_subseq_y: Sliceable[ItemY], /) -> MatchData:
         ...
 
     @staticmethod
+    @abstractmethod
     def construct_match(seq_x: Sliceable[ItemX], seq_y: Sliceable[ItemY], start_cell: Cell[Cost, MatchData], end_cell: Cell[Cost, MatchData], match_data: MatchData | None, /) -> Match:
         ...
 

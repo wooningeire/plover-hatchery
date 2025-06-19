@@ -55,7 +55,7 @@ class ChordToSophSearchResultWithSrcIndex(NamedTuple):
 @dataclass
 class SophTrieApi:
     class BeginAddEntry(Protocol):
-        def __call__(self, *, trie: NondeterministicTrie[Soph, EntryIndex], sophemes: SophemeSeq, entry_id: EntryIndex) -> Any: ...
+        def __call__(self, *, trie: NondeterministicTrie[Soph, EntryIndex], entry_id: EntryIndex) -> Any: ...
     class AddSophTransition(Protocol):
         def __call__(
             self,
@@ -161,9 +161,7 @@ def soph_trie(
 
         @base_hooks.add_entry.listen(soph_trie)
         def _(view: DefView, entry_id: EntryIndex, **_):
-            sophemes = view.collect_sophemes()
-
-            states = api.begin_add_entry.emit_and_store_outputs(trie=trie, sophemes=sophemes, entry_id=entry_id)
+            states = api.begin_add_entry.emit_and_store_outputs(trie=trie, entry_id=entry_id)
 
 
             src_nodes: list[NodeSrc] = [NodeSrc(0)]

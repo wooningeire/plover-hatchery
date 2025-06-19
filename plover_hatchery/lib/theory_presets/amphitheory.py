@@ -1,9 +1,8 @@
 from collections.abc import Generator
 from typing import Any, Generator
 
-from plover_hatchery_lib_rs import DefViewCursor, DefViewItem, Keysymbol
+from plover_hatchery_lib_rs import DefViewCursor, DefViewItem, Keysymbol, parse_keysymbol_seq
 from plover_hatchery.lib.pipes import *
-from plover_hatchery.lib.sopheme.parse.parse_sopheme_sequence import parse_keysymbol_seq
 
 @compile_theory
 def theory():

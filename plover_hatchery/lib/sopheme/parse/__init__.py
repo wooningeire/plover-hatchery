@@ -1,1 +1,0 @@
-from .parse_sopheme_sequence import parse_entry_definition
