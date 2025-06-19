@@ -1,7 +1,6 @@
 import argparse
 import os
 from pathlib import Path
-import time
 
 def _main(args: argparse.Namespace):
     os.chdir(args.plover_path)
@@ -10,9 +9,9 @@ def _main(args: argparse.Namespace):
     if exit_code != 0:
         raise Exception
     
-    time.sleep(1)
+    plugin_path = Path(__file__).parent.parent
 
-    exit_code = os.system(fr"""plover_console -l debug""")
+    exit_code = os.system(fr"""plover_console -s plover_plugins install -e {plugin_path}""")
     if exit_code != 0:
         raise Exception
 

@@ -18,6 +18,7 @@ classifiers = [
 dependencies = [
     "plover>=5.0.0dev1",
     "toml>=0.10.2",
+    "flask>=3.1.1",
 ]
 
 [project.optional-dependencies]
@@ -28,6 +29,9 @@ test = [
 [project.entry-points."plover.dictionary"]
 writeouts-json = "plover_hatchery.WriteoutsDictionary:WriteoutsDictionary"
 hatchery = "plover_hatchery.HatcheryDictionary:HatcheryDictionary"
+
+[project.entry-points."plover.extension"]
+"Hatchery web server" = "plover_hatchery.HatcheryExtension:HatcheryExtension"
 
 [tool.setuptools]
 zip-safe = true
