@@ -51,10 +51,11 @@ def compile_theory(
         plugin_id = id(plugin_factory)
 
         if plugin_id not in plugins_map:
-            try:
-                plugins_map[plugin_id] = plugin_factory().initialize(get_plugin_api=get_plugin_api, base_hooks=hooks)
-            except TypeError:
-                raise ValueError(f"Plugin is missing dependency {plugin_factory.__name__} that has required settings")
+            raise ValueError(f"Plugin is missing dependency {plugin_factory.__name__}")
+            # try:
+            #     plugins_map[plugin_id] = plugin_factory().initialize(get_plugin_api=get_plugin_api, base_hooks=hooks)
+            # except TypeError:
+            #     raise ValueError(f"Plugin is missing dependency {plugin_factory.__name__} that has required settings")
         
         return cast(T, plugins_map[plugin_id])
 
