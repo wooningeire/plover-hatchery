@@ -389,8 +389,7 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
     def to_json(self):
         return {
             "transitions": self.__transitions,
-            "translations": self.__translations_list,
-            "keys": self.__keys_list,
+            "keys": [key.value for key in self.__keys_list],
             "node_translations": self.__node_translations,
             "transition_costs": [
                 {

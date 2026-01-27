@@ -75,6 +75,9 @@ def compile_theory(
 
 
     def build_lookup(entry_lines: Iterable[tuple[str, str]], filename: str=""):
+        from plover_hatchery.Store import store
+
+
         states: dict[int, Any] = {}
         for plugin_id, handler in hooks.begin_build_lookup.ids_handlers():
             states[plugin_id] = handler()
@@ -87,6 +90,8 @@ def compile_theory(
 
         translations: list[str] = []
         reverse_translations: dict[str, list[EntryIndex]] = defaultdict(lambda: [])
+
+        store.translations = translations
 
 
 
