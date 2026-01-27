@@ -26,7 +26,6 @@ class OnTraverse(Protocol[_KeyVar]):
         /,
     ) -> bool: ...
 
-
 @final
 @dataclass(frozen=True)
 class NodeSrc:
@@ -37,6 +36,17 @@ class NodeSrc:
     def increment_costs(srcs: "Iterable[NodeSrc]", cost_change: int):
         for src in srcs:
             yield dataclasses.replace(src, cost=src.cost + cost_change)
+
+@final
+@dataclass(frozen=True)
+class TransitionFlag:
+    label: str
+
+@final
+class TransitionFlagManager:
+    def __init__(self):
+        self.mappings = defaultdict[TransitionCostKey, list[TransitionFlag]](list)
+        self.flag_types = set[TransitionFlag]()
 
 @final
 class NondeterministicTrie(Generic[_KeyVar]):
@@ -509,14 +519,14 @@ class NondeterministicTrie(Generic[_KeyVar]):
         
         return get_sequences
 
-    def build_subtrie_builder(self):
+    def build_subtrie_builder(self, transition_flags: TransitionFlagManager):
         reverse_nodes = self.__reversed_nodes()
         reverse_translations = self.__reversed_translations()
 
 
         visited_nodes = set[int]()
         nodes_toposort: list[int] = []
-        visited_transitions = defaultdict[tuple[int, int], dict[int | None, float]](dict)
+        visited_transitions = defaultdict[tuple[int, int], list[tuple[int | None, int]]](list)
 
         def dfs(node: int, translation_id: int):
             if node in visited_nodes: return
@@ -530,11 +540,7 @@ class NondeterministicTrie(Generic[_KeyVar]):
 
                     dfs(src_node_id, translation_id)
 
-                    transition_cost_key = TransitionCostKey(TransitionKey(src_node_id, key_id, transition_index), translation_id)
-                    visited_transitions[(src_node_id, node)][key_id] = min(
-                        self.__transition_costs[transition_cost_key],
-                        visited_transitions[(src_node_id, node)].get(key_id, float("inf"))
-                    )
+                    visited_transitions[(src_node_id, node)].append((key_id, transition_index))
 
 
             # add at end to obtain a topological sort
@@ -549,6 +555,16 @@ class NondeterministicTrie(Generic[_KeyVar]):
             for node in reverse_translations[translation_id]:
                 dfs(node, translation_id)
 
+            def build_keys_costs(src_node_id: int, key_id: int | None, transition_index: int):
+                transition_cost_key = TransitionCostKey(TransitionKey(src_node_id, key_id, transition_index), translation_id)
+
+                return {
+                    "key": self.get_key_str(key_id),
+                    "cost": self.__transition_costs[transition_cost_key],
+                    "flags": [flag.label for flag in transition_flags.mappings.get(transition_cost_key, [])],
+                }
+
+
             result = {
                 "nodes": tuple(nodes_toposort),
                 "transitions": [
@@ -556,14 +572,11 @@ class NondeterministicTrie(Generic[_KeyVar]):
                         "src_node_id": src_node_id,
                         "dst_node_id": dst_node_id,
                         "keys_costs": [
-                            {
-                                "key": self.get_key_str(key_id),
-                                "cost": cost,
-                            }
-                            for key_id, cost in keys_to_costs.items()
+                            build_keys_costs(src_node_id, key_id, transition_index)
+                            for key_id, transition_index in transition_key_info
                         ],
                     }
-                    for (src_node_id, dst_node_id), keys_to_costs in visited_transitions.items()
+                    for (src_node_id, dst_node_id), transition_key_info in visited_transitions.items()
                 ],
             }
 

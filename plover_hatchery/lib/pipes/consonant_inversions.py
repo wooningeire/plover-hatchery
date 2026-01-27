@@ -9,8 +9,11 @@ from plover_hatchery_lib_rs import DefViewCursor, DefViewItem
 from plover_hatchery.lib.pipes.Plugin import define_plugin, GetPluginApi
 from plover_hatchery.lib.pipes.soph_trie import ChordToSophSearchResult, ChordToSophSearchResultWithSrcIndex, LookupResultWithAssociations, SophChordAssociation, SophsToTranslationSearchPath, soph_trie
 from plover_hatchery.lib.pipes.types import Soph
-from plover_hatchery.lib.trie import NondeterministicTrie, NodeSrc, JoinedTriePaths
+from plover_hatchery.lib.trie import NondeterministicTrie, NodeSrc, JoinedTriePaths, TransitionFlag
+from plover_hatchery.lib.trie.Transition import TransitionCostKey
 
+
+consonant_inversions_transition_flag = TransitionFlag("inversion")
 
 def consonant_inversions(*, consonant_sophs_str: str, inversion_domains_steno: str):
     consonant_sophs = set(Soph(value) for value in consonant_sophs_str.split())
@@ -101,7 +104,11 @@ def consonant_inversions(*, consonant_sophs_str: str, inversion_domains_steno: s
             if paths.dst_node_id is not None:
                 for i, consonant in enumerate(state.past_consonants[:-1]):
                     inversion_sophs = get_inversion_sophs(state.past_consonants[i:])
-                    _ = trie.link_join(NodeSrc.increment_costs(consonant.node_srcs, 50), paths.dst_node_id, inversion_sophs, entry_id)
+                    paths = trie.link_join(NodeSrc.increment_costs(consonant.node_srcs, 50), paths.dst_node_id, inversion_sophs, entry_id)
+
+                    for transition_seq in paths.transition_seqs:
+                        for transition in transition_seq.transitions:
+                            soph_trie_api.transition_flags.mappings[TransitionCostKey(transition, entry_id)].append(consonant_inversions_transition_flag)
 
 
             #     for consonant in state.past_consonants:

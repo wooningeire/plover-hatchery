@@ -10,7 +10,7 @@ from plover_hatchery.lib.pipes.Hook import Hook
 from plover_hatchery.lib.pipes.Plugin import GetPluginApi, Plugin, define_plugin
 from plover_hatchery.lib.pipes.floating_keys import floating_keys
 from plover_hatchery.lib.pipes.plugin_utils import iife, join_sophs_to_chords_dicts
-from plover_hatchery.lib.trie import LookupResult, NondeterministicTrie, NodeSrc, Trie, TriePath, JoinedTriePaths, TransitionCostKey, TransitionKey
+from plover_hatchery.lib.trie import LookupResult, NondeterministicTrie, NodeSrc, Trie, TriePath, JoinedTriePaths, TransitionCostKey, TransitionKey, TransitionFlagManager
 from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
 from plover_hatchery.lib.pipes.types import Soph
 
@@ -120,6 +120,7 @@ class SophTrieApi:
 
     trie: NondeterministicTrie[Soph]
     transition_data: dict[TransitionCostKey, DefViewCursor]
+    transition_flags: TransitionFlagManager
 
     def register_transition(self, transition: TransitionKey, entry_id: int, phoneme: DefViewCursor):
         cost_key = TransitionCostKey(transition, entry_id)
@@ -153,10 +154,11 @@ def soph_trie(
 
         trie = NondeterministicTrie[Soph]()
         transition_phonemes: dict[TransitionCostKey, DefViewCursor] = {}
+        transition_flags = TransitionFlagManager()
 
         store.trie = trie
 
-        api = SophTrieApi(trie, transition_phonemes)
+        api = SophTrieApi(trie, transition_phonemes, transition_flags)
 
 
 
@@ -566,7 +568,7 @@ def soph_trie(
             if id(trie) in subtrie_builders:
                 subtrie_builder = subtrie_builders[id(trie)]
             else:
-                subtrie_builder = trie.build_subtrie_builder()
+                subtrie_builder = trie.build_subtrie_builder(transition_flags)
                 subtrie_builders[id(trie)] = subtrie_builder
 
             return json.dumps([

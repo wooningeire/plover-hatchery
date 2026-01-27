@@ -1,11 +1,6 @@
-from typing import NamedTuple, TypeVar, Generic
+from typing import NamedTuple
 from dataclasses import dataclass
 
-
-S = TypeVar("S")
-T = TypeVar("T")
-K = TypeVar("K")
-V = TypeVar("V")
 
 class TransitionKey(NamedTuple):
     src_node_index: int
