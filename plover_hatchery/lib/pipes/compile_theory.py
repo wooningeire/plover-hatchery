@@ -31,7 +31,7 @@ class TheoryHooks:
     class ReverseLookup(Protocol):
         def __call__(self, *, translation: str, reverse_translations: dict[str, list[int]]) -> Iterable[tuple[str, ...]]: ...
     class Breakdown(Protocol):
-        def __call__(self, *, translation: str, reverse_translations: dict[str, list[int]]) -> str | None: ...
+        def __call__(self, *, translation: str, entries: list[str], reverse_translations: dict[str, list[int]]) -> str | None: ...
     
 
     begin_build_lookup = Hook(BeginBuildLookup)
@@ -125,6 +125,8 @@ def compile_theory(
     \x1b[32mTook {duration} s""")
 
 
+        defs_list: list[str] = []
+
         def add_entries():
             nonlocal n_addable_entries, n_passed_additions
 
@@ -149,7 +151,9 @@ def compile_theory(
                 try:
                     entry_id = len(translations) - 1
 
-                    view = DefView(defs, defs.get_def(varname))
+                    def_item = defs.get_def(varname)
+                    defs_list.append(str(def_item))
+                    view = DefView(defs, def_item)
 
                     add_entry(states, view, entry_id)
 
@@ -184,7 +188,7 @@ def compile_theory(
             return reverse_lookup(states, translation, reverse_translations)
 
         def true_breakdown(translation: str):
-            return breakdown(states, translation, reverse_translations)
+            return breakdown(states, translation, defs_list, reverse_translations)
 
         return TheoryLookup(true_lookup, true_reverse_lookup, true_breakdown)
         
@@ -220,9 +224,9 @@ def compile_theory(
         return results
 
 
-    def breakdown(states: dict[int, Any], translation: str, reverse_translations: dict[str, list[int]]) -> str | None:
+    def breakdown(states: dict[int, Any], translation: str, entries: list[str], reverse_translations: dict[str, list[int]]) -> str | None:
         for plugin_id, handler in hooks.breakdown.ids_handlers():
-            result = handler(translation=translation, reverse_translations=reverse_translations)
+            result = handler(translation=translation, entries=entries, reverse_translations=reverse_translations)
             if result is not None:
                 return result
         

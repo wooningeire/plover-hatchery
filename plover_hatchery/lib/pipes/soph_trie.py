@@ -557,20 +557,25 @@ def soph_trie(
 
         ### Reverse lookup ##############################################################
 
-        subtrie_builders: dict[int, Callable[[int], str | None]] = {}
+        subtrie_builders: dict[int, Callable[[int], dict[str, Any] | None]] = {}
 
         @base_hooks.breakdown.listen(soph_trie)
-        def _(translation: str, reverse_translations: dict[str, list[int]], **_):
+        def _(translation: str, entries: list[str], reverse_translations: dict[str, list[int]], **_):
+            import json
+
             if id(trie) in subtrie_builders:
                 subtrie_builder = subtrie_builders[id(trie)]
             else:
                 subtrie_builder = trie.build_subtrie_builder()
                 subtrie_builders[id(trie)] = subtrie_builder
 
-            for entry_id in reverse_translations[translation]:
-                return subtrie_builder(entry_id)
-
-            return ""
+            return json.dumps([
+                {
+                    "entry": entries[entry_id],
+                    "subtrie": subtrie_builder(entry_id),
+                }
+                for entry_id in reverse_translations[translation]
+            ])
 
         # reverse_lookups: dict[int, Callable[[int], Iterable[LookupResult[int]]]] = {}
 

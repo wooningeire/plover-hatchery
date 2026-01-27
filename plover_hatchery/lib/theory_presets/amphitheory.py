@@ -371,7 +371,7 @@ def theory():
 
 
 
-    yield consonant_inversions(
-        consonant_sophs_str="B CH D F G H J K L M N NG P R S SH T TH W V Y Z ZH  C SC",
-        inversion_domains_steno="STKPWHR FRPBLGTSDZ"
-    )
+    # yield consonant_inversions(
+    #     consonant_sophs_str="B CH D F G H J K L M N NG P R S SH T TH W V Y Z ZH  C SC",
+    #     inversion_domains_steno="STKPWHR FRPBLGTSDZ"
+    # )

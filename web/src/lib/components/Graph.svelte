@@ -143,7 +143,7 @@
                 const h = Math.abs(dx) * arcFactor;
                 const dir = dx > 0 ? -1 : 1;
                 
-                const cp1x = source.x + dx / 2;
+                const cp1x = source.x + dx / 4;
                 const cp1y = source.y;
                 
                 const cp2x = target.x;

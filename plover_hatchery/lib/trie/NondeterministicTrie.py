@@ -540,15 +540,13 @@ class NondeterministicTrie(Generic[_KeyVar]):
         def build_subtrie(translation_id: int):
             """Constructs a nondeterministic trie consisting of only the nodes and transitions that may lead to the given translation_id."""
 
-            import json
-
             if translation_id not in reverse_translations: return None
             
             for node in reverse_translations[translation_id]:
                 dfs(node, translation_id)
 
-            result = json.dumps({
-                "nodes": nodes_toposort,
+            result = {
+                "nodes": tuple(nodes_toposort),
                 "transitions": [
                     {
                         "src_node_id": src_node_id,
@@ -557,7 +555,7 @@ class NondeterministicTrie(Generic[_KeyVar]):
                     }
                     for (src_node_id, dst_node_id), key_ids in visited_transitions.items()
                 ],
-            })
+            }
 
             visited_nodes.clear()
             nodes_toposort.clear()

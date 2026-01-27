@@ -12,10 +12,14 @@ onMount(async () => {
     const breakdownResponse = await fetch(`http://localhost:5325/?translation=${encodeURIComponent(data.translationText)}`);
     breakdownData = await breakdownResponse.json();
 });
+
+let breakdownFirst = $derived(breakdownData?.[0] ?? null);
 </script>
 
-{#if breakdownData !== null}
-    <Graph data={breakdownData} />
+
+{#if breakdownFirst !== null}
+    {breakdownFirst.entry}
+    <Graph data={breakdownFirst.subtrie} />
 {:else}
     <p>Loading...</p>
 {/if}
