@@ -34,7 +34,7 @@ def _main(args: argparse.Namespace, rest: list[str]):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    _ = parser.add_argument("--plover-path", help="Path to the directory that directly contains Plover's python_console binary", default=r"C:/Program Files/Open Steno Project/Plover 5.0.0.dev1")
+    _ = parser.add_argument("--plover-path", help="Path to the directory that directly contains Plover's python_console binary", default=r"C:/Program Files/Open Steno Project/Plover 5.1.0")
     args, rest = parser.parse_known_args()
     
     _main(args, rest)

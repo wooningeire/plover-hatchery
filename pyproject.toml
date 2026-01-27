@@ -19,6 +19,7 @@ dependencies = [
     "plover>=5.0.0dev1",
     "toml>=0.10.2",
     "flask>=3.1.1",
+    "maturin>=1.11.5",
 ]
 
 [project.optional-dependencies]
@@ -51,3 +52,11 @@ packages = [
 
 [tool.pytest]
 python_files = "*__test.py"
+
+[tool.uv.workspace]
+members = [
+    "plover_hatchery_lib_rs",
+]
+
+[tool.uv.sources]
+plover-hatchery-lib-rs = { workspace = true }

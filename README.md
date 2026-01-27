@@ -3,6 +3,9 @@ Theory engine plugin for Plover!
 
 Hatchery generates all possible writeouts from a word list, according to customizable theory rules.
 
+## Installation
+This plugin is not included in the plugins registry. [Instructions are available on the Plover wiki](https://plover.wiki/index.php/Plugins#Find_the_plugin_on_PyPI_or_as_a_git_repo) on how to install this plugin from this Git repository.
+
 ## Motivation
 > [!IMPORTANT]
 > To be documented!
@@ -67,3 +70,14 @@ While constructing paths in the trie, transitions are also associated with a (co
 * The cost is used to determine which translation to use in the case of conflicts, which occur when the set of nodes an outline ends at is associated with multiple valid translations. The cost is determined by e.g. whether the path is part of a cluster, inversion, elision, etc.
 
 Constructing the trie for the entirety of Lapwing takes about 18 seconds.
+
+## Development
+Like all Plover plugins, this is a Python project. We'll use [uv](https://docs.astral.sh/uv/) to manage dependencies.
+
+This project also contains a Rust component for performance, so [cargo](https://rust-lang.org/tools/install/) must also be installed.
+
+1. Create a virtual environment: `uv venv --python 3.13`
+1. Enter the virtual environment: `./.venv/Scripts/activate`
+1. Install dependencies: `uv pip install .`
+1. Build the Rust component: `uv run local-utils/maturin_dev.py --plover-path "C:/Program Files/Open Steno Project/Plover 5.1.0"`
+1. Add the plugin to Plover: `uv run local-utils/plover_install.py --plover-path "C:/Program Files/Open Steno Project/Plover 5.1.0"`

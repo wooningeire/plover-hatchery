@@ -9,8 +9,8 @@ name = "plover_hatchery_lib_rs"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = "0.24.0"
-regex = "1.11.1"
+pyo3 = "0.27.2"
+regex = "1.12.2"
 
 [profile.release]
 debug = true
