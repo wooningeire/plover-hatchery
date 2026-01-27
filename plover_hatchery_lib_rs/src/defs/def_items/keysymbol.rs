@@ -1,5 +1,7 @@
 use std::{
-    collections::{HashSet}, sync::OnceLock
+    collections::{HashSet},
+    hash::{DefaultHasher, Hasher, Hash},
+    sync::OnceLock,
 };
 
 use pyo3::{prelude::*};
@@ -10,7 +12,7 @@ use crate::defs::def_items::keysymbol;
 
 
 #[pyclass]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash)]
 pub struct Keysymbol {
     symbol: String,
     base_symbol: String,
@@ -73,6 +75,12 @@ impl Keysymbol {
 
     pub fn __repr__(&self) -> String {
         self.to_string()
+    }
+
+    pub fn __hash__(&self) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        self.hash(&mut hasher);
+        hasher.finish()
     }
 
     #[getter]

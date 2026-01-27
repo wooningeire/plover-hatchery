@@ -326,11 +326,17 @@ def theory():
             for key, keysymbols_str in mappings.items()
         }
 
+        print(chords)
 
-        def generate(cursor: DefViewCursor) -> Generator[Keysymbol, None, None]:
+
+        def generate(cursor: DefViewCursor):
+            new_keysymbols = set[Keysymbol]()
+
             for soph in map_keysymbol_to_sophs(cursor):
                 if soph not in chords: continue
-                yield from chords[soph]
+                new_keysymbols.update(chords[soph])
+
+            return new_keysymbols.__iter__()
 
         return generate
 
