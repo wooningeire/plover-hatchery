@@ -1,6 +1,6 @@
 from collections import defaultdict
 from collections.abc import Generator, Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import dataclasses
 from itertools import product
 from plover_hatchery.lib.trie.Transition import TransitionKey
@@ -26,21 +26,28 @@ class OnTraverse(Protocol[_KeyVar]):
         /,
     ) -> bool: ...
 
+
+@final
+@dataclass(frozen=True)
+class TransitionFlag:
+    label: str
+
 @final
 @dataclass(frozen=True)
 class NodeSrc:
     node: int
     cost: int = 0
+    outgoing_transition_flags: tuple[TransitionFlag, ...] = ()
 
     @staticmethod
     def increment_costs(srcs: "Iterable[NodeSrc]", cost_change: int):
         for src in srcs:
             yield dataclasses.replace(src, cost=src.cost + cost_change)
 
-@final
-@dataclass(frozen=True)
-class TransitionFlag:
-    label: str
+    @staticmethod
+    def add_flags(srcs: "Iterable[NodeSrc]", flags: tuple[TransitionFlag, ...]):
+        for src in srcs:
+            yield dataclasses.replace(src, outgoing_transition_flags=src.outgoing_transition_flags + flags)
 
 @final
 class TransitionFlagManager:

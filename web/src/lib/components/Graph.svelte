@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount, untrack } from 'svelte';
     import * as d3 from 'd3';
-    import FlagControls from '$lib/components/FlagControls.svelte';
+    import FlagControls, { type FlagSettings } from '$lib/components/FlagControls.svelte';
 
     interface NodeData {
         id: number;
@@ -16,6 +16,8 @@
         keys: string[];
         id: string;
         opacity: number;
+        strokeWidth: number;
+        dashArray: string | null;
     }
 
     interface GraphData {
@@ -51,7 +53,10 @@
     const colorScale = d3.scaleOrdinal(d3.schemeTableau10);
 
     // Flag controls state
-    let flagOpacities = $state<Record<string, number>>({});
+    const UNFLAGGED_KEY = '(unflagged)';
+    let flagSettings = $state<Record<string, FlagSettings>>({
+        [UNFLAGGED_KEY]: { opacity: 1.0, strokeWidth: 4, dashed: false, dashLength: 5 }
+    });
     let uniqueFlags = $state<string[]>([]);
 
     $effect(() => {
@@ -70,13 +75,13 @@
         
         untrack(() => {
             newFlags.forEach(f => {
-                if (flagOpacities[f] === undefined) {
-                    flagOpacities[f] = 1.0;
+                if (flagSettings[f] === undefined) {
+                    flagSettings[f] = { opacity: 1.0, strokeWidth: 4, dashed: false, dashLength: 5 };
                 }
             });
         });
         
-        uniqueFlags = newFlags;
+        uniqueFlags = [UNFLAGGED_KEY, ...newFlags];
     });
 
     $effect(() => {
@@ -87,8 +92,9 @@
 
         // Calculate positions: Linear layout based on array order
         const nodeRadius = 25;
-		const nodeSpacing = 120;
+		const nodeSpacing = 200;
         const margin = { top: height / 2, left: 50 }; // Center vertically
+        const arc = 0.5;
 
         const nodes: NodeData[] = data.nodes.map((id: number, index: number) => ({ 
             id, 
@@ -100,27 +106,58 @@
         const nodeMap = new Map<number, NodeData>(nodes.map(n => [n.id, n]));
 
         const links: LinkData[] = data.transitions.map((t: GraphData['transitions'][number], i) => {
-            // Calculate opacity for each key and filter out invisible ones
+            // Calculate opacity and dash settings for each key
             const visibleKeyData = t.keys_costs.map(kc => {
                 let keyOpacity = 1.0;
+                let keyStrokeWidth = 4;
+                let keyDashed = false;
+                let keyDashLength = 5;
+                
                 if (kc.flags && kc.flags.length > 0) {
                     // Use minimum opacity of associated flags
-                    keyOpacity = Math.min(...kc.flags.map(f => flagOpacities[f] ?? 1.0));
+                    keyOpacity = Math.min(...kc.flags.map(f => flagSettings[f]?.opacity ?? 1.0));
+                    // Use max stroke width
+                    keyStrokeWidth = Math.max(...kc.flags.map(f => flagSettings[f]?.strokeWidth ?? 4));
+                    // If any flag is dashed, the key is dashed
+                    keyDashed = kc.flags.some(f => flagSettings[f]?.dashed ?? false);
+                    // Use max dash length if dashed
+                    if (keyDashed) {
+                        keyDashLength = Math.max(...kc.flags.filter(f => flagSettings[f]?.dashed).map(f => flagSettings[f]?.dashLength ?? 5));
+                    }
+                } else {
+                    // No flags - use unflagged settings
+                    const unflagged = flagSettings[UNFLAGGED_KEY];
+                    if (unflagged) {
+                        keyOpacity = unflagged.opacity;
+                        keyStrokeWidth = unflagged.strokeWidth;
+                        keyDashed = unflagged.dashed;
+                        keyDashLength = unflagged.dashLength;
+                    }
                 }
-                return { key: kc.key, cost: kc.cost, opacity: keyOpacity };
+                return { key: kc.key, cost: kc.cost, opacity: keyOpacity, strokeWidth: keyStrokeWidth, dashed: keyDashed, dashLength: keyDashLength };
             }).filter(k => k.opacity > 0);
 
             if (visibleKeyData.length === 0) return null;
 
             // Link opacity is the maximum of its visible keys
             const linkOpacity = Math.max(...visibleKeyData.map(k => k.opacity));
+            
+            // Link stroke width is the maximum of its visible keys
+            const linkStrokeWidth = Math.max(...visibleKeyData.map(k => k.strokeWidth));
+            
+            // Link is dashed if any visible key is dashed. Use max dash length.
+            const isDashed = visibleKeyData.some(k => k.dashed);
+            const dashLength = isDashed ? Math.max(...visibleKeyData.filter(k => k.dashed).map(k => k.dashLength)) : 0;
+            const dashArray = isDashed ? `${dashLength},${dashLength}` : null;
 
             return {
                 source: t.src_node_id,
                 target: t.dst_node_id,
                 keys: visibleKeyData.map(k => `${k.key} (${k.cost})`),
                 id: `link-${i}`,
-                opacity: linkOpacity
+                opacity: linkOpacity,
+                strokeWidth: linkStrokeWidth,
+                dashArray
             };
         }).filter(l => l !== null) as LinkData[];
 
@@ -159,19 +196,6 @@
                 .attr("stop-color", target.color);
         });
 
-        // Marker
-        defsInG.append("marker")
-            .attr("id", "arrowhead")
-            .attr("viewBox", "0 -5 10 10")
-            .attr("refX", nodeRadius + 10) // Adjustment for node radius + some spacing
-            .attr("refY", 0)
-            .attr("markerWidth", 6)
-            .attr("markerHeight", 6)
-            .attr("orient", "auto")
-            .append("path")
-            .attr("d", "M0,-5L10,0L0,5")
-            .attr("fill", "#999");
-
         // Links
         // Using curved lines (Bezier) with arc depending on direction
         const path = g.append("g")
@@ -181,15 +205,15 @@
             .attr("fill", "none")
             .attr("stroke", (d: LinkData) => `url(#${d.id})`)
             .attr("stroke-opacity", (d: LinkData) => d.opacity * 0.6)
-            .attr("stroke-width", 4)
+            .attr("stroke-width", (d: LinkData) => d.strokeWidth)
+            .attr("stroke-dasharray", (d: LinkData) => d.dashArray)
             .attr("marker-end", "url(#arrowhead)")
              .attr("d", (d: LinkData) => {
                 const source = nodeMap.get(d.source)!;
                 const target = nodeMap.get(d.target)!;
                 
                 const dx = target.x - source.x;
-                const arcFactor = 1; 
-                const h = Math.abs(dx) * arcFactor;
+                const h = Math.abs(dx) * arc;
                 const dir = dx > 0 ? -1 : 1;
                 
                 const cp1x = source.x + dx / 4;
@@ -221,8 +245,7 @@
                  const target = nodeMap.get(d.target)!;
                  const dx = target.x - source.x;
                  const dir = dx > 0 ? -1 : 1;
-                 const arcFactor = 1;
-                 const h = Math.abs(dx) * arcFactor;
+                 const h = Math.abs(dx) * arc;
                  return source.y + h * dir * 0.72; 
              })
              .style("background-color", "rgba(255, 255, 255, 0.8)") 
@@ -257,7 +280,7 @@
 
 <svelte:window onresize={resize} />
 
-<FlagControls flags={uniqueFlags} bind:opacities={flagOpacities} />
+<FlagControls flags={uniqueFlags} bind:settings={flagSettings} />
 
 <div bind:this={container} class="graph-container">
     <svg bind:this={svg} {width} {height} viewBox="0 0 {width} {height}"></svg>

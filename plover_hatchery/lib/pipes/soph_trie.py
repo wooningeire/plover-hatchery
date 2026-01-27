@@ -10,7 +10,7 @@ from plover_hatchery.lib.pipes.Hook import Hook
 from plover_hatchery.lib.pipes.Plugin import GetPluginApi, Plugin, define_plugin
 from plover_hatchery.lib.pipes.floating_keys import floating_keys
 from plover_hatchery.lib.pipes.plugin_utils import iife, join_sophs_to_chords_dicts
-from plover_hatchery.lib.trie import LookupResult, NondeterministicTrie, NodeSrc, Trie, TriePath, JoinedTriePaths, TransitionCostKey, TransitionKey, TransitionFlagManager
+from plover_hatchery.lib.trie import LookupResult, NondeterministicTrie, NodeSrc, Trie, TriePath, JoinedTriePaths, TransitionCostKey, TransitionKey, TransitionFlagManager, TransitionFlag
 from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
 from plover_hatchery.lib.pipes.types import Soph
 
@@ -137,6 +137,8 @@ class SophTrieApi:
     modify_translation = Hook(ModifyTranslation)
 
 
+skip_transition_flag = TransitionFlag("skip")
+
 def soph_trie(
     *,
     map_to_sophs: Callable[[DefViewCursor], Iterable[str]],
@@ -196,7 +198,7 @@ def soph_trie(
                             has_keysymbols = True
 
                             if keysymbol.optional:
-                                new_src_nodes.extend(NodeSrc.increment_costs(old_src_nodes, 5))
+                                new_src_nodes.extend(NodeSrc.add_flags(NodeSrc.increment_costs(old_src_nodes, 5), (skip_transition_flag,)))
 
                         case _:
                             if not has_keysymbols:
@@ -211,6 +213,16 @@ def soph_trie(
 
                     for seq in paths.transition_seqs:
                         api.register_transition(seq.transitions[0], entry_id, old_cursor)
+
+                        for transition in seq.transitions:
+                            # TODO could fix this linear search
+                            if any(
+                                old_src_node.node == transition.src_node_index and skip_transition_flag in old_src_node.outgoing_transition_flags
+                                for old_src_node in old_src_nodes
+                            ):
+                                transition_flags.mappings[TransitionCostKey(transition, entry_id)].append(skip_transition_flag)
+
+
 
                     api.add_soph_transition.emit_with_states(
                         states,
