@@ -69,6 +69,18 @@ def test__build_lookup_hatchery__cluster_elision():
     outlines = lookup.reverse_lookup("information")
     assert ("TPWORPLGS",) in outlines
 
+def test__build_lookup_hatchery__substrings():
+    from ..theory_presets.lapwing import theory
+
+    lookup = theory.build_lookup(entry_lines={
+        "amphithere": "a.a!1 m.m ph.f i.i th.th e.eir!2 r.r e.",
+        "amphitheory": "a.a!1 m.m ph.f i.i th.th eo.ii!2 o.@ r.r y.iy",
+        "amphitheortion": "a.a!1 m.m ph.f i.i th.th e.ii!2 o.@ r.r t.sh io. n.n",
+    }.items())
+
+    assert lookup.lookup(("APL", "TPEU", "THAOER")) == "amphithere"
+    assert lookup.lookup(("APL", "TPEU", "THAOE", "REU")) == "amphitheory"
+    assert lookup.lookup(("APL", "TPEU", "THAOER", "SHOPB")) == "amphitheortion"
 
 def test__build_lookup_hatchery__optional_sounds():
     from ..theory_presets.lapwing import theory

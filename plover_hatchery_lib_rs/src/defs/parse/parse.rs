@@ -428,4 +428,14 @@ mod tests {
     fn keysymbol_groups() {
         is_parsing_reversible("a.a n.ng x.(g z) i.ae!1 e.@ t.t y.iy").unwrap();
     }
+
+    #[test]
+    fn keysymbol_options() {
+        is_parsing_reversible("z.z e.ii|ee!1 t.t a.@").unwrap();
+    }
+
+    #[test]
+    fn keysymbol_group_option() {
+        is_parsing_reversible("'. oeu.(@@r!1 r)|uh v.v r.r e.@1 s.").unwrap();
+    }
 } 
