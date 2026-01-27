@@ -79,5 +79,6 @@ This project also contains a Rust component for performance, so [cargo](https://
 1. Create a virtual environment: `uv venv --python 3.13`
 1. Enter the virtual environment: `./.venv/Scripts/activate`
 1. Install dependencies: `uv pip install .`
-1. Build the Rust component: `uv run local-utils/maturin_dev.py --plover-path "C:/Program Files/Open Steno Project/Plover 5.1.0"`
+1. Build the Rust component and add it to Plover: `uv run local-utils/maturin_dev.py --plover-path "C:/Program Files/Open Steno Project/Plover 5.1.0" --release`
+    1. You may also want to add the Rust component to your virtual environment: `uv pip install ./plover_hatchery_lib_rs`
 1. Add the plugin to Plover: `uv run local-utils/plover_install.py --plover-path "C:/Program Files/Open Steno Project/Plover 5.1.0"`
