@@ -34,8 +34,12 @@ class HatcheryExtension:
             from flask import request
 
             translation = request.args.get("translation")
-            print(store.reverse_lookup(translation))
-            return jsonify({"translation": translation})
+
+            breakdown = store.breakdown(translation)
+            if breakdown is None:
+                return jsonify({})
+
+            return breakdown
 
         @app.route("/trie")
         def trie_route():

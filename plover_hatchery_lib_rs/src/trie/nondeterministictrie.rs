@@ -1,8 +1,13 @@
-enum TransitionKey {
+use pyo3::prelude::*;
+
+#[derive(Clone, Debug)]
+pub enum TransitionKey {
     Empty,
     String(String),
 }
 
-struct NondeterministicTrie {
+#[pyclass]
+#[derive(Clone, Debug)]
+pub struct NondeterministicTrie {
     
 }

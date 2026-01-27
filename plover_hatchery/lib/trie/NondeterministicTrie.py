@@ -449,17 +449,26 @@ class NondeterministicTrie(Generic[_KeyVar]):
         )
         return cost_key in self.__transition_costs
 
-    def build_reverse_lookup(self):
+    def __reversed_nodes(self):
         reverse_nodes: dict[int, dict[_KeyId, list[tuple[int, int]]]] = defaultdict(lambda: defaultdict(list))
         for src_node_id, transitions in enumerate(self.__transitions):
             for key_id, dst_node_ids in transitions.items():
                 for i, dst_node_id in enumerate(dst_node_ids):
                     reverse_nodes[dst_node_id][key_id].append((src_node_id, i))
 
+        return reverse_nodes
+
+    def __reversed_translations(self):
         reverse_translations: dict[int, list[int]] = defaultdict(list)
         for node, translation_ids in self.__node_translations.items():
             for translation_id in translation_ids:
                 reverse_translations[translation_id].append(node)
+
+        return reverse_translations
+
+    def build_reverse_lookup(self):
+        reverse_nodes = self.__reversed_nodes()
+        reverse_translations = self.__reversed_translations()
 
 
         def dfs(
@@ -499,6 +508,66 @@ class NondeterministicTrie(Generic[_KeyVar]):
                     yield LookupResult(translation_id, cost, tuple(reversed(transitions_reversed)))
         
         return get_sequences
+
+    def build_subtrie_builder(self):
+        reverse_nodes = self.__reversed_nodes()
+        reverse_translations = self.__reversed_translations()
+
+
+        visited_nodes = set[int]()
+        nodes_toposort: list[int] = []
+        visited_transitions: list[tuple[int, int, int | None]] = []
+
+        def dfs(node: int, translation_id: int):
+            if node in visited_nodes: return
+
+            visited_nodes.add(node)
+
+            for key_id, src_nodes in reverse_nodes[node].items():
+                for src_node_id, transition_index in src_nodes:
+                    if src_node_id in visited_nodes: continue
+
+                    if not self.__transition_has_cost_for_translation(src_node_id, key_id, transition_index, translation_id):
+                        continue
+
+                    dfs(src_node_id, translation_id)
+
+                    visited_transitions.append((src_node_id, node, key_id))
+
+            # add at end to obtain a topological sort
+            nodes_toposort.append(node)
+
+
+        def build_subtrie(translation_id: int):
+            """Constructs a nondeterministic trie consisting of only the nodes and transitions that may lead to the given translation_id."""
+
+            import json
+
+            if translation_id not in reverse_translations: return None
+            
+            for node in reverse_translations[translation_id]:
+                dfs(node, translation_id)
+
+            result = json.dumps({
+                "nodes": nodes_toposort,
+                "transitions": [
+                    {
+                        "src_node_id": src_node_id,
+                        "dst_node_id": dst_node_id,
+                        "key": self.get_key_str(key_id),
+                    }
+                    for src_node_id, dst_node_id, key_id in visited_transitions
+                ],
+            })
+
+            visited_nodes.clear()
+            nodes_toposort.clear()
+            visited_transitions.clear()
+
+            return result
+                    
+        
+        return build_subtrie
 
 
     def get_transition_cost(self, transition: TransitionKey, translation_id: int):

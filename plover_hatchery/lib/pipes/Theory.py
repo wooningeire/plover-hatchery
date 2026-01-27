@@ -9,8 +9,9 @@ from ..sopheme import Sopheme
 @final
 @dataclass(frozen=True)
 class TheoryLookup:
-    lookup: "Callable[[tuple[str, ...]], str | None]"
-    reverse_lookup: "Callable[[str], list[tuple[str, ...]]]"
+    lookup: Callable[[tuple[str, ...]], str | None]
+    reverse_lookup: Callable[[str], list[tuple[str, ...]]]
+    breakdown: Callable[[str], str | None]
 
 
 @final

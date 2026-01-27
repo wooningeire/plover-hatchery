@@ -1,3 +1,4 @@
+from codecs import lookup
 from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any, Callable, Iterable, NamedTuple, Protocol, final
@@ -556,8 +557,22 @@ def soph_trie(
 
         ### Reverse lookup ##############################################################
 
+        subtrie_builders: dict[int, Callable[[int], str | None]] = {}
 
-        # reverse_lookups: dict[int, Callable[[EntryIndex], Iterable[LookupResult[EntryIndex]]]] = {}
+        @base_hooks.breakdown.listen(soph_trie)
+        def _(translation: str, reverse_translations: dict[str, list[int]], **_):
+            if id(trie) in subtrie_builders:
+                subtrie_builder = subtrie_builders[id(trie)]
+            else:
+                subtrie_builder = trie.build_subtrie_builder()
+                subtrie_builders[id(trie)] = subtrie_builder
+
+            for entry_id in reverse_translations[translation]:
+                return subtrie_builder(entry_id)
+
+            return ""
+
+        # reverse_lookups: dict[int, Callable[[int], Iterable[LookupResult[int]]]] = {}
 
 
         # @base_hooks.reverse_lookup.listen(soph_trie)

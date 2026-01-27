@@ -30,6 +30,8 @@ class TheoryHooks:
         def __call__(self, *, stroke_stenos: tuple[str, ...], translations: list[str]) -> str | None: ...
     class ReverseLookup(Protocol):
         def __call__(self, *, translation: str, reverse_translations: dict[str, list[int]]) -> Iterable[tuple[str, ...]]: ...
+    class Breakdown(Protocol):
+        def __call__(self, *, translation: str, reverse_translations: dict[str, list[int]]) -> str | None: ...
     
 
     begin_build_lookup = Hook(BeginBuildLookup)
@@ -38,6 +40,7 @@ class TheoryHooks:
     add_entry = Hook(AddEntry)
     lookup = Hook(Lookup)
     reverse_lookup = Hook(ReverseLookup)
+    breakdown = Hook(Breakdown)
 
 
 def compile_theory(
@@ -180,7 +183,10 @@ def compile_theory(
         def true_reverse_lookup(translation: str):
             return reverse_lookup(states, translation, reverse_translations)
 
-        return TheoryLookup(true_lookup, true_reverse_lookup)
+        def true_breakdown(translation: str):
+            return breakdown(states, translation, reverse_translations)
+
+        return TheoryLookup(true_lookup, true_reverse_lookup, true_breakdown)
         
 
     def process_def(view: DefView):
@@ -212,6 +218,15 @@ def compile_theory(
             results.extend(handler(translation=translation, reverse_translations=reverse_translations))
         
         return results
+
+
+    def breakdown(states: dict[int, Any], translation: str, reverse_translations: dict[str, list[int]]) -> str | None:
+        for plugin_id, handler in hooks.breakdown.ids_handlers():
+            result = handler(translation=translation, reverse_translations=reverse_translations)
+            if result is not None:
+                return result
+        
+        return None
 
 
     return Theory(
