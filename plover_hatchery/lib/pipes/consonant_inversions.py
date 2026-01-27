@@ -45,13 +45,8 @@ def consonant_inversions(*, consonant_sophs_str: str, inversion_domains_steno: s
             return ConsonantInversionsAddEntryState()
 
 
-        def create_inversion_soph(sophs: "tuple[Soph | None, ...]"):
-            non_null_sophs = (
-                soph
-                for soph in sophs
-                if soph is not None
-            )
-            sorted_sophs = sorted(non_null_sophs, key=lambda soph: soph.value)
+        def create_inversion_soph(sophs: "tuple[Soph, ...]"):
+            sorted_sophs = sorted(sophs, key=lambda soph: soph.value)
             return Soph(f"inversion:{' '.join(soph.value for soph in sorted_sophs)}")
 
         def get_inversion_sophs(past_consonants: list[PastConsonant]):
@@ -65,7 +60,14 @@ def consonant_inversions(*, consonant_sophs_str: str, inversion_domains_steno: s
                         yield consonant.sophs
 
             for combo in itertools.product(*get_product_choices()):
-                yield create_inversion_soph(combo)
+                non_null_sophs = tuple(
+                    soph
+                    for soph in combo
+                    if soph is not None
+                )
+                if len(non_null_sophs) <= 1: continue
+
+                yield create_inversion_soph(non_null_sophs)
 
 
         @soph_trie_api.add_soph_transition.listen(consonant_inversions)
@@ -111,25 +113,6 @@ def consonant_inversions(*, consonant_sophs_str: str, inversion_domains_steno: s
                             soph_trie_api.transition_flags.mappings[TransitionCostKey(transition, entry_id)].append(consonant_inversions_transition_flag)
 
 
-            #     for consonant in state.past_consonants:
-            #         new_paths = trie.join(consonant.node_srcs, sophs, entry_id)
-                    
-            #         for seq in new_paths.transition_seqs:
-            #             soph_trie_api.register_transition(seq.transitions[0], entry_id, phoneme)
-
-            #         if new_paths.dst_node_id is None: continue
-
-                    
-            #         loop_paths = trie.link_join((NodeSrc(new_paths.dst_node_id),), paths.dst_node_id, consonant.sophs, entry_id)
-            #         return_paths = trie.link_join((NodeSrc(new_paths.dst_node_id),), new_paths.dst_node_id, consonant.sophs, entry_id)
-                    
-            #         for seq in loop_paths.transition_seqs:
-            #             soph_trie_api.register_transition(seq.transitions[0], entry_id, consonant.phoneme)
-                    
-            #         for seq in return_paths.transition_seqs:
-            #             soph_trie_api.register_transition(seq.transitions[0], entry_id, consonant.phoneme)
-
-
 
 
         def get_inversion_domain_of_stroke(stroke: Stroke):
@@ -139,39 +122,6 @@ def consonant_inversions(*, consonant_sophs_str: str, inversion_domains_steno: s
                 return None
 
             return domains[0]
-
-
-        # @dataclass(frozen=True)
-        # class DomainSophs:
-        #     sophs: tuple[Soph, ...]
-        #     chord_starting_key_index: int
-        #     required_floaters: Stroke
-
-
-        # def get_sophs_in_current_inversion_domain(path: SophsToTranslationSearchPath, consumed_keys: tuple[str, ...], stroke_starter_key_indices: set[int]):
-        #     newest_chord = Stroke.from_keys(consumed_keys[path.sophs_and_chords_used[-1].chord_start_key_index:])
-        #     current_domain = get_inversion_domain_of_stroke(newest_chord)
-        #     print(current_domain)
-        #     if current_domain is None: return None # Chord crosses domains or is not supposed to be inverted
-
-
-        #     # Read backward to get all the sophs in this inversion domain
-        #     prev_chord_start_key_index = path.sophs_and_chords_used[-1].chord_start_key_index
-        #     sophs: list[Soph] = list(reversed(path.sophs_and_chords_used[-1].sophs))
-        #     for i in range(len(path.sophs_and_chords_used) - 2, -1, -1):
-        #         association = path.sophs_and_chords_used[i]
-        #         chord = Stroke.from_keys(consumed_keys[association.chord_start_key_index:prev_chord_start_key_index])
-        #         domain = get_inversion_domain_of_stroke(chord)
-        #         print("\t", chord, domain)
-        #         if domain is None or domain != current_domain: break # We're done
-
-        #         sophs.extend(reversed(association.sophs))
-        #         prev_chord_start_key_index = association.chord_start_key_index
-
-        #         if domain in stroke_starter_key_indices: break
-
-
-        #     return DomainSophs(tuple(reversed(sophs)), prev_chord_start_key_index, required_floaters)
 
 
         @dataclass
@@ -235,111 +185,6 @@ def consonant_inversions(*, consonant_sophs_str: str, inversion_domains_steno: s
                         ),
                         results_chain[0].chord_start_key_index,
                     )
-
-
-
-
-        # class Filterer:
-        #     def __init__(self):
-        #         self.__current_domain: Stroke | None = None
-        #         self.__current_domain_phonemes: list[SophemeSeqPhoneme] = []
-
-        #         self.__next_phoneme_to_validate: SophemeSeqPhoneme | None = None
-
-        #     def reset(self):
-        #         self.__current_domain = None
-        #         self.__current_domain_phonemes = []
-
-
-        #     def validate_consecutivity(self):
-        #         """
-        #         Ensure that all the consonants seen in the current bank occur consecutively when sorted and continue
-        #         immediately from the last validated phoneme
-        #         """
-
-        #         if len(self.__current_domain_phonemes) == 0:
-        #             return True
-
-        #         if self.__current_domain is not None:
-        #             phonemes_order_to_check = sorted(self.__current_domain_phonemes, key=lambda phoneme: phoneme.indices)
-        #         else:
-        #             phonemes_order_to_check = self.__current_domain_phonemes
-
-
-        #         if self.__next_phoneme_to_validate is not None:
-        #             current_phoneme = self.__next_phoneme_to_validate
-        #         else:
-        #             current_phoneme = phonemes_order_to_check[0].seq.first_phoneme()
-
-        #         if current_phoneme is None:
-        #             return True
-
-
-
-        #         looking_for_phoneme_index = 0
-        #         while looking_for_phoneme_index < len(phonemes_order_to_check):
-        #             if current_phoneme is None:
-        #                 return False
-
-        #             if current_phoneme == phonemes_order_to_check[looking_for_phoneme_index]:
-        #                 looking_for_phoneme_index += 1
-        #                 current_phoneme = current_phoneme.next()
-        #                 continue
-
-        #             if current_phoneme.keysymbol.optional:
-        #                 current_phoneme = current_phoneme.next()
-        #                 continue
-
-        #             return False
-
-
-        #         self.__next_phoneme_to_validate = current_phoneme
-        #         return True
-
-
-        #     def check_association(self, association: SophChordAssociation):
-        #         if association.chord_starts_new_stroke:
-        #             is_valid = self.validate_and_start_new_bank()
-        #             if not is_valid:
-        #                 return False
-
-        #         new_domain = get_inversion_domain_of_stroke(association.chord)
-        #         if new_domain is None or self.__current_domain is None or new_domain != self.__current_domain:
-        #             is_valid = self.validate_and_start_new_bank()
-        #             if not is_valid:
-        #                 return False
-
-        #         self.__current_domain_phonemes.extend(association.phonemes)                
-        #         self.__current_domain = new_domain
-
-        #         return True
-
-
-        #     def validate_and_start_new_bank(self):
-        #         if not self.validate_consecutivity():
-        #             return False
-                    
-        #         self.reset()
-        #         return True
-
-
-
-        #     def final_validate(self):
-        #         if not self.validate_consecutivity():
-        #             return False
-                
-        #         return self.__next_phoneme_to_validate is None
-
-
-        # @soph_trie_api.validate_lookup_result.listen(consonant_inversions)
-        # def _(result: LookupResultWithAssociations, trie: NondeterministicTrie[Soph, EntryIndex], **_):
-        #     filtering_state = Filterer()
-
-        #     for association in result.sophs_and_chords_used:
-        #         if not filtering_state.check_association(association):
-        #             return False
-
-        #     return filtering_state.final_validate()
 
         return None
 

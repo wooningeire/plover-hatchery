@@ -46,6 +46,9 @@ class TheoryHooks:
 def compile_theory(
     plugin_generator: Callable[[], Generator[Plugin[Any], Any, None]],
 ):
+    from plover_hatchery.Store import store
+
+
     hooks = TheoryHooks()
 
     plugins_map: dict[int, Any] = {}
@@ -76,10 +79,14 @@ def compile_theory(
         pass
 
 
+
+
+    translations: list[str] = []
+    reverse_translations: dict[str, list[int]] = defaultdict(lambda: [])
+
+    store.translations = translations
+
     def build_lookup(entry_lines: Iterable[tuple[str, str]], filename: str=""):
-        from plover_hatchery.Store import store
-
-
         states: dict[int, Any] = {}
         for plugin_id, handler in hooks.begin_build_lookup.ids_handlers():
             states[plugin_id] = handler()
@@ -89,13 +96,6 @@ def compile_theory(
         n_addable_entries = 0
         n_passed_parses = 0
         n_passed_additions = 0
-
-        translations: list[str] = []
-        reverse_translations: dict[str, list[int]] = defaultdict(lambda: [])
-
-        store.translations = translations
-
-
 
         defs = DefDict()
 
@@ -164,7 +164,7 @@ def compile_theory(
                     n_passed_additions += 1
                 except Exception as e:
                     import traceback
-                    print(f"failed to add {varname}: {e} ({''.join(traceback.format_tb(e.__traceback__))})")
+                    # print(f"failed to add {varname}: {e} ({''.join(traceback.format_tb(e.__traceback__))})")
                     pass
 
 

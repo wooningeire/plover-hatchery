@@ -148,7 +148,7 @@
             // Link is dashed if any visible key is dashed. Use max dash length.
             const isDashed = visibleKeyData.some(k => k.dashed);
             const dashLength = isDashed ? Math.max(...visibleKeyData.filter(k => k.dashed).map(k => k.dashLength)) : 0;
-            const dashArray = isDashed ? `${dashLength},${dashLength}` : null;
+            const dashArray = isDashed ? `${dashLength},${dashLength * 0.5}` : null;
 
             return {
                 source: t.src_node_id,
@@ -265,7 +265,7 @@
             .attr("fill", (d: NodeData) => d.color)
             .attr("stroke", (d: NodeData) => d.color)
             .attr("stroke-opacity", 0.5)
-            .attr("stroke-width", 8);
+            .attr("stroke-width", 12);
             
          // Node labels (ID)
          nodeGroups.append("text")
