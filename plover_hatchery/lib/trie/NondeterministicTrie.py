@@ -385,6 +385,26 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
                         lines.append(f"""      translation {self.__translations_list[value_id]} (cost {cost})""")
 
         return "\n".join(lines)
+
+    def to_json(self):
+        return {
+            "transitions": self.__transitions,
+            "translations": self.__translations_list,
+            "keys": self.__keys_list,
+            "node_translations": self.__node_translations,
+            "transition_costs": [
+                {
+                    "transition": {
+                        "src_node_index": cost_key.transition.src_node_index,
+                        "transition_index": cost_key.transition.transition_index,
+                        "key_id": cost_key.transition.key_id,
+                    },
+                    "translation_id": cost_key.translation_id,
+                    "cost": cost,
+                }
+                for cost_key, cost in self.__transition_costs.items()
+            ],
+        }
     
 #     def optimized(self: "NondeterministicTrie[str, int]"):
 #         new_trie: NondeterministicTrie[str, int] = NondeterministicTrie()

@@ -4,6 +4,8 @@ from plover.steno import Stroke
 from plover.steno_dictionary import StenoDictionary
 import plover.log
 
+from .Store import store
+
 class HatcheryDictionary(StenoDictionary):
     readonly = True
 
@@ -28,6 +30,8 @@ class HatcheryDictionary(StenoDictionary):
 
         self.__maybe_lookup = lookup.lookup
         self.__maybe_reverse_lookup = lookup.reverse_lookup
+
+        store.reverse_lookup = lookup.reverse_lookup
             
 
     def __getitem__(self, stroke_stenos: tuple[str, ...]) -> str:

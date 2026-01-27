@@ -5,17 +5,21 @@ from flask.typing import ResponseClass
 from werkzeug.serving import make_server
 from plover.engine import StenoEngine
 
+from .Store import store
+
 
 allowed_origins = re.compile(r"https?://localhost:\d+|https://vaie\.art")
 
 class HatcheryExtension:
     def __init__(self, engine: StenoEngine):
-        self.__app = Flask(__name__)
+        app = Flask(__name__)
+
+        self.__app = app
         self.__server = None
         self.__server_thread = None
 
         # Disable CORS
-        @self.__app.after_request
+        @app.after_request
         def _(response: ResponseClass):
             origin = request.origin
             
@@ -25,11 +29,19 @@ class HatcheryExtension:
             response.headers.add("Access-Control-Allow-Methods", "GET,PATCH,PUT,POST,DELETE,OPTIONS")
             return response
         
-        @self.__app.route("/")
-        def _():
+        @app.route("/")
+        def index_route():
             from flask import request
+
             translation = request.args.get("translation")
+            print(store.reverse_lookup(translation))
             return jsonify({"translation": translation})
+
+        @app.route("/trie")
+        def trie_route():
+            from flask import request
+
+            return jsonify(store.trie.to_json())
         
     def start(self):
         """Start the web server in a background thread"""

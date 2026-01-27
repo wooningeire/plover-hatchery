@@ -145,11 +145,15 @@ def soph_trie(
 
     @define_plugin(soph_trie)
     def plugin(get_plugin_api: GetPluginApi, base_hooks: TheoryHooks, **_):
+        from plover_hatchery.Store import store
+
         floating_keys_api = get_plugin_api(floating_keys)
 
 
         trie: NondeterministicTrie[Soph, EntryIndex] = NondeterministicTrie()
         transition_phonemes: dict[TransitionCostKey, DefViewCursor] = {}
+
+        store.trie = trie
 
         api = SophTrieApi(trie, transition_phonemes)
 
