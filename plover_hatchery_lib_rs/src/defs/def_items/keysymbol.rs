@@ -12,7 +12,7 @@ use crate::defs::def_items::keysymbol;
 
 
 #[pyclass]
-#[derive(Clone, Debug, Hash)]
+#[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub struct Keysymbol {
     symbol: String,
     base_symbol: String,
@@ -81,6 +81,10 @@ impl Keysymbol {
         let mut hasher = DefaultHasher::new();
         self.hash(&mut hasher);
         hasher.finish()
+    }
+
+    pub fn __eq__(&self, other: &Keysymbol) -> bool {
+        self == other
     }
 
     #[getter]

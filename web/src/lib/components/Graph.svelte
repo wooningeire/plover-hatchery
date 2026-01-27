@@ -165,9 +165,6 @@
                  return source.y + h * dir * 0.72; 
              })
              .style("background-color", "rgba(255, 255, 255, 0.8)") // SVG doesn't support generic bg color on text elements
-             .each(function() {
-                 // Optional: Add a white rect background if needed for readability
-             })
             .text((d: LinkData) => d.keys);
 
 

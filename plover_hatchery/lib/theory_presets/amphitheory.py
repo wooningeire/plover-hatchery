@@ -326,9 +326,6 @@ def theory():
             for key, keysymbols_str in mappings.items()
         }
 
-        print(chords)
-
-
         def generate(cursor: DefViewCursor):
             new_keysymbols = set[Keysymbol]()
 
