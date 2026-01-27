@@ -12,7 +12,7 @@
     interface LinkData {
         source: number;
         target: number;
-        keys: string;
+        keys: string[];
         id: string;
     }
 
@@ -21,7 +21,10 @@
         transitions: {
             src_node_id: number;
             dst_node_id: number;
-            keys: string[];
+            keys_costs: {
+                key: string;
+                cost: number;
+            }[];
         }[];
     }
 
@@ -64,10 +67,10 @@
         
         const nodeMap = new Map<number, NodeData>(nodes.map(n => [n.id, n]));
 
-        const links: LinkData[] = data.transitions.map((t: {src_node_id: number, dst_node_id: number, keys: string[]}, i) => ({
+        const links: LinkData[] = data.transitions.map((t: GraphData['transitions'][number], i) => ({
             source: t.src_node_id,
             target: t.dst_node_id,
-            keys: t.keys.join(", "),
+            keys: t.keys_costs.map(k => `${k.key} (${k.cost})`).join(", "),
             id: `link-${i}`
         }));
 
