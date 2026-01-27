@@ -1,6 +1,7 @@
 <script lang="ts">
-    import { onMount, onDestroy } from 'svelte';
+    import { onMount, untrack } from 'svelte';
     import * as d3 from 'd3';
+    import FlagControls from '$lib/components/FlagControls.svelte';
 
     interface NodeData {
         id: number;
@@ -14,6 +15,7 @@
         target: number;
         keys: string[];
         id: string;
+        opacity: number;
     }
 
     interface GraphData {
@@ -24,6 +26,7 @@
             keys_costs: {
                 key: string;
                 cost: number;
+                flags?: string[];
             }[];
         }[];
     }
@@ -47,6 +50,35 @@
     // Color scale
     const colorScale = d3.scaleOrdinal(d3.schemeTableau10);
 
+    // Flag controls state
+    let flagOpacities = $state<Record<string, number>>({});
+    let uniqueFlags = $state<string[]>([]);
+
+    $effect(() => {
+        if (!data || !data.transitions) return;
+        
+        const flags = new Set<string>();
+        data.transitions.forEach(t => {
+            t.keys_costs.forEach(kc => {
+                if (kc.flags) {
+                    kc.flags.forEach(f => flags.add(f));
+                }
+            });
+        });
+        
+        const newFlags = Array.from(flags).sort();
+        
+        untrack(() => {
+            newFlags.forEach(f => {
+                if (flagOpacities[f] === undefined) {
+                    flagOpacities[f] = 1.0;
+                }
+            });
+        });
+        
+        uniqueFlags = newFlags;
+    });
+
     $effect(() => {
         if (!data || !data.nodes || !data.transitions || !svg) return;
 
@@ -67,12 +99,30 @@
         
         const nodeMap = new Map<number, NodeData>(nodes.map(n => [n.id, n]));
 
-        const links: LinkData[] = data.transitions.map((t: GraphData['transitions'][number], i) => ({
-            source: t.src_node_id,
-            target: t.dst_node_id,
-            keys: t.keys_costs.map(k => `${k.key} (${k.cost})`).join(", "),
-            id: `link-${i}`
-        }));
+        const links: LinkData[] = data.transitions.map((t: GraphData['transitions'][number], i) => {
+            // Calculate opacity for each key and filter out invisible ones
+            const visibleKeyData = t.keys_costs.map(kc => {
+                let keyOpacity = 1.0;
+                if (kc.flags && kc.flags.length > 0) {
+                    // Use minimum opacity of associated flags
+                    keyOpacity = Math.min(...kc.flags.map(f => flagOpacities[f] ?? 1.0));
+                }
+                return { key: kc.key, cost: kc.cost, opacity: keyOpacity };
+            }).filter(k => k.opacity > 0);
+
+            if (visibleKeyData.length === 0) return null;
+
+            // Link opacity is the maximum of its visible keys
+            const linkOpacity = Math.max(...visibleKeyData.map(k => k.opacity));
+
+            return {
+                source: t.src_node_id,
+                target: t.dst_node_id,
+                keys: visibleKeyData.map(k => `${k.key} (${k.cost})`),
+                id: `link-${i}`,
+                opacity: linkOpacity
+            };
+        }).filter(l => l !== null) as LinkData[];
 
         const svgEl = d3.select(svg);
         
@@ -85,15 +135,14 @@
         svgEl.call(zoom);
         
         const g = svgEl.append("g");
-        
-        const defs = g.append("defs");
-            
+        const defsInG = g.append("defs"); // Original code did this
+
         // Gradients for links
         links.forEach(link => {
             const source = nodeMap.get(link.source)!;
             const target = nodeMap.get(link.target)!;
             
-            const gradient = defs.append("linearGradient")
+            const gradient = defsInG.append("linearGradient")
                 .attr("id", link.id)
                 .attr("gradientUnits", "userSpaceOnUse")
                 .attr("x1", source.x)
@@ -110,15 +159,28 @@
                 .attr("stop-color", target.color);
         });
 
+        // Marker
+        defsInG.append("marker")
+            .attr("id", "arrowhead")
+            .attr("viewBox", "0 -5 10 10")
+            .attr("refX", nodeRadius + 10) // Adjustment for node radius + some spacing
+            .attr("refY", 0)
+            .attr("markerWidth", 6)
+            .attr("markerHeight", 6)
+            .attr("orient", "auto")
+            .append("path")
+            .attr("d", "M0,-5L10,0L0,5")
+            .attr("fill", "#999");
+
         // Links
         // Using curved lines (Bezier) with arc depending on direction
-        g.append("g")
+        const path = g.append("g")
             .selectAll("path")
             .data(links)
             .join("path")
             .attr("fill", "none")
-            .attr("stroke", d => `url(#${d.id})`)
-            .attr("stroke-opacity", 0.5)
+            .attr("stroke", (d: LinkData) => `url(#${d.id})`)
+            .attr("stroke-opacity", (d: LinkData) => d.opacity * 0.6)
             .attr("stroke-width", 4)
             .attr("marker-end", "url(#arrowhead)")
              .attr("d", (d: LinkData) => {
@@ -126,10 +188,7 @@
                 const target = nodeMap.get(d.target)!;
                 
                 const dx = target.x - source.x;
-                // Arc height proportional to distance
-                // If forward (dx > 0), arc up (negative Y offset)
-                // If backward (dx < 0), arc down (positive Y offset)
-                const arcFactor = 1; // Adjust for curvature
+                const arcFactor = 1; 
                 const h = Math.abs(dx) * arcFactor;
                 const dir = dx > 0 ? -1 : 1;
                 
@@ -150,6 +209,7 @@
             .attr("font-family", "Atkinson Hyperlegible Next")
             .attr("font-size", 16)
             .attr("fill", "#333")
+            .attr("font-weight", "normal")
             .attr("text-anchor", "middle")
              .attr("x", (d: LinkData) => {
                  const source = nodeMap.get(d.source)!;
@@ -161,14 +221,13 @@
                  const target = nodeMap.get(d.target)!;
                  const dx = target.x - source.x;
                  const dir = dx > 0 ? -1 : 1;
-                 // Position label at the peak of the arc
-                 // approximate peak Y
                  const arcFactor = 1;
                  const h = Math.abs(dx) * arcFactor;
                  return source.y + h * dir * 0.72; 
              })
-             .style("background-color", "rgba(255, 255, 255, 0.8)") // SVG doesn't support generic bg color on text elements
-            .text((d: LinkData) => d.keys);
+             .style("background-color", "rgba(255, 255, 255, 0.8)") 
+             .style("opacity", (d: LinkData) => d.opacity)
+            .text((d: LinkData) => d.keys.join(", "));
 
 
         // Nodes
@@ -180,14 +239,25 @@
 
         nodeGroups.append("circle")
             .attr("r", nodeRadius)
-            .attr("fill", d => d.color)
-            .attr("stroke", d => d.color)
+            .attr("fill", (d: NodeData) => d.color)
+            .attr("stroke", (d: NodeData) => d.color)
             .attr("stroke-opacity", 0.5)
             .attr("stroke-width", 8);
+            
+         // Node labels (ID)
+         nodeGroups.append("text")
+            .attr("dy", 5)
+            .attr("text-anchor", "middle")
+            .attr("fill", "white")
+            .attr("font-family", "sans-serif")
+            .attr("font-weight", "bold")
+            .text((d: NodeData) => d.id);
     });
 </script>
 
 <svelte:window onresize={resize} />
+
+<FlagControls flags={uniqueFlags} bind:opacities={flagOpacities} />
 
 <div bind:this={container} class="graph-container">
     <svg bind:this={svg} {width} {height} viewBox="0 0 {width} {height}"></svg>
