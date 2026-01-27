@@ -51,8 +51,8 @@
         d3.select(svg).selectAll("*").remove();
 
         // Calculate positions: Linear layout based on array order
-        const nodeRadius = 20;
-		const nodeSpacing = 100;
+        const nodeRadius = 25;
+		const nodeSpacing = 120;
         const margin = { top: height / 2, left: 50 }; // Center vertically
 
         const nodes: NodeData[] = data.nodes.map((id: number, index: number) => ({ 
@@ -84,19 +84,6 @@
         const g = svgEl.append("g");
         
         const defs = g.append("defs");
-
-        // Arrow marker (keep generic for now)
-        defs.append("marker")
-            .attr("id", "arrowhead")
-            .attr("viewBox", "0 -5 10 10")
-            .attr("refX", nodeRadius + 5) // node radius + padding
-            .attr("refY", 0)
-            .attr("markerWidth", 6)
-            .attr("markerHeight", 6)
-            .attr("orient", "auto")
-            .append("path")
-            .attr("d", "M0,-5L10,0L0,5")
-            .attr("fill", "#555");
             
         // Gradients for links
         links.forEach(link => {
@@ -129,7 +116,7 @@
             .attr("fill", "none")
             .attr("stroke", d => `url(#${d.id})`)
             .attr("stroke-opacity", 0.5)
-            .attr("stroke-width", 2)
+            .attr("stroke-width", 4)
             .attr("marker-end", "url(#arrowhead)")
              .attr("d", (d: LinkData) => {
                 const source = nodeMap.get(d.source)!;
@@ -139,14 +126,14 @@
                 // Arc height proportional to distance
                 // If forward (dx > 0), arc up (negative Y offset)
                 // If backward (dx < 0), arc down (positive Y offset)
-                const arcFactor = 1.25; // Adjust for curvature
+                const arcFactor = 1; // Adjust for curvature
                 const h = Math.abs(dx) * arcFactor;
                 const dir = dx > 0 ? -1 : 1;
                 
                 const cp1x = source.x + dx / 4;
-                const cp1y = source.y;
+                const cp1y = source.y + h * dir;
                 
-                const cp2x = target.x;
+                const cp2x = target.x - dx / 4;
                 const cp2y = target.y + h * dir;
                 
                 return `M${source.x},${source.y} C${cp1x},${cp1y} ${cp2x},${cp2y} ${target.x},${target.y}`;
@@ -157,14 +144,14 @@
             .selectAll("text")
             .data(links)
             .join("text")
-            .attr("font-family", "sans-serif")
-            .attr("font-size", 10)
+            .attr("font-family", "Atkinson Hyperlegible Next")
+            .attr("font-size", 16)
             .attr("fill", "#333")
             .attr("text-anchor", "middle")
              .attr("x", (d: LinkData) => {
                  const source = nodeMap.get(d.source)!;
                  const target = nodeMap.get(d.target)!;
-                 return source.x * 1/4 + target.x * 3/4 ;
+                 return (source.x + target.x) / 2;
              })
              .attr("y", (d: LinkData) => {
                  const source = nodeMap.get(d.source)!;
@@ -175,7 +162,7 @@
                  // approximate peak Y
                  const arcFactor = 1;
                  const h = Math.abs(dx) * arcFactor;
-                 return source.y + (h * dir * 0.5); 
+                 return source.y + h * dir * 0.72; 
              })
              .style("background-color", "rgba(255, 255, 255, 0.8)") // SVG doesn't support generic bg color on text elements
              .each(function() {
@@ -197,16 +184,6 @@
             .attr("stroke", d => d.color)
             .attr("stroke-opacity", 0.5)
             .attr("stroke-width", 8);
-
-        nodeGroups.append("text")
-            .attr("dy", "0.35em")
-            .attr("text-anchor", "middle")
-            .attr("fill", "white") // White text on colored background usually works better
-            .attr("font-family", "sans-serif")
-            .attr("font-size", 14)
-            .attr("font-weight", "bold")
-            .style("pointer-events", "none") // Let clicks pass through to circle if needed
-            .text((d: NodeData) => d.id.toString());
     });
 </script>
 
