@@ -516,7 +516,7 @@ class NondeterministicTrie(Generic[_KeyVar]):
 
         visited_nodes = set[int]()
         nodes_toposort: list[int] = []
-        visited_transitions: list[tuple[int, int, int | None]] = []
+        visited_transitions = defaultdict[tuple[int, int], set[int | None]](set)
 
         def dfs(node: int, translation_id: int):
             if node in visited_nodes: return
@@ -525,14 +525,13 @@ class NondeterministicTrie(Generic[_KeyVar]):
 
             for key_id, src_nodes in reverse_nodes[node].items():
                 for src_node_id, transition_index in src_nodes:
-                    if src_node_id in visited_nodes: continue
-
                     if not self.__transition_has_cost_for_translation(src_node_id, key_id, transition_index, translation_id):
                         continue
 
                     dfs(src_node_id, translation_id)
 
-                    visited_transitions.append((src_node_id, node, key_id))
+                    visited_transitions[(src_node_id, node)].add(key_id)
+
 
             # add at end to obtain a topological sort
             nodes_toposort.append(node)
@@ -554,9 +553,9 @@ class NondeterministicTrie(Generic[_KeyVar]):
                     {
                         "src_node_id": src_node_id,
                         "dst_node_id": dst_node_id,
-                        "key": self.get_key_str(key_id),
+                        "keys": [self.get_key_str(key_id) for key_id in key_ids],
                     }
-                    for src_node_id, dst_node_id, key_id in visited_transitions
+                    for (src_node_id, dst_node_id), key_ids in visited_transitions.items()
                 ],
             })
 

@@ -1,5 +1,6 @@
 <script lang="ts">
 import { onMount } from "svelte";
+import Graph from "$lib/components/Graph.svelte";
 
 let {
     data,
@@ -14,7 +15,7 @@ onMount(async () => {
 </script>
 
 {#if breakdownData !== null}
-    <pre>{JSON.stringify(breakdownData, null, 2)}</pre>
+    <Graph data={breakdownData} />
 {:else}
     <p>Loading...</p>
 {/if}
