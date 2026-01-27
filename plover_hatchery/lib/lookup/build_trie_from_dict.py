@@ -12,7 +12,7 @@ from ..pipes import Theory
 
 
 def build_lookup_json(mappings: dict[str, str]):
-    trie: NondeterministicTrie[str, int] = NondeterministicTrie()
+    trie: NondeterministicTrie[str] = NondeterministicTrie()
 
     # for outline_steno, translation in mappings.items():
     #     phonemes = get_outline_phonemes(Stroke.from_steno(steno) for steno in outline_steno.split("/"))

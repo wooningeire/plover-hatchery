@@ -6,8 +6,6 @@ from plover.steno import Stroke
 
 from plover_hatchery.lib.pipes.Plugin import GetPluginApi, Plugin, define_plugin
 from plover_hatchery.lib.pipes.soph_trie import LookupResultWithAssociations, soph_trie
-from plover_hatchery.lib.pipes.types import EntryIndex
-from plover_hatchery.lib.trie import LookupResult
 
 
 def conflict_cycler_stroke(steno: str) -> Plugin[None]:
@@ -52,7 +50,7 @@ def conflict_cycler_stroke(steno: str) -> Plugin[None]:
             translations: list[str],
             **_,
         ):
-            return translations[choices[state.conflict_index % len(choices)].lookup_result.translation.value]
+            return translations[choices[state.conflict_index % len(choices)].lookup_result.translation_id]
 
             # if len(positionless) == 0:
             #     return nth_variation(translation_choices, n_variation, translations)

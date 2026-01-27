@@ -1,5 +1,4 @@
 import timeit
-from plover_hatchery.lib.pipes.types import EntryIndex
 
 from collections import defaultdict
 from collections.abc import Iterable, Generator
@@ -26,11 +25,11 @@ class TheoryHooks:
     class ProcessDef(Protocol):
         def __call__(self, *, view: DefView) -> Def: ...
     class AddEntry(Protocol):
-        def __call__(self, *, view: DefView, entry_id: EntryIndex) -> None: ...
+        def __call__(self, *, view: DefView, entry_id: int) -> None: ...
     class Lookup(Protocol):
         def __call__(self, *, stroke_stenos: tuple[str, ...], translations: list[str]) -> str | None: ...
     class ReverseLookup(Protocol):
-        def __call__(self, *, translation: str, reverse_translations: dict[str, list[EntryIndex]]) -> Iterable[tuple[str, ...]]: ...
+        def __call__(self, *, translation: str, reverse_translations: dict[str, list[int]]) -> Iterable[tuple[str, ...]]: ...
     
 
     begin_build_lookup = Hook(BeginBuildLookup)
@@ -89,7 +88,7 @@ def compile_theory(
         n_passed_additions = 0
 
         translations: list[str] = []
-        reverse_translations: dict[str, list[EntryIndex]] = defaultdict(lambda: [])
+        reverse_translations: dict[str, list[int]] = defaultdict(lambda: [])
 
         store.translations = translations
 
@@ -145,7 +144,7 @@ def compile_theory(
                 n_addable_entries += 1
 
                 try:
-                    entry_id = EntryIndex(len(translations) - 1)
+                    entry_id = len(translations) - 1
 
                     view = DefView(defs, defs.get_def(varname))
 
@@ -190,7 +189,7 @@ def compile_theory(
         return view
 
 
-    def add_entry(states: dict[int, Any], view: DefView, entry_id: EntryIndex):
+    def add_entry(states: dict[int, Any], view: DefView, entry_id: int):
         new_view = process_def(view)
 
         for plugin_id, handler in hooks.add_entry.ids_handlers():
@@ -206,7 +205,7 @@ def compile_theory(
         return None
 
 
-    def reverse_lookup(states: dict[int, Any], translation: str, reverse_translations: dict[str, list[EntryIndex]]) -> list[tuple[str, ...]]:
+    def reverse_lookup(states: dict[int, Any], translation: str, reverse_translations: dict[str, list[int]]) -> list[tuple[str, ...]]:
         results: list[tuple[str, ...]] = []
 
         for plugin_id, handler in hooks.reverse_lookup.ids_handlers():

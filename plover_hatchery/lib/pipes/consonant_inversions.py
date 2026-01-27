@@ -8,7 +8,7 @@ from plover.steno import Stroke
 from plover_hatchery_lib_rs import DefViewCursor, DefViewItem
 from plover_hatchery.lib.pipes.Plugin import define_plugin, GetPluginApi
 from plover_hatchery.lib.pipes.soph_trie import ChordToSophSearchResult, ChordToSophSearchResultWithSrcIndex, LookupResultWithAssociations, SophChordAssociation, SophsToTranslationSearchPath, soph_trie
-from plover_hatchery.lib.pipes.types import EntryIndex, Soph
+from plover_hatchery.lib.pipes.types import Soph
 from plover_hatchery.lib.trie import NondeterministicTrie, NodeSrc, JoinedTriePaths
 
 
@@ -72,8 +72,8 @@ def consonant_inversions(*, consonant_sophs_str: str, inversion_domains_steno: s
             cursor: DefViewCursor,
             paths: JoinedTriePaths,
             node_srcs: tuple[NodeSrc, ...],
-            trie: NondeterministicTrie[Soph, EntryIndex],
-            entry_id: EntryIndex,
+            trie: NondeterministicTrie[Soph],
+            entry_id: int,
             **_,
         ):
             match cursor.tip():

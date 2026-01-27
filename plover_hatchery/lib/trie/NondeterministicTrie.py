@@ -12,16 +12,15 @@ from .TriePath import TriePath, JoinedTransitionSeq, JoinedTriePaths
 
 
 _KeyVar = TypeVar("_KeyVar")
-_Translation = TypeVar("_Translation")
 
 _Key = Union[_KeyVar, None]
 _KeyId = Union[int, None]
 """None for epsilon (empty) transitions."""
 
-class OnTraverse(Protocol[_KeyVar, _Translation]):
+class OnTraverse(Protocol[_KeyVar]):
     def __call__(
         self,
-        trie: "NondeterministicTrie[_KeyVar, _Translation]",
+        trie: "NondeterministicTrie[_KeyVar]",
         existing_trie_path: TriePath,
         new_transition: TransitionKey,
         /,
@@ -40,7 +39,7 @@ class NodeSrc:
             yield dataclasses.replace(src, cost=src.cost + cost_change)
 
 @final
-class NondeterministicTrie(Generic[_KeyVar, _Translation]):
+class NondeterministicTrie(Generic[_KeyVar]):
     """A trie that can be in multiple states at once."""
 
     ROOT = 0
@@ -52,27 +51,23 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
         """Mapping from each node's id to its list of translation ids"""
         self.__keys: dict[_KeyVar, int] = {}
         """Mapping from each key to its id"""
-        self.__translations: dict[_Translation, int] = {}
-        """Mapping from each value to its id"""
-        self.__translations_list: list[_Translation] = []
-        """Mapping from each value's id to the value"""
         self.__transition_costs: dict[TransitionCostKey, float] = {}
 
         self.__keys_list: list[_KeyVar] = []
 
         self.__used_nodes_by_translation: dict[int, set[int]] = defaultdict(set)
 
-        self.__on_try_traverse: list[OnTraverse[_KeyVar, _Translation]] = []
+        self.__on_try_traverse: list[OnTraverse[_KeyVar]] = []
 
 
-    def follow(self, src_node_id: int, key: _Key[_KeyVar], cost_info: TransitionCostInfo[_Translation]):
+    def follow(self, src_node_id: int, key: _Key[_KeyVar], cost_info: TransitionCostInfo):
         """
         Gets the destination node obtained by following an existing transition associated with the given key
         from the given source node, or creates it if it does not exist. The node will not yet have been used by the current translation
         """
 
         key_id = self.__get_key_id_else_create(key)
-        translation_id = self.__get_translation_id_else_create(cost_info.translation)
+        translation_id = cost_info.translation_id
 
 
         # Reuse a node if it already exists and has not been used by this translation
@@ -101,7 +96,7 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
         return TriePath(new_node_id, (TransitionKey(src_node_id, key_id, new_transition_index),))
     
 
-    def follow_chain(self, src_node_id: int, keys: tuple[_Key[_KeyVar], ...], cost_info: TransitionCostInfo[_Translation]):
+    def follow_chain(self, src_node_id: int, keys: tuple[_Key[_KeyVar], ...], cost_info: TransitionCostInfo):
         """
         Gets the destination node obtained by following the first existing transitions associated with the given series of keys
         from the given source node, or creates it (and any missing intermediate nodes) if it does not exist. Any nodes in the chain will
@@ -115,7 +110,7 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
             if i == len(keys) - 1: # Only assign the cost to the last transition
                 path_addend = self.follow(current_node, key, cost_info)
             else: # but still assign a cost of 0 and associate the translation with the transition otherwise
-                path_addend = self.follow(current_node, key, TransitionCostInfo(0, cost_info.translation))
+                path_addend = self.follow(current_node, key, TransitionCostInfo(0, cost_info.translation_id))
             
             current_node = path_addend.dst_node_id
             transitions.append(path_addend.transitions[0])
@@ -127,16 +122,16 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
         self,
         src_nodes: Iterable[NodeSrc],
         keys_iter: Iterable[_KeyVar],
-        translation: _Translation,
+        translation_id: int,
     ):
-        return self.join_chain(src_nodes, ((key,) for key in keys_iter), translation)
+        return self.join_chain(src_nodes, ((key,) for key in keys_iter), translation_id)
 
 
     def join_chain(
         self,
         src_nodes: Iterable[NodeSrc],
         keys_iter: Iterable[tuple[_KeyVar, ...]],
-        translation: _Translation,
+        translation_id: int,
     ):
         """Given a set of source nodes and a set of keys, creates a common destination node from those source nodes when following any of the keys."""
 
@@ -149,12 +144,12 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
 
         transition_seqs: list[JoinedTransitionSeq] = []
         
-        first_path = self.follow_chain(first_src.node, first_keys, TransitionCostInfo(first_src.cost, translation))
+        first_path = self.follow_chain(first_src.node, first_keys, TransitionCostInfo(first_src.cost, translation_id))
         
         transition_seqs.append(JoinedTransitionSeq(first_path.transitions))
         
         for src, keys in products:
-            transitions = self.link_chain(src.node, first_path.dst_node_id, keys, TransitionCostInfo(src.cost, translation))
+            transitions = self.link_chain(src.node, first_path.dst_node_id, keys, TransitionCostInfo(src.cost, translation_id))
             transition_seqs.append(JoinedTransitionSeq(transitions))
 
         return JoinedTriePaths(first_path.dst_node_id, tuple(transition_seqs))
@@ -165,9 +160,9 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
         src_nodes: Iterable[NodeSrc],
         dst_node: int | None,
         keys_iter: Iterable[_KeyVar],
-        translation: _Translation,
+        translation_id: int,
     ):
-        return self.link_join_chain(src_nodes, dst_node, ((key,) for key in keys_iter), translation)
+        return self.link_join_chain(src_nodes, dst_node, ((key,) for key in keys_iter), translation_id)
 
 
     def link_join_chain(
@@ -175,7 +170,7 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
         src_nodes: Iterable[NodeSrc],
         dst_node: int | None,
         keys_iter: Iterable[tuple[_KeyVar, ...]],
-        translation: _Translation,
+        translation_id: int,
     ):
         """
         Given a set of source nodes, a set of strokes, and a destination node, links all source nodes to the given destination node when following any of the strokes.
@@ -183,13 +178,13 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
         """
 
         if dst_node is None:
-            return self.join_chain(src_nodes, keys_iter, translation)
+            return self.join_chain(src_nodes, keys_iter, translation_id)
 
 
         transition_seqs: list[JoinedTransitionSeq] = []
 
         for src_node, keys in product(src_nodes, keys_iter):
-            transitions = self.link_chain(src_node.node, dst_node, keys, TransitionCostInfo(src_node.cost, translation))
+            transitions = self.link_chain(src_node.node, dst_node, keys, TransitionCostInfo(src_node.cost, translation_id))
             transition_seqs.append(JoinedTransitionSeq(transitions))
 
         return JoinedTriePaths(dst_node, tuple(transition_seqs))
@@ -199,7 +194,7 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
         return all(handler(self, trie_path, transition) for handler in self.__on_try_traverse)
             
 
-    def on_check_traverse(self, handler: OnTraverse[_KeyVar, _Translation]):
+    def on_check_traverse(self, handler: OnTraverse[_KeyVar]):
         self.__on_try_traverse.append(handler)
 
 
@@ -266,7 +261,7 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
             )
     
 
-    def link(self, src_node_id: int, dst_node_id: int, key: _Key[_KeyVar], cost_info: TransitionCostInfo[_Translation]):
+    def link(self, src_node_id: int, dst_node_id: int, key: _Key[_KeyVar], cost_info: TransitionCostInfo):
         """
         Creates a transition from a given source node and key to an already-existing destination node
         """
@@ -292,21 +287,19 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
         return TransitionKey(src_node_id, key_id, transition_index)
 
     
-    def link_chain(self, src_node_id: int, dst_node_id: int, keys: tuple[_Key[_KeyVar], ...], cost_info: TransitionCostInfo[_Translation]) -> tuple[TransitionKey, ...]:
+    def link_chain(self, src_node_id: int, dst_node_id: int, keys: tuple[_Key[_KeyVar], ...], cost_info: TransitionCostInfo) -> tuple[TransitionKey, ...]:
         """
         Follows all but the final transition from a given source node and series of keys, and then creates the final transition
         to the given already-existing destination node
         """
-        path = self.follow_chain(src_node_id, keys[:-1], TransitionCostInfo(0, cost_info.translation))
+        path = self.follow_chain(src_node_id, keys[:-1], TransitionCostInfo(0, cost_info.translation_id))
 
         transition = self.link(path.dst_node_id, dst_node_id, keys[-1], cost_info)
 
         return path.transitions + (transition,)
     
 
-    def set_translation(self, node_id: int, translation: _Translation):
-        translation_id = self.__get_translation_id_else_create(translation)
-
+    def set_translation(self, node_id: int, translation_id: int):
         if node_id in self.__node_translations:
             self.__node_translations[node_id].append(translation_id)
         else:
@@ -337,20 +330,18 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
     def get_translations_and_costs(self, node_paths: Iterable[TriePath]):
         for path in node_paths:
             for translation_id, cost in self.get_translations_and_costs_single(path.dst_node_id, path.transitions):
-                yield LookupResult(self.__translations_list[translation_id], translation_id, cost, path.transitions)
+                yield LookupResult(translation_id, cost, path.transitions)
 
 
     def get_translations_and_min_costs(self, node_paths: Iterable[TriePath]):
-        min_cost_results: dict[_Translation, tuple[int, float, tuple[TransitionKey, ...]]] = {}
+        min_cost_results: dict[int, tuple[int, float, tuple[TransitionKey, ...]]] = {}
         for path in node_paths:
             for translation_id, cost in self.get_translations_and_costs_single(path.dst_node_id, path.transitions):
-                translation = self.__translations_list[translation_id]
+                if cost >= min_cost_results.get(translation_id, (float("inf"), None))[0]: continue
+                min_cost_results[translation_id] = (translation_id, cost, path.transitions)
 
-                if cost >= min_cost_results.get(translation, (float("inf"), None))[0]: continue
-                min_cost_results[translation] = (translation_id, cost, path.transitions)
-
-        for translation, (translation_id, cost, transitions) in min_cost_results.items():
-            yield LookupResult(translation, translation_id, cost, transitions)
+        for translation_id, cost, transitions in min_cost_results.values():
+            yield LookupResult(translation_id, cost, transitions)
     
     
     def transition_has_key(self, transition: TransitionKey, key: _Key[_KeyVar]):
@@ -363,16 +354,16 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
         lines: list[str] = []
 
         transition_costs: dict[TransitionKey, dict[int, float]] = {}
-        for (transition, value_id), cost in self.__transition_costs.items():
+        for (transition, translation_id), cost in self.__transition_costs.items():
             if transition in transition_costs:
-                transition_costs[transition][value_id] = cost
+                transition_costs[transition][translation_id] = cost
                 continue
 
-            transition_costs[transition] = {value_id: cost}
+            transition_costs[transition] = {translation_id: cost}
 
         for i, transitions in enumerate(self.__transitions):
-            value_ids = self.__node_translations.get(i)
-            lines.append(f"""Node {i}{f" : {tuple(self.__translations_list[value_id] for value_id in value_ids)}" if value_ids is not None else ""}""")
+            translation_ids = self.__node_translations.get(i)
+            lines.append(f"""Node {i}{f" : {tuple(translation_ids)}" if translation_ids is not None else ""}""")
 
             for key_id, dst_node_ids in transitions.items():
                 lines.append(f"""  On {self.get_key_str(key_id)} goto {",".join(str(node) for node in dst_node_ids)}""")
@@ -381,15 +372,15 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
                     if TransitionKey(i, key_id, j) not in transition_costs: continue
                     lines.append(f"""    {dst_nodes} valid for:""")
 
-                    for value_id, cost in transition_costs[TransitionKey(i, key_id, j)].items():
-                        lines.append(f"""      translation {self.__translations_list[value_id]} (cost {cost})""")
+                    for translation_id, cost in transition_costs[TransitionKey(i, key_id, j)].items():
+                        lines.append(f"""      translation {translation_id} (cost {cost})""")
 
         return "\n".join(lines)
 
     def to_json(self):
         return {
             "transitions": self.__transitions,
-            "keys": [key.value for key in self.__keys_list],
+            "keys": self.__keys_list,
             "node_translations": self.__node_translations,
             "transition_costs": [
                 {
@@ -437,34 +428,21 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
         self.__keys[key] = new_key_id
         self.__keys_list.append(key)
         return new_key_id
-    
-    def __get_translation_id_else_create(self, value: _Translation):
-        if value in self.__translations:
-            return self.__translations[value]
-        
-        new_value_id = len(self.__translations)
-        self.__translations[value] = new_value_id
-        self.__translations_list.append(value)
-        return new_value_id
 
     def __create_new_node(self):
         new_node_id = len(self.__transitions)
         self.__transitions.append({})
         return new_node_id
     
-    def __assign_transition_cost(self, src_node_id: int, key_id: _KeyId, new_transition_index: int, cost_info: TransitionCostInfo[_Translation] | None):
+    def __assign_transition_cost(self, src_node_id: int, key_id: _KeyId, new_transition_index: int, cost_info: TransitionCostInfo | None):
         if cost_info is None: return
         cost_key = TransitionCostKey(
             TransitionKey(src_node_id, key_id, new_transition_index),
-            self.__get_translation_id_else_create(cost_info.translation)
+            cost_info.translation_id
         )
         self.__transition_costs[cost_key] = min(cost_info.cost, self.__transition_costs.get(cost_key, float("inf")))
     
-    def __transition_has_cost_for_translation(self, src_node_id: int, key_id: _KeyId, new_transition_index: int, translation: _Translation):
-        translation_id = self.__translations.get(translation)
-        if translation_id is None:
-            return False
-
+    def __transition_has_cost_for_translation(self, src_node_id: int, key_id: _KeyId, new_transition_index: int, translation_id: int):
         cost_key = TransitionCostKey(
             TransitionKey(src_node_id, key_id, new_transition_index),
             translation_id
@@ -478,10 +456,10 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
                 for i, dst_node_id in enumerate(dst_node_ids):
                     reverse_nodes[dst_node_id][key_id].append((src_node_id, i))
 
-        reverse_translations: dict[_Translation, list[int]] = defaultdict(list)
+        reverse_translations: dict[int, list[int]] = defaultdict(list)
         for node, translation_ids in self.__node_translations.items():
             for translation_id in translation_ids:
-                reverse_translations[self.__translations_list[translation_id]].append(node)
+                reverse_translations[translation_id].append(node)
 
 
         def dfs(
@@ -499,7 +477,7 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
                 for src_node_id, transition_index in src_nodes:
                     if src_node_id in visited_nodes: continue
 
-                    if not self.__transition_has_cost_for_translation(src_node_id, key_id, transition_index, self.__translations_list[translation_id]):
+                    if not self.__transition_has_cost_for_translation(src_node_id, key_id, transition_index, translation_id):
                         continue
 
                     transition_key = TransitionKey(src_node_id, key_id, transition_index)
@@ -513,30 +491,30 @@ class NondeterministicTrie(Generic[_KeyVar, _Translation]):
                         visited_nodes | {src_node_id},
                     )
 
-        def get_sequences(translation: _Translation) -> Generator[LookupResult[_Translation], None, None]:
-            if translation not in reverse_translations: return
+        def get_sequences(translation_id: int) -> Generator[LookupResult, None, None]:
+            if translation_id not in reverse_translations: return
             
-            for node in reverse_translations[translation]:
-                for transitions_reversed, cost in dfs(node, self.__translations[translation], (), 0, {node}):
-                    yield LookupResult(translation, self.__translations[translation], cost, tuple(reversed(transitions_reversed)))
+            for node in reverse_translations[translation_id]:
+                for transitions_reversed, cost in dfs(node, translation_id, (), 0, {node}):
+                    yield LookupResult(translation_id, cost, tuple(reversed(transitions_reversed)))
         
         return get_sequences
 
 
-    def get_transition_cost(self, transition: TransitionKey, translation: _Translation):
+    def get_transition_cost(self, transition: TransitionKey, translation_id: int):
         cost_key = TransitionCostKey(
             transition,
-            self.__get_translation_id_else_create(translation),
+            translation_id,
         )
         if cost_key not in self.__transition_costs:
-            raise KeyError(f"pairing of translation {translation} and transition {transition} (key: {self.get_key_str(transition.key_id)}) is not associated with a cost")
+            raise KeyError(f"pairing of translation {translation_id} and transition {transition} (key: {self.get_key_str(transition.key_id)}) is not associated with a cost")
     
         return self.__transition_costs[cost_key]
 
 
-    def get_transition_costs(self, transitions: Iterable[TransitionKey], translation: _Translation):
+    def get_transition_costs(self, transitions: Iterable[TransitionKey], translation_id: int):
         for transition in transitions:
-            yield self.get_transition_cost(transition, translation)
+            yield self.get_transition_cost(transition, translation_id)
 
         
     def get_key(self, key_id: int):

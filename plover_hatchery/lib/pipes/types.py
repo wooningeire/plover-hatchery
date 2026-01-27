@@ -5,14 +5,6 @@ from typing import final
 
 @final
 @dataclass(frozen=True)
-class EntryIndex:
-    value: int
-
-    def __repr__(self):
-        return f"{self.value}"
-
-@final
-@dataclass(frozen=True)
 class Soph:
     value: str
 

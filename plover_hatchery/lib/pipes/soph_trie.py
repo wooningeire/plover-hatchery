@@ -11,7 +11,7 @@ from plover_hatchery.lib.pipes.floating_keys import floating_keys
 from plover_hatchery.lib.pipes.plugin_utils import iife, join_sophs_to_chords_dicts
 from plover_hatchery.lib.trie import LookupResult, NondeterministicTrie, NodeSrc, Trie, TriePath, JoinedTriePaths, TransitionCostKey, TransitionKey
 from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
-from plover_hatchery.lib.pipes.types import Soph, EntryIndex
+from plover_hatchery.lib.pipes.types import Soph
 
 
 
@@ -23,7 +23,7 @@ class SophChordAssociation(NamedTuple):
     transitions: tuple[TransitionKey, ...]
 
 class LookupResultWithAssociations(NamedTuple):
-    lookup_result: LookupResult[EntryIndex]
+    lookup_result: LookupResult
     sophs_and_chords_used: tuple[SophChordAssociation, ...]
 
 
@@ -55,7 +55,7 @@ class ChordToSophSearchResultWithSrcIndex(NamedTuple):
 @dataclass
 class SophTrieApi:
     class BeginAddEntry(Protocol):
-        def __call__(self, *, trie: NondeterministicTrie[Soph, EntryIndex], entry_id: EntryIndex) -> Any: ...
+        def __call__(self, *, trie: NondeterministicTrie[Soph], entry_id: int) -> Any: ...
     class AddSophTransition(Protocol):
         def __call__(
             self,
@@ -66,8 +66,8 @@ class SophTrieApi:
             paths: JoinedTriePaths,
             node_srcs: tuple[NodeSrc, ...],
             new_node_srcs: list[NodeSrc],
-            trie: NondeterministicTrie[Soph, EntryIndex],
-            entry_id: EntryIndex,
+            trie: NondeterministicTrie[Soph],
+            entry_id: int,
         ): ...
     class BeginLookup(Protocol):
         def __call__(self, *, outline: tuple[Stroke, ...]) -> Any: ...
@@ -89,7 +89,7 @@ class SophTrieApi:
             *,
             state: Any,
             result: LookupResultWithAssociations,
-            trie: NondeterministicTrie[Soph, EntryIndex],
+            trie: NondeterministicTrie[Soph],
             original_outline: tuple[Stroke, ...],
             outline: tuple[Stroke, ...],
         ) -> bool: ...
@@ -98,7 +98,7 @@ class SophTrieApi:
             self,
             *,
             state: Any,
-            trie: NondeterministicTrie[Soph, EntryIndex],
+            trie: NondeterministicTrie[Soph],
             choices: list[LookupResultWithAssociations],
             translations: list[str],
             original_outline: tuple[Stroke, ...],
@@ -117,11 +117,11 @@ class SophTrieApi:
     
             
 
-    trie: NondeterministicTrie[Soph, EntryIndex]
+    trie: NondeterministicTrie[Soph]
     transition_data: dict[TransitionCostKey, DefViewCursor]
 
-    def register_transition(self, transition: TransitionKey, entry_id: EntryIndex, phoneme: DefViewCursor):
-        cost_key = TransitionCostKey(transition, entry_id.value)
+    def register_transition(self, transition: TransitionKey, entry_id: int, phoneme: DefViewCursor):
+        cost_key = TransitionCostKey(transition, entry_id)
         self.transition_data[cost_key] = phoneme
 
 
@@ -150,7 +150,7 @@ def soph_trie(
         floating_keys_api = get_plugin_api(floating_keys)
 
 
-        trie: NondeterministicTrie[Soph, EntryIndex] = NondeterministicTrie()
+        trie = NondeterministicTrie[Soph]()
         transition_phonemes: dict[TransitionCostKey, DefViewCursor] = {}
 
         store.trie = trie
@@ -164,7 +164,7 @@ def soph_trie(
         # The translations are the translations of each sopheme sequence.
 
         @base_hooks.add_entry.listen(soph_trie)
-        def _(view: DefView, entry_id: EntryIndex, **_):
+        def _(view: DefView, entry_id: int, **_):
             states = api.begin_add_entry.emit_and_store_outputs(trie=trie, entry_id=entry_id)
 
 
@@ -429,7 +429,7 @@ def soph_trie(
             """Manages lookup results after they have been found by a lookup session."""
 
 
-            def resolve_phonemes(lookup_result: LookupResult[EntryIndex], association: SophChordAssociationWithUnresolvedPhonemes):
+            def resolve_phonemes(lookup_result: LookupResult, association: SophChordAssociationWithUnresolvedPhonemes):
                 phonemes: list[DefViewCursor] = []
                 for transition in association.transitions:
                     cost_key = TransitionCostKey(transition, lookup_result.translation_id)
@@ -464,19 +464,19 @@ def soph_trie(
 
         class MinTranslationBuilder:
             def __init__(self):
-                self.__min_costs: dict[EntryIndex, float] = defaultdict(lambda: float("inf"))
-                self.__min_cost_results: dict[EntryIndex, LookupResultWithAssociations] = {}
+                self.__min_costs_by_translation_id: dict[int, float] = defaultdict(lambda: float("inf"))
+                self.__min_cost_results_by_translation_id: dict[int, LookupResultWithAssociations] = {}
 
 
             def __record_lookup_result_if_has_min_cost(
                 self,
-                lookup_result: LookupResult[EntryIndex],
+                lookup_result: LookupResult,
                 sophs_and_chords_used: Iterable[SophChordAssociation],
                 outline: tuple[Stroke, ...],
                 original_outline: tuple[Stroke, ...],
                 states: dict[int, Any],
             ):
-                if lookup_result.cost >= self.__min_costs[lookup_result.translation]: return
+                if lookup_result.cost >= self.__min_costs_by_translation_id[lookup_result.translation_id]: return
 
                 result = LookupResultWithAssociations(lookup_result, tuple(sophs_and_chords_used))
 
@@ -489,12 +489,12 @@ def soph_trie(
                 ):
                     return
 
-                self.__min_costs[lookup_result.translation] = lookup_result.cost
-                self.__min_cost_results[lookup_result.translation] = result
+                self.__min_costs_by_translation_id[lookup_result.translation_id] = lookup_result.cost
+                self.__min_cost_results_by_translation_id[lookup_result.translation_id] = result
 
 
             def __get_sorted_min_translations(self):
-                return sorted(self.__min_cost_results.values(), key=lambda result: result.lookup_result.cost)
+                return sorted(self.__min_cost_results_by_translation_id.values(), key=lambda result: result.lookup_result.cost)
 
 
             @staticmethod

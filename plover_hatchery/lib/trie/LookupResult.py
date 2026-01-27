@@ -1,16 +1,11 @@
 from dataclasses import dataclass
-from typing import Generic, TypeVar, final
+from typing import Generic, final
 
 from plover_hatchery.lib.trie.Transition import TransitionKey
 
-
-V = TypeVar("V")
-
-
 @final
 @dataclass
-class LookupResult(Generic[V]):
-    translation: V
+class LookupResult:
     translation_id: int
     cost: float
     transitions: tuple[TransitionKey, ...]

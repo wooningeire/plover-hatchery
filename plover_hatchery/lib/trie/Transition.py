@@ -17,6 +17,6 @@ class TransitionCostKey(NamedTuple):
     translation_id: int
 
 @dataclass(frozen=True)
-class TransitionCostInfo(Generic[V]):
+class TransitionCostInfo:
     cost: float
-    translation: V
+    translation_id: int
