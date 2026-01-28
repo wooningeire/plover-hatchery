@@ -41,10 +41,10 @@ def debug_stroke(steno: str) -> Plugin[None]:
             return outline
 
 
-        def join_all_translations(trie: NondeterministicTrie[Soph], results: Iterable[LookupResultWithAssociations], translations: list[str]):
+        def join_all_translations(trie: NondeterministicTrie, results: Iterable[LookupResultWithAssociations], translations: list[str]):
             return "\n".join(summarize_result(trie, result, translations) for result in results)
 
-        def summarize_result(trie: NondeterministicTrie[Soph], result: LookupResultWithAssociations, translations: list[str]):
+        def summarize_result(trie: NondeterministicTrie, result: LookupResultWithAssociations, translations: list[str]):
             return (
                 f"{translations[result.lookup_result.translation_id]} [#{result.lookup_result.translation_id}] ({result.lookup_result.cost})\n"
                     + "╒ transitions\n"
@@ -59,7 +59,7 @@ def debug_stroke(steno: str) -> Plugin[None]:
 
             return "├"
 
-        def summarize_transitions(trie: NondeterministicTrie[Soph], result: LookupResultWithAssociations, entry_id: int):
+        def summarize_transitions(trie: NondeterministicTrie, result: LookupResultWithAssociations, entry_id: int):
             try:
                 return "\n".join(
                     summarize_transition(trie, transition, entry_id, i == len(result.lookup_result.transitions) - 1)
@@ -68,10 +68,10 @@ def debug_stroke(steno: str) -> Plugin[None]:
             except KeyError as e:
                 return f"└\t!! bad transitions: {e}"
 
-        def summarize_transition(trie: NondeterministicTrie[Soph], transition: TransitionKey, entry_id: int, is_last: bool):
+        def summarize_transition(trie: NondeterministicTrie, transition: TransitionKey, entry_id: int, is_last: bool):
             cost = trie.get_transition_cost(transition, entry_id)
 
-            return f"{get_combiner(is_last)}\t{trie.get_key_str(transition.key_id)} ({cost})"
+            return f"{get_combiner(is_last)}\t{soph_trie_api.key_id_manager.get_key_str(transition.key_id)} ({cost})"
 
         def summarize_associations(result: LookupResultWithAssociations):
             return "\n".join(
@@ -91,7 +91,7 @@ def debug_stroke(steno: str) -> Plugin[None]:
         @soph_trie_api.select_translation.listen(debug_stroke)
         def _(
             state: DebugStrokeState,
-            trie: NondeterministicTrie[Soph],
+            trie: NondeterministicTrie,
             choices: list[LookupResultWithAssociations],
             translations: list[str],
             **_,

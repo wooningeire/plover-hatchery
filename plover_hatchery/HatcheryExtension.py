@@ -40,15 +40,6 @@ class HatcheryExtension:
                 return jsonify([])
 
             return breakdown
-
-        @app.route("/trie")
-        def trie_route():
-            from flask import request
-
-            return jsonify({
-                **store.trie.to_json(),
-                "translations": store.translations,
-            })
         
     def start(self):
         """Start the web server in a background thread"""

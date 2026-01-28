@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Generic, final
+from typing import final
 
 from plover_hatchery.lib.trie.Transition import TransitionKey
 

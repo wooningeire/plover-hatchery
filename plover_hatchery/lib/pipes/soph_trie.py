@@ -10,7 +10,7 @@ from plover_hatchery.lib.pipes.Hook import Hook
 from plover_hatchery.lib.pipes.Plugin import GetPluginApi, Plugin, define_plugin
 from plover_hatchery.lib.pipes.floating_keys import floating_keys
 from plover_hatchery.lib.pipes.plugin_utils import iife, join_sophs_to_chords_dicts
-from plover_hatchery.lib.trie import LookupResult, NondeterministicTrie, NodeSrc, Trie, TriePath, JoinedTriePaths, TransitionCostKey, TransitionKey, TransitionFlagManager, TransitionFlag
+from plover_hatchery.lib.trie import KeyIdManager, LookupResult, NondeterministicTrie, NodeSrc, Trie, TriePath, JoinedTriePaths, TransitionCostKey, TransitionKey, TransitionFlagManager, TransitionFlag
 from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
 from plover_hatchery.lib.pipes.types import Soph
 
@@ -56,7 +56,7 @@ class ChordToSophSearchResultWithSrcIndex(NamedTuple):
 @dataclass
 class SophTrieApi:
     class BeginAddEntry(Protocol):
-        def __call__(self, *, trie: NondeterministicTrie[Soph], entry_id: int) -> Any: ...
+        def __call__(self, *, trie: NondeterministicTrie, entry_id: int) -> Any: ...
     class AddSophTransition(Protocol):
         def __call__(
             self,
@@ -67,7 +67,7 @@ class SophTrieApi:
             paths: JoinedTriePaths,
             node_srcs: tuple[NodeSrc, ...],
             new_node_srcs: list[NodeSrc],
-            trie: NondeterministicTrie[Soph],
+            trie: NondeterministicTrie,
             entry_id: int,
         ): ...
     class BeginLookup(Protocol):
@@ -90,7 +90,7 @@ class SophTrieApi:
             *,
             state: Any,
             result: LookupResultWithAssociations,
-            trie: NondeterministicTrie[Soph],
+            trie: NondeterministicTrie,
             original_outline: tuple[Stroke, ...],
             outline: tuple[Stroke, ...],
         ) -> bool: ...
@@ -99,7 +99,7 @@ class SophTrieApi:
             self,
             *,
             state: Any,
-            trie: NondeterministicTrie[Soph],
+            trie: NondeterministicTrie,
             choices: list[LookupResultWithAssociations],
             translations: list[str],
             original_outline: tuple[Stroke, ...],
@@ -118,9 +118,10 @@ class SophTrieApi:
     
             
 
-    trie: NondeterministicTrie[Soph]
+    trie: NondeterministicTrie
     transition_data: dict[TransitionCostKey, DefViewCursor]
     transition_flags: TransitionFlagManager
+    key_id_manager: KeyIdManager[Soph]
 
     def register_transition(self, transition: TransitionKey, entry_id: int, phoneme: DefViewCursor):
         cost_key = TransitionCostKey(transition, entry_id)
@@ -154,13 +155,14 @@ def soph_trie(
         floating_keys_api = get_plugin_api(floating_keys)
 
 
-        trie = NondeterministicTrie[Soph]()
+        trie = NondeterministicTrie()
         transition_phonemes: dict[TransitionCostKey, DefViewCursor] = {}
         transition_flags = TransitionFlagManager()
+        key_id_manager = KeyIdManager[Soph]()
 
         store.trie = trie
 
-        api = SophTrieApi(trie, transition_phonemes, transition_flags)
+        api = SophTrieApi(trie, transition_phonemes, transition_flags, key_id_manager)
 
 
 
@@ -208,7 +210,7 @@ def soph_trie(
     
 
                     sophs = set(Soph(value) for value in map_to_sophs(old_cursor))
-                    paths = trie.link_join(old_src_nodes, dst_node_id, sophs, entry_id)
+                    paths = trie.link_join(old_src_nodes, dst_node_id, key_id_manager.get_key_ids_else_create(sophs), entry_id)
                     if dst_node_id is None and paths.dst_node_id is not None:
                         dst_node_id = paths.dst_node_id
 
@@ -380,7 +382,7 @@ def soph_trie(
 
             def __new_paths_ending_with_soph(self, result: ChordToSophSearchResultWithSrcIndex):
                 for path in self.__possible_soph_paths[result.chord_start_key_index]:
-                    for new_trie_path in trie.traverse_chain((path.trie_path,), result.soph_result.sophs):
+                    for new_trie_path in trie.traverse_chain((path.trie_path,), key_id_manager.get_key_ids_else_create(result.soph_result.sophs)):
                         yield SophsToTranslationSearchPath(
                             new_trie_path,
                             path.sophs_and_chords_used + (
@@ -582,7 +584,7 @@ def soph_trie(
             if id(trie) in subtrie_builders:
                 subtrie_builder = subtrie_builders[id(trie)]
             else:
-                subtrie_builder = trie.build_subtrie_builder(transition_flags)
+                subtrie_builder = trie.build_subtrie_builder(transition_flags, key_id_manager.get_key_str)
                 subtrie_builders[id(trie)] = subtrie_builder
 
             return json.dumps([

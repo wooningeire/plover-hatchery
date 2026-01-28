@@ -14,6 +14,6 @@ V = TypeVar("V")
 @final
 @dataclass(frozen=True)
 class TrieTraversalContext:
-    trie: NondeterministicTrie[str]
+    trie: NondeterministicTrie
     current_outline: tuple[Stroke, ...] = ()
     current_path: TriePath = TriePath()
