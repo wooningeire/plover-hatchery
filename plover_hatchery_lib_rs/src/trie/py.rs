@@ -246,7 +246,99 @@ impl PyNondeterministicTrie {
         self.trie.transition_has_key(&transition.inner, key_id)
     }
 
+    /// Get translations with minimum costs for each translation_id.
+    pub fn get_translations_and_min_costs(&self, node_paths: Vec<PyTriePath>) -> Vec<PyLookupResult> {
+        let paths = node_paths.into_iter().map(|p| p.inner);
+        self.trie
+            .get_translations_and_min_costs(paths)
+            .into_iter()
+            .map(|r| PyLookupResult { inner: r })
+            .collect()
+    }
+
+    /// Get all translation IDs that have been set.
+    pub fn get_all_translation_ids(&self) -> Vec<usize> {
+        self.trie.get_all_translation_ids()
+    }
+
+    /// Get the number of nodes in the trie.
+    pub fn n_nodes(&self) -> usize {
+        self.trie.n_nodes()
+    }
+
+    /// Check if a transition has a cost for a specific translation.
+    pub fn transition_has_cost_for_translation(
+        &self,
+        src_node_id: usize,
+        key_id: Option<usize>,
+        transition_index: usize,
+        translation_id: usize,
+    ) -> bool {
+        self.trie.transition_has_cost_for_translation(src_node_id, key_id, transition_index, translation_id)
+    }
+
     /// The root node constant.
     #[classattr]
     const ROOT: usize = NondeterministicTrie::ROOT;
+
+    /// Create a reverse index for efficient reverse lookups.
+    pub fn create_reverse_index(&self) -> PyReverseTrieIndex {
+        PyReverseTrieIndex {
+            reverse_nodes: self.trie.reversed_nodes(),
+            reverse_translations: self.trie.reversed_translations(),
+        }
+    }
+}
+
+/// Helper struct for reverse lookups.
+#[pyclass]
+#[pyo3(name = "ReverseTrieIndex")]
+pub struct PyReverseTrieIndex {
+    reverse_nodes: crate::trie::nondeterministictrie::ReverseNodes,
+    reverse_translations: crate::trie::nondeterministictrie::ReverseTranslations,
+}
+
+#[pymethods]
+impl PyReverseTrieIndex {
+    #[pyo3(signature = (trie, translation_id))]
+    fn get_sequences(&self, trie: &PyNondeterministicTrie, translation_id: usize) -> Vec<PyLookupResult> {
+        let rs_results = trie.trie.get_reverse_lookup_results(&self.reverse_nodes, &self.reverse_translations, translation_id);
+        rs_results.into_iter().map(|r| PyLookupResult { inner: r }).collect()
+    }
+
+    #[pyo3(signature = (trie, translation_id))]
+    fn get_subtrie_data(
+        &self,
+        py: Python<'_>,
+        trie: &PyNondeterministicTrie,
+        translation_id: usize,
+    ) -> Option<PyObject> {
+        // First get the raw data from Rust
+        let subtrie_data = trie.trie.get_subtrie_data(
+            &self.reverse_nodes,
+            &self.reverse_translations,
+            translation_id
+        )?;
+
+        // Now convert to Python objects
+        let result_dict = pyo3::types::PyDict::new(py);
+        
+        // "nodes": tuple(nodes_toposort)
+        result_dict.set_item("nodes", subtrie_data.nodes).ok()?;
+        
+        // "translation_nodes": reverse_translations[translation_id]
+        result_dict.set_item("translation_nodes", subtrie_data.translation_nodes).ok()?;
+         
+        let transitions_list = pyo3::types::PyList::empty(py);
+        for t in subtrie_data.transitions {
+             let t_dict = pyo3::types::PyDict::new(py);
+             t_dict.set_item("src_node_id", t.src_node_id).ok()?;
+             t_dict.set_item("dst_node_id", t.dst_node_id).ok()?;
+             t_dict.set_item("key_infos", t.key_infos).ok()?;
+             transitions_list.append(t_dict).ok()?;
+        }
+        result_dict.set_item("transitions", transitions_list).ok()?;
+        
+        Some(result_dict.into())
+    }
 }

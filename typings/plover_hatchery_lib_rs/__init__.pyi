@@ -1,5 +1,5 @@
 from collections.abc import Callable, Sequence
-from typing import Literal, final
+from typing import Any, Literal, final
 
 
 class Keysymbol:
@@ -261,6 +261,27 @@ class NondeterministicTrie:
         /,
     ) -> bool: ...
 
+    def get_translations_and_min_costs(
+        self,
+        node_paths: list[TriePath],
+        /,
+    ) -> list[LookupResult]: ...
+
+    def get_all_translation_ids(self, /) -> list[int]: ...
+
+    def n_nodes(self, /) -> int: ...
+
+    def transition_has_cost_for_translation(
+        self,
+        src_node_id: int,
+        key_id: int | None,
+        transition_index: int,
+        translation_id: int,
+        /,
+    ) -> bool: ...
+
+    def create_reverse_index(self, /) -> ReverseTrieIndex: ...
+
 
 class TransitionKey:
     @property
@@ -308,3 +329,7 @@ class LookupResult:
         transitions: list[TransitionKey],
         /,
     ) -> None: ...
+
+class ReverseTrieIndex:
+    def get_sequences(self, trie: NondeterministicTrie, translation_id: int, /) -> list[LookupResult]: ...
+    def get_subtrie_data(self, trie: NondeterministicTrie, translation_id: int, /) -> dict[str, Any] | None: ...

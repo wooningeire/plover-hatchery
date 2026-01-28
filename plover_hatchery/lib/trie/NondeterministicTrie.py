@@ -8,6 +8,7 @@ from plover_hatchery_lib_rs import (
     TransitionKey as RsTransitionKey,
     TriePath as RsTriePath,
     LookupResult as RsLookupResult,
+    ReverseTrieIndex as RsReverseTrieIndex,
 )
 from typing import TYPE_CHECKING, Any, Callable, Generator, Generic, Protocol, TypeVar, Union, final, override
 
@@ -97,9 +98,6 @@ class NondeterministicTrie:
     
     def __init__(self):
         self.__rs = RsNondeterministicTrie()
-        
-        # Keep Python state for features not yet in Rust
-        self.__transition_costs: dict[TransitionCostKey, float] = {}
         self.__on_try_traverse: list[OnTraverse] = []
 
 
@@ -109,14 +107,6 @@ class NondeterministicTrie:
         from the given source node, or creates it if it does not exist. The node will not yet have been used by the current translation
         """
         rs_path = self.__rs.follow(src_node_id, key_id, cost_info.cost, cost_info.translation_id)
-        
-        # Track cost in Python for features that need it
-        if rs_path.transitions:
-            rs_key = rs_path.transitions[0]
-            py_key = _py_transition_key(rs_key)
-            cost_key = TransitionCostKey(py_key, cost_info.translation_id)
-            self.__transition_costs[cost_key] = min(cost_info.cost, self.__transition_costs.get(cost_key, float("inf")))
-        
         return _py_trie_path(rs_path)
     
 
@@ -127,16 +117,7 @@ class NondeterministicTrie:
         not have bewen used by the current translation 
         """
         rs_path = self.__rs.follow_chain(src_node_id, list(key_ids), cost_info.cost, cost_info.translation_id)
-        
-        # Track costs in Python
-        py_path = _py_trie_path(rs_path)
-        for i, py_key in enumerate(py_path.transitions):
-            # Only the last transition gets the full cost
-            trans_cost = cost_info.cost if i == len(py_path.transitions) - 1 else 0
-            cost_key = TransitionCostKey(py_key, cost_info.translation_id)
-            self.__transition_costs[cost_key] = min(trans_cost, self.__transition_costs.get(cost_key, float("inf")))
-        
-        return py_path
+        return _py_trie_path(rs_path)
 
 
     def join(
@@ -275,13 +256,7 @@ class NondeterministicTrie:
         Creates a transition from a given source node and key to an already-existing destination node
         """
         rs_key = self.__rs.link(src_node_id, dst_node_id, key_id, cost_info.cost, cost_info.translation_id)
-        py_key = _py_transition_key(rs_key)
-        
-        # Track cost in Python
-        cost_key = TransitionCostKey(py_key, cost_info.translation_id)
-        self.__transition_costs[cost_key] = min(cost_info.cost, self.__transition_costs.get(cost_key, float("inf")))
-        
-        return py_key
+        return _py_transition_key(rs_key)
 
     
     def link_chain(self, src_node_id: int, dst_node_id: int, key_ids: tuple[int | None, ...], cost_info: TransitionCostInfo) -> tuple[TransitionKey, ...]:
@@ -290,15 +265,7 @@ class NondeterministicTrie:
         to the given already-existing destination node
         """
         rs_keys = self.__rs.link_chain(src_node_id, dst_node_id, list(key_ids), cost_info.cost, cost_info.translation_id)
-        py_keys = tuple(_py_transition_key(k) for k in rs_keys)
-        
-        # Track costs in Python
-        for i, py_key in enumerate(py_keys):
-            trans_cost = cost_info.cost if i == len(py_keys) - 1 else 0
-            cost_key = TransitionCostKey(py_key, cost_info.translation_id)
-            self.__transition_costs[cost_key] = min(trans_cost, self.__transition_costs.get(cost_key, float("inf")))
-        
-        return py_keys
+        return tuple(_py_transition_key(k) for k in rs_keys)
     
 
     def set_translation(self, node_id: int, translation_id: int):
@@ -318,14 +285,9 @@ class NondeterministicTrie:
 
 
     def get_translations_and_min_costs(self, node_paths: Iterable[TriePath]):
-        min_cost_results: dict[int, tuple[int, float, tuple[TransitionKey, ...]]] = {}
-        for path in node_paths:
-            for translation_id, cost in self.get_translations_and_costs_single(path.dst_node_id, path.transitions):
-                if cost >= min_cost_results.get(translation_id, (float("inf"), None))[0]: continue
-                min_cost_results[translation_id] = (translation_id, cost, path.transitions)
-
-        for translation_id, cost, transitions in min_cost_results.values():
-            yield LookupResult(translation_id, cost, transitions)
+        rs_paths = [_rs_trie_path(p) for p in node_paths]
+        for rs_result in self.__rs.get_translations_and_min_costs(rs_paths):
+            yield _py_lookup_result(rs_result)
     
     
     def transition_has_key(self, transition: TransitionKey, key_id: int | None):
@@ -333,72 +295,58 @@ class NondeterministicTrie:
     
     @override
     def __str__(self) -> str:
-        lines: list[str] = []
+        n_nodes = self.__rs.n_nodes()
+        n_translations = len(self.__rs.get_all_translation_ids())
+        return f"NondeterministicTrie (Rust-backed): {n_nodes:,} nodes, {n_translations:,} translations"
 
-        transition_costs: dict[TransitionKey, dict[int, float]] = {}
-        for (transition, translation_id), cost in self.__transition_costs.items():
-            if transition in transition_costs:
-                transition_costs[transition][translation_id] = cost
-                continue
-
-            transition_costs[transition] = {translation_id: cost}
-
-        # Note: This uses Python-side costs for display
-        lines.append(f"NondeterministicTrie (Rust-backed)")
-        lines.append(f"  Transition costs tracked: {len(self.__transition_costs)}")
-
-        return "\n".join(lines)
-    
-
-    def __transition_has_cost_for_translation(self, src_node_id: int, key_id: int | None, new_transition_index: int, translation_id: int):
-        cost_key = TransitionCostKey(
-            TransitionKey(src_node_id, key_id, new_transition_index),
-            translation_id
-        )
-        return cost_key in self.__transition_costs
-
-    def __reversed_translations(self):
-        # This needs access to node_translations which is in Rust
-        # For now, we track this in Python as well via transition_costs
-        reverse_translations: dict[int, list[int]] = defaultdict(list)
-        seen_pairs: set[tuple[int, int]] = set()
-        
-        for cost_key in self.__transition_costs:
-            translation_id = cost_key.translation_id
-            # We need to find nodes that have translations - this is a limitation
-            # For now, return empty since we'd need to query Rust
-        
-        return reverse_translations
 
     def build_reverse_lookup(self):
-        # This feature requires access to internal Rust state that's not exposed yet
-        # Keep using Python-side costs for now
-        
-        def dfs(
-            node: int,
-            translation_id: int,
-            transitions_reversed: tuple[TransitionKey, ...],
-            cost: float,
-            visited_nodes: set[int],
-        ) -> Generator[tuple[tuple[TransitionKey, ...], float], None, None]:
-            if node == self.ROOT:
-                yield transitions_reversed, cost
-                return
-            
-            # This needs reverse node lookup which requires internal Rust state
-            # For now, yield nothing
-            return
+        reverse_index = self.__rs.create_reverse_index()
 
         def get_sequences(translation_id: int) -> Generator[LookupResult, None, None]:
-            # Limited implementation - requires full Rust integration
-            return
-            yield  # Make it a generator
+            rs_results = reverse_index.get_sequences(self.__rs, translation_id)
+            for rs_result in rs_results:
+                yield _py_lookup_result(rs_result)
         
         return get_sequences
 
     def build_subtrie_builder(self, transition_flags: TransitionFlagManager, get_key_str: Callable[[int | None], str]):
-        # This feature requires access to internal Rust state that's not exposed yet
-        raise NotImplementedError("build_subtrie_builder requires full Rust integration - not yet implemented")
+        reverse_index = self.__rs.create_reverse_index()
+
+        def build_subtrie(translation_id: int):
+            raw_data = reverse_index.get_subtrie_data(self.__rs, translation_id)
+            if raw_data is None: return None
+            
+            processed_transitions = []
+            for t in raw_data["transitions"]:
+                src = t["src_node_id"]
+                dst = t["dst_node_id"]
+                keys_costs = []
+                for key_id, idx, cost in t["key_infos"]:
+                   key_str = get_key_str(key_id)
+                   py_key = TransitionKey(src, key_id, idx)
+                   cost_key = TransitionCostKey(py_key, translation_id)
+                   flags = [flag.label for flag in transition_flags.mappings.get(cost_key, [])]
+                   
+                   keys_costs.append({
+                       "key": key_str,
+                       "cost": cost,
+                       "flags": flags
+                   })
+                
+                processed_transitions.append({
+                    "src_node_id": src,
+                    "dst_node_id": dst,
+                    "keys_costs": keys_costs
+                })
+            
+            return {
+                "nodes": tuple(raw_data["nodes"]),
+                "transitions": processed_transitions,
+                "translation_nodes": raw_data["translation_nodes"]
+            }
+        
+        return build_subtrie
 
 
     def get_transition_cost(self, transition: TransitionKey, translation_id: int):
@@ -413,5 +361,6 @@ class NondeterministicTrie:
             yield self.get_transition_cost(transition, translation_id)
 
     def profile(self):
-        n_costs = len(self.__transition_costs)
-        return f"Rust-backed trie with {n_costs:,} tracked transition costs"
+        n_nodes = self.__rs.n_nodes()
+        n_translations = len(self.__rs.get_all_translation_ids())
+        return f"Rust-backed trie: {n_nodes:,} nodes, {n_translations:,} translations"

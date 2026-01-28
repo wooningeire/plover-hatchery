@@ -38,6 +38,7 @@ use trie::{
         PyTransitionKey,
         PyTriePath,
         PyLookupResult,
+        PyReverseTrieIndex,
     },
 };
 
@@ -68,6 +69,7 @@ pub fn plover_hatchery_lib_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyTransitionKey>()?;
     m.add_class::<PyTriePath>()?;
     m.add_class::<PyLookupResult>()?;
+    m.add_class::<PyReverseTrieIndex>()?;
 
     Ok(())
 }
