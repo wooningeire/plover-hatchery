@@ -13,13 +13,22 @@ onMount(async () => {
     breakdownData = await breakdownResponse.json();
 });
 
-let breakdownFirst = $derived(breakdownData?.[0] ?? null);
+let breakdownIndex = $state(0);
+
+let breakdown = $derived(breakdownData?.[breakdownIndex] ?? null);
 </script>
 
 
-{#if breakdownFirst !== null}
-    {breakdownFirst.entry}
-    <Graph data={breakdownFirst.subtrie} />
+<button onclick={() => breakdownIndex = breakdownIndex === 0 ? breakdownData.length - 1 : breakdownIndex - 1}>Previous</button>
+<button onclick={() => breakdownIndex = breakdownIndex === breakdownData.length - 1 ? 0 : breakdownIndex + 1}>Next</button>
+
+Entry {`${breakdownIndex + 1}\u2044${breakdownData?.length ?? 0}`}
+
+{#if breakdown !== null}
+    {breakdown.entry}
+    <Graph
+        data={breakdown.subtrie}
+    />
 {:else}
     <p>Loading...</p>
 {/if}

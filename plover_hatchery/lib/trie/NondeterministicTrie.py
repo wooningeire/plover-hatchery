@@ -585,6 +585,7 @@ class NondeterministicTrie(Generic[_KeyVar]):
                     }
                     for (src_node_id, dst_node_id), transition_key_info in visited_transitions.items()
                 ],
+                "translation_nodes": reverse_translations[translation_id],
             }
 
             visited_nodes.clear()

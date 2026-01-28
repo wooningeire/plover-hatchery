@@ -33,7 +33,13 @@
         }[];
     }
 
-    let { data }: { data: GraphData } = $props();
+    let {
+        data,
+    }: {
+        data: GraphData,
+    } = $props();
+
+    const translationNodesSet = $derived(new Set(data.translation_nodes));
 
     let svg: SVGSVGElement;
     let width = $state(800);
@@ -295,7 +301,7 @@
             .attr("fill", (d: NodeData) => d.color)
             .attr("stroke", (d: NodeData) => d.color)
             .attr("stroke-opacity", 0.5)
-            .attr("stroke-width", 12);
+            .attr("stroke-width", (d: NodeData) => translationNodesSet.has(d.id) ? 36 : 0);
             
          // Node labels (ID)
          nodeGroups.append("text")
