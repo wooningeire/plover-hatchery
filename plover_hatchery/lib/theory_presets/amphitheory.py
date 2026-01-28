@@ -52,10 +52,7 @@ def theory():
                     yield "O"
                     return
 
-                if all(keysymbol.stress != 1 for keysymbol in sopheme.keysymbols):
-                    yield as_spelled_in(sopheme.chars)
 
-            
             case DefViewItem.Keysymbol(keysymbol):
                 sopheme = cursor.nth(cursor.stack_len - 1).sopheme()
 
@@ -97,6 +94,9 @@ def theory():
 
 
                 as_spelled = as_spelled_in(sopheme.chars)
+
+                if keysymbol.is_vowel and keysymbol.stress != 1:
+                    yield from as_spelled.split(" ")
 
                 mapping = {
                     "p": "P",

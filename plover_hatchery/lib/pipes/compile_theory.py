@@ -145,6 +145,7 @@ def compile_theory(
                 i += 1
 
                 translations.append("")
+                defs_list.append("")
 
                 n_addable_entries += 1
 
@@ -152,13 +153,13 @@ def compile_theory(
                     entry_id = len(translations) - 1
 
                     def_item = defs.get_def(varname)
-                    defs_list.append(str(def_item))
                     view = DefView(defs, def_item)
 
                     add_entry(states, view, entry_id)
 
                     translation = view.translation()
                     translations[-1] = translation
+                    defs_list[-1] = str(def_item)
                     reverse_translations[translation].append(entry_id)
 
                     n_passed_additions += 1
