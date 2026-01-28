@@ -300,6 +300,7 @@ class NondeterministicTrie(Generic[_KeyVar]):
             dst_dict[key_id] = [dst_node_id]
 
         self.__assign_transition_cost(src_node_id, key_id, transition_index, cost_info)
+        self.__used_nodes_by_translation[cost_info.translation_id].add(dst_node_id)
 
         return TransitionKey(src_node_id, key_id, transition_index)
 

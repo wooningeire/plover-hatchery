@@ -175,6 +175,7 @@ def soph_trie(
 
             src_nodes: list[NodeSrc] = [NodeSrc(0)]
             positions_and_src_nodes_stack: list[tuple[DefViewCursor, list[NodeSrc]]] = []
+            last_dst_node_id: int | None = None
 
 
             def step_in(cursor: DefViewCursor):
@@ -182,7 +183,7 @@ def soph_trie(
                     positions_and_src_nodes_stack.append((cursor, list(src_nodes)))
 
             def step_out(n_steps: int):
-                nonlocal src_nodes
+                nonlocal src_nodes, last_dst_node_id
 
 
                 has_keysymbols = False
@@ -215,7 +216,7 @@ def soph_trie(
                         api.register_transition(seq.transitions[0], entry_id, old_cursor)
 
                         for transition in seq.transitions:
-                            # TODO could fix this linear search
+                            # TODO could optimize this linear search
                             if any(
                                 old_src_node.node == transition.src_node_index and skip_transition_flag in old_src_node.outgoing_transition_flags
                                 for old_src_node in old_src_nodes
@@ -238,6 +239,7 @@ def soph_trie(
 
                 if dst_node_id is not None:
                     new_src_nodes.append(NodeSrc(dst_node_id))
+                    last_dst_node_id = dst_node_id
 
 
                 src_nodes = new_src_nodes
@@ -261,8 +263,8 @@ def soph_trie(
 
             step_out(len(positions_and_src_nodes_stack))
 
-            for src in src_nodes:
-                trie.set_translation(src.node, entry_id)
+            if last_dst_node_id is not None:
+                trie.set_translation(last_dst_node_id, entry_id)
 
 
         # @base_hooks.complete_build_lookup.listen(soph_trie)
