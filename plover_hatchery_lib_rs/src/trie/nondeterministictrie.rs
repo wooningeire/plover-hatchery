@@ -1,13 +1,19 @@
-use pyo3::prelude::*;
+use std::collections::HashMap;
 
-#[derive(Clone, Debug)]
-pub enum TransitionKey {
-    Empty,
-    String(String),
+use super::transition::SingleTranslationTransitionKey;
+
+pub struct NondeterministicTrie {
+    transitions: Vec<HashMap<Option<usize>, Vec<usize>>>,
+    node_translations: HashMap<usize, Vec<usize>>,
+    transition_costs: HashMap<SingleTranslationTransitionKey, f64>,
 }
 
-#[pyclass]
-#[derive(Clone, Debug)]
-pub struct NondeterministicTrie {
-    
+impl NondeterministicTrie {
+    pub fn new() -> Self {
+        Self {
+            transitions: vec![HashMap::new()],
+            node_translations: HashMap::new(),
+            transition_costs: HashMap::new(),
+        }
+    }
 }

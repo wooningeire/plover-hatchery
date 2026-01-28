@@ -173,3 +173,7 @@ def parse_sopheme_seq(seq: str, /) -> list[Sopheme]:
 def parse_keysymbol_seq(seq: str, /) -> list[Keysymbol]:
     """Parse a string into a list of Keysymbol objects."""
     ...
+
+
+class NondeterministicTrie:
+    def __init__(self, /) -> None: ...

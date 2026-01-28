@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 import dataclasses
 from itertools import product
 from plover_hatchery.lib.trie.Transition import TransitionKey
+from plover_hatchery_lib_rs import NondeterministicTrie as RsNondeterministicTrie
 from typing import TYPE_CHECKING, Any, Callable, Generator, Generic, Protocol, TypeVar, Union, final
 
 from .Transition import TransitionKey, TransitionCostInfo, TransitionCostKey
@@ -56,6 +57,8 @@ class NondeterministicTrie:
     ROOT = 0
     
     def __init__(self):
+        self.__rs = RsNondeterministicTrie()
+
         self.__transitions: list[dict[int | None, list[int]]] = [{}]
         """Mapping from each node's id to its lists of destination nodes, based on the keys' ids"""
         self.__node_translations: dict[int, list[int]] = {}
