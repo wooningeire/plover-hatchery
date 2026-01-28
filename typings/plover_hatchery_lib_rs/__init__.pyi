@@ -176,4 +176,135 @@ def parse_keysymbol_seq(seq: str, /) -> list[Keysymbol]:
 
 
 class NondeterministicTrie:
+    ROOT: int
+
     def __init__(self, /) -> None: ...
+
+    def follow(
+        self,
+        src_node_id: int,
+        key_id: int | None,
+        cost: float,
+        translation_id: int,
+        /,
+    ) -> TriePath: ...
+
+    def follow_chain(
+        self,
+        src_node_id: int,
+        key_ids: list[int | None],
+        cost: float,
+        translation_id: int,
+        /,
+    ) -> TriePath: ...
+
+    def link(
+        self,
+        src_node_id: int,
+        dst_node_id: int,
+        key_id: int | None,
+        cost: float,
+        translation_id: int,
+        /,
+    ) -> TransitionKey: ...
+
+    def link_chain(
+        self,
+        src_node_id: int,
+        dst_node_id: int,
+        key_ids: list[int | None],
+        cost: float,
+        translation_id: int,
+        /,
+    ) -> list[TransitionKey]: ...
+
+    def set_translation(self, node_id: int, translation_id: int, /) -> None: ...
+
+    def traverse(
+        self,
+        src_node_paths: list[TriePath],
+        key_id: int | None,
+        /,
+    ) -> list[TriePath]: ...
+
+    def traverse_chain(
+        self,
+        src_node_paths: list[TriePath],
+        key_ids: list[int | None],
+        /,
+    ) -> list[TriePath]: ...
+
+    def get_translations_and_costs_single(
+        self,
+        node_id: int,
+        transitions: list[TransitionKey],
+        /,
+    ) -> list[tuple[int, float]]: ...
+
+    def get_translations_and_costs(
+        self,
+        node_paths: list[TriePath],
+        /,
+    ) -> list[LookupResult]: ...
+
+    def get_transition_cost(
+        self,
+        transition: TransitionKey,
+        translation_id: int,
+        /,
+    ) -> float | None: ...
+
+    def transition_has_key(
+        self,
+        transition: TransitionKey,
+        key_id: int | None,
+        /,
+    ) -> bool: ...
+
+
+class TransitionKey:
+    @property
+    def src_node_index(self) -> int: ...
+    @property
+    def key_id(self) -> int | None: ...
+    @property
+    def transition_index(self) -> int: ...
+
+    def __init__(
+        self,
+        src_node_index: int,
+        key_id: int | None,
+        transition_index: int,
+        /,
+    ) -> None: ...
+
+
+class TriePath:
+    @property
+    def dst_node_id(self) -> int: ...
+    @property
+    def transitions(self) -> list[TransitionKey]: ...
+
+    def __init__(
+        self,
+        dst_node_id: int = 0,
+        transitions: list[TransitionKey] = ...,
+        /,
+    ) -> None: ...
+
+
+class LookupResult:
+    @property
+    def translation_id(self) -> int: ...
+    @property
+    def cost(self) -> float: ...
+    @property
+    def transitions(self) -> list[TransitionKey]: ...
+
+    def __init__(
+        self,
+        translation_id: int,
+        cost: float,
+        transitions: list[TransitionKey],
+        /,
+    ) -> None: ...

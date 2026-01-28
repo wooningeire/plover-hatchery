@@ -1,19 +1,441 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
-use super::transition::SingleTranslationTransitionKey;
+use super::transition::{TransitionCostInfo, TransitionCostKey, TransitionKey};
 
+/// A path through the trie, tracking the destination node and transitions taken.
+#[derive(Clone, Debug)]
+pub struct TriePath {
+    pub dst_node_id: usize,
+    pub transitions: Vec<TransitionKey>,
+}
+
+impl TriePath {
+    pub fn new(dst_node_id: usize, transitions: Vec<TransitionKey>) -> Self {
+        Self {
+            dst_node_id,
+            transitions,
+        }
+    }
+
+    pub fn root() -> Self {
+        Self {
+            dst_node_id: 0,
+            transitions: Vec::new(),
+        }
+    }
+}
+
+/// Result of a translation lookup.
+#[derive(Clone, Debug)]
+pub struct LookupResult {
+    pub translation_id: usize,
+    pub cost: f64,
+    pub transitions: Vec<TransitionKey>,
+}
+
+impl LookupResult {
+    pub fn new(translation_id: usize, cost: f64, transitions: Vec<TransitionKey>) -> Self {
+        Self {
+            translation_id,
+            cost,
+            transitions,
+        }
+    }
+}
+
+/// A nondeterministic trie that can be in multiple states at once.
+/// Used for efficient lookup of stenographic translations.
 pub struct NondeterministicTrie {
+    /// Mapping from each node's id to its lists of destination nodes, based on the keys' ids
     transitions: Vec<HashMap<Option<usize>, Vec<usize>>>,
+    /// Mapping from each node's id to its list of translation ids
     node_translations: HashMap<usize, Vec<usize>>,
-    transition_costs: HashMap<SingleTranslationTransitionKey, f64>,
+    /// Costs associated with each (transition, translation) pair
+    transition_costs: HashMap<TransitionCostKey, f64>,
+    /// Tracks which nodes have been used by each translation during construction
+    used_nodes_by_translation: HashMap<usize, HashSet<usize>>,
 }
 
 impl NondeterministicTrie {
+    pub const ROOT: usize = 0;
+
     pub fn new() -> Self {
         Self {
             transitions: vec![HashMap::new()],
             node_translations: HashMap::new(),
             transition_costs: HashMap::new(),
+            used_nodes_by_translation: HashMap::new(),
         }
+    }
+
+    /// Creates a new node and returns its id.
+    fn create_new_node(&mut self) -> usize {
+        let new_node_id = self.transitions.len();
+        self.transitions.push(HashMap::new());
+        new_node_id
+    }
+
+    /// Assigns a cost to a transition for a specific translation.
+    fn assign_transition_cost(
+        &mut self,
+        src_node_id: usize,
+        key_id: Option<usize>,
+        transition_index: usize,
+        cost_info: &TransitionCostInfo,
+    ) {
+        let cost_key = TransitionCostKey::new(
+            TransitionKey::new(src_node_id, key_id, transition_index),
+            cost_info.translation_id,
+        );
+        let existing_cost = self.transition_costs.get(&cost_key).copied().unwrap_or(f64::INFINITY);
+        self.transition_costs.insert(cost_key, cost_info.cost.min(existing_cost));
+    }
+
+    /// Checks if a transition has a cost assigned for a specific translation.
+    fn transition_has_cost_for_translation(
+        &self,
+        src_node_id: usize,
+        key_id: Option<usize>,
+        transition_index: usize,
+        translation_id: usize,
+    ) -> bool {
+        let cost_key = TransitionCostKey::new(
+            TransitionKey::new(src_node_id, key_id, transition_index),
+            translation_id,
+        );
+        self.transition_costs.contains_key(&cost_key)
+    }
+
+    /// Gets the destination node by following an existing transition or creates it if it doesn't exist.
+    pub fn follow(
+        &mut self,
+        src_node_id: usize,
+        key_id: Option<usize>,
+        cost_info: &TransitionCostInfo,
+    ) -> TriePath {
+        let translation_id = cost_info.translation_id;
+        
+        // Get or create the used nodes set for this translation
+        let used_nodes = self.used_nodes_by_translation
+            .entry(translation_id)
+            .or_insert_with(HashSet::new);
+
+        // Check if there's an existing transition we can reuse
+        if let Some(dst_node_ids) = self.transitions[src_node_id].get(&key_id) {
+            for (transition_index, &dst_node_id) in dst_node_ids.iter().enumerate() {
+                if used_nodes.contains(&dst_node_id) {
+                    continue;
+                }
+
+                // Found a reusable node
+                used_nodes.insert(dst_node_id);
+                self.assign_transition_cost(src_node_id, key_id, transition_index, cost_info);
+                return TriePath::new(
+                    dst_node_id,
+                    vec![TransitionKey::new(src_node_id, key_id, transition_index)],
+                );
+            }
+        }
+
+        // Create a new node
+        let new_node_id = self.create_new_node();
+        self.used_nodes_by_translation
+            .entry(translation_id)
+            .or_insert_with(HashSet::new)
+            .insert(new_node_id);
+
+        let new_transition_index = self.transitions[src_node_id]
+            .get(&key_id)
+            .map(|v| v.len())
+            .unwrap_or(0);
+
+        self.transitions[src_node_id]
+            .entry(key_id)
+            .or_insert_with(Vec::new)
+            .push(new_node_id);
+
+        self.assign_transition_cost(src_node_id, key_id, new_transition_index, cost_info);
+
+        TriePath::new(
+            new_node_id,
+            vec![TransitionKey::new(src_node_id, key_id, new_transition_index)],
+        )
+    }
+
+    /// Follows a chain of keys from a source node.
+    pub fn follow_chain(
+        &mut self,
+        src_node_id: usize,
+        key_ids: &[Option<usize>],
+        cost_info: &TransitionCostInfo,
+    ) -> TriePath {
+        let mut current_node = src_node_id;
+        let mut all_transitions = Vec::new();
+
+        for (i, &key_id) in key_ids.iter().enumerate() {
+            let path_addend = if i == key_ids.len() - 1 {
+                // Only assign the full cost to the last transition
+                self.follow(current_node, key_id, cost_info)
+            } else {
+                // Assign zero cost to intermediate transitions
+                self.follow(
+                    current_node,
+                    key_id,
+                    &TransitionCostInfo::new(0.0, cost_info.translation_id),
+                )
+            };
+
+            current_node = path_addend.dst_node_id;
+            all_transitions.extend(path_addend.transitions);
+        }
+
+        TriePath::new(current_node, all_transitions)
+    }
+
+    /// Creates a transition from a source node to an existing destination node.
+    pub fn link(
+        &mut self,
+        src_node_id: usize,
+        dst_node_id: usize,
+        key_id: Option<usize>,
+        cost_info: &TransitionCostInfo,
+    ) -> TransitionKey {
+        let dst_dict = &mut self.transitions[src_node_id];
+
+        let transition_index = if let Some(dst_node_ids) = dst_dict.get(&key_id) {
+            if let Some(idx) = dst_node_ids.iter().position(|&id| id == dst_node_id) {
+                // Already exists
+                idx
+            } else {
+                // Add new link
+                let idx = dst_node_ids.len();
+                dst_dict.get_mut(&key_id).unwrap().push(dst_node_id);
+                idx
+            }
+        } else {
+            // Create new entry
+            dst_dict.insert(key_id, vec![dst_node_id]);
+            0
+        };
+
+        self.assign_transition_cost(src_node_id, key_id, transition_index, cost_info);
+        self.used_nodes_by_translation
+            .entry(cost_info.translation_id)
+            .or_insert_with(HashSet::new)
+            .insert(dst_node_id);
+
+        TransitionKey::new(src_node_id, key_id, transition_index)
+    }
+
+    /// Follows all but the final transition, then links to the destination node.
+    pub fn link_chain(
+        &mut self,
+        src_node_id: usize,
+        dst_node_id: usize,
+        key_ids: &[Option<usize>],
+        cost_info: &TransitionCostInfo,
+    ) -> Vec<TransitionKey> {
+        if key_ids.is_empty() {
+            return Vec::new();
+        }
+
+        let path = self.follow_chain(
+            src_node_id,
+            &key_ids[..key_ids.len() - 1],
+            &TransitionCostInfo::new(0.0, cost_info.translation_id),
+        );
+
+        let transition = self.link(
+            path.dst_node_id,
+            dst_node_id,
+            key_ids[key_ids.len() - 1],
+            cost_info,
+        );
+
+        let mut transitions = path.transitions;
+        transitions.push(transition);
+        transitions
+    }
+
+    /// Sets a translation at a node.
+    pub fn set_translation(&mut self, node_id: usize, translation_id: usize) {
+        self.node_translations
+            .entry(node_id)
+            .or_insert_with(Vec::new)
+            .push(translation_id);
+    }
+
+    /// Traverses the trie from source paths following a key.
+    pub fn traverse<'a>(
+        &'a self,
+        src_node_paths: impl Iterator<Item = TriePath> + 'a,
+        key_id: Option<usize>,
+    ) -> impl Iterator<Item = TriePath> + 'a {
+        src_node_paths.flat_map(move |path| {
+            let transitions = &self.transitions[path.dst_node_id];
+            
+            transitions.get(&key_id).into_iter().flat_map(move |dst_node_ids| {
+                dst_node_ids.iter().enumerate().flat_map({
+                    let path = path.clone();
+                    move |(transition_index, &dst_node_id)| {
+                        let transition_key = TransitionKey::new(path.dst_node_id, key_id, transition_index);
+                        let mut new_transitions = path.transitions.clone();
+                        new_transitions.push(transition_key);
+                        
+                        self.dfs_empty_transitions(
+                            TriePath::new(dst_node_id, new_transitions),
+                            HashSet::new(),
+                        )
+                    }
+                })
+            })
+        })
+    }
+
+    /// DFS to follow empty (None key) transitions.
+    fn dfs_empty_transitions(
+        &self,
+        src_node_path: TriePath,
+        visited_transitions: HashSet<TransitionKey>,
+    ) -> Vec<TriePath> {
+        let mut results = vec![src_node_path.clone()];
+
+        let transitions = &self.transitions[src_node_path.dst_node_id];
+        if let Some(dst_node_ids) = transitions.get(&None) {
+            for (transition_index, &dst_node_id) in dst_node_ids.iter().enumerate() {
+                let transition_key = TransitionKey::new(src_node_path.dst_node_id, None, transition_index);
+                
+                if visited_transitions.contains(&transition_key) {
+                    continue;
+                }
+
+                let mut new_transitions = src_node_path.transitions.clone();
+                new_transitions.push(transition_key);
+                
+                let mut new_visited = visited_transitions.clone();
+                new_visited.insert(transition_key);
+
+                results.extend(self.dfs_empty_transitions(
+                    TriePath::new(dst_node_id, new_transitions),
+                    new_visited,
+                ));
+            }
+        }
+
+        results
+    }
+
+    /// Traverses the trie following a chain of keys.
+    pub fn traverse_chain<'a>(
+        &'a self,
+        src_node_paths: impl Iterator<Item = TriePath> + 'a,
+        key_ids: &'a [Option<usize>],
+    ) -> Box<dyn Iterator<Item = TriePath> + 'a> {
+        let mut current: Box<dyn Iterator<Item = TriePath> + 'a> = Box::new(src_node_paths);
+        for &key_id in key_ids {
+            current = Box::new(self.traverse(current, key_id));
+        }
+        current
+    }
+
+    /// Gets translations and costs for a single node.
+    pub fn get_translations_and_costs_single(
+        &self,
+        node_id: usize,
+        transitions: &[TransitionKey],
+    ) -> Vec<(usize, f64)> {
+        let Some(translation_ids) = self.node_translations.get(&node_id) else {
+            return Vec::new();
+        };
+
+        let mut results = Vec::new();
+
+        for &translation_id in translation_ids {
+            let mut is_valid_path = true;
+            let mut cumsum_cost = 0.0;
+
+            for transition in transitions {
+                let key = TransitionCostKey::new(*transition, translation_id);
+                if let Some(&cost) = self.transition_costs.get(&key) {
+                    cumsum_cost += cost;
+                } else {
+                    is_valid_path = false;
+                    break;
+                }
+            }
+
+            if is_valid_path {
+                results.push((translation_id, cumsum_cost));
+            }
+        }
+
+        results
+    }
+
+    /// Gets translations and costs for multiple paths.
+    pub fn get_translations_and_costs<'a>(
+        &'a self,
+        node_paths: impl Iterator<Item = TriePath> + 'a,
+    ) -> impl Iterator<Item = LookupResult> + 'a {
+        node_paths.flat_map(move |path| {
+            self.get_translations_and_costs_single(path.dst_node_id, &path.transitions)
+                .into_iter()
+                .map(move |(translation_id, cost)| {
+                    LookupResult::new(translation_id, cost, path.transitions.clone())
+                })
+        })
+    }
+
+    /// Gets the cost of a specific transition for a translation.
+    pub fn get_transition_cost(
+        &self,
+        transition: &TransitionKey,
+        translation_id: usize,
+    ) -> Option<f64> {
+        let cost_key = TransitionCostKey::new(*transition, translation_id);
+        self.transition_costs.get(&cost_key).copied()
+    }
+
+    /// Checks if a transition has a specific key.
+    pub fn transition_has_key(&self, transition: &TransitionKey, key_id: Option<usize>) -> bool {
+        transition.key_id == key_id
+    }
+}
+
+impl Default for NondeterministicTrie {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_new_trie() {
+        let trie = NondeterministicTrie::new();
+        assert_eq!(trie.transitions.len(), 1);
+    }
+
+    #[test]
+    fn test_follow_creates_node() {
+        let mut trie = NondeterministicTrie::new();
+        let cost_info = TransitionCostInfo::new(1.0, 0);
+        let path = trie.follow(0, Some(1), &cost_info);
+        assert_eq!(path.dst_node_id, 1);
+        assert_eq!(path.transitions.len(), 1);
+    }
+
+    #[test]
+    fn test_set_and_get_translation() {
+        let mut trie = NondeterministicTrie::new();
+        let cost_info = TransitionCostInfo::new(1.0, 0);
+        let path = trie.follow(0, Some(1), &cost_info);
+        trie.set_translation(path.dst_node_id, 42);
+        
+        let results: Vec<_> = trie.get_translations_and_costs_single(path.dst_node_id, &path.transitions);
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0], (42, 1.0));
     }
 }

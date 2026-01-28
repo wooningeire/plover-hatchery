@@ -35,6 +35,9 @@ mod trie;
 use trie::{
     py::{
         PyNondeterministicTrie,
+        PyTransitionKey,
+        PyTriePath,
+        PyLookupResult,
     },
 };
 
@@ -62,6 +65,9 @@ pub fn plover_hatchery_lib_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_parse_keysymbol_seq, m)?)?;
 
     m.add_class::<PyNondeterministicTrie>()?;
+    m.add_class::<PyTransitionKey>()?;
+    m.add_class::<PyTriePath>()?;
+    m.add_class::<PyLookupResult>()?;
 
     Ok(())
 }
