@@ -8,6 +8,34 @@ from plover_hatchery.lib.pipes import *
 def theory():
     yield floating_keys("*")
 
+    
+    def as_spelled_in(string: str):
+        if any(part in string for part in ("aw", "au")):
+            return "AU"
+        if any(part in string for part in ("ow", "ou")):
+            return "OU"
+        if any(part in string for part in ("oi", "oy")):
+            return "OI"
+        if any(part in string for part in ("ai", "ay")):
+            return "AA"
+        if any(part in string for part in ("ew",)):
+            return "UU"
+        if any(part in string for part in ("ei",)):
+            return "E"
+        if any(part in string for part in ("a",)):
+            return "A AA"
+        if any(part in string for part in ("e",)):
+            return "E EE"
+        if any(part in string for part in ("i",)):
+            return "I II"
+        if any(part in string for part in ("o",)):
+            return "O OO"
+        if any(part in string for part in ("u",)):
+            return "U UU"
+
+        return ""
+
+
 
     def map_phoneme_to_soph_values_base(cursor: DefViewCursor) -> Generator[str, None, None]:
         match cursor.tip():
@@ -23,6 +51,9 @@ def theory():
                 if "o" in spelling:
                     yield "O"
                     return
+
+                if all(keysymbol.stress != 1 for keysymbol in sopheme.keysymbols):
+                    yield as_spelled_in(sopheme.chars)
 
             
             case DefViewItem.Keysymbol(keysymbol):
@@ -65,31 +96,7 @@ def theory():
 
 
 
-
-
-                as_spelled = ""
-                if any(part in sopheme.chars for part in ("aw", "au")):
-                    as_spelled = "AU"
-                elif any(part in sopheme.chars for part in ("ow", "ou")):
-                    as_spelled = "OU"
-                elif any(part in sopheme.chars for part in ("oi", "oy")):
-                    as_spelled = "OI"
-                elif any(part in sopheme.chars for part in ("ai", "ay")):
-                    as_spelled = "AA"
-                elif any(part in sopheme.chars for part in ("ew",)):
-                    as_spelled = "UU"
-                elif any(part in sopheme.chars for part in ("ei",)):
-                    as_spelled = "E"
-                elif any(part in sopheme.chars for part in ("a",)):
-                    as_spelled = "A AA"
-                elif any(part in sopheme.chars for part in ("e",)):
-                    as_spelled = "E EE"
-                elif any(part in sopheme.chars for part in ("i",)):
-                    as_spelled = "I II"
-                elif any(part in sopheme.chars for part in ("o",)):
-                    as_spelled = "O OO"
-                elif any(part in sopheme.chars for part in ("u",)):
-                    as_spelled = "U UU"
+                as_spelled = as_spelled_in(sopheme.chars)
 
                 mapping = {
                     "p": "P",
@@ -374,7 +381,7 @@ def theory():
 
 
 
-    yield consonant_inversions(
-        consonant_sophs_str="B CH D F G H J K L M N NG P R S SH T TH W V Y Z ZH  C SC",
-        inversion_domains_steno="STKPWHR FRPBLGTSDZ"
-    )
+    # yield consonant_inversions(
+    #     consonant_sophs_str="B CH D F G H J K L M N NG P R S SH T TH W V Y Z ZH  C SC",
+    #     inversion_domains_steno="STKPWHR FRPBLGTSDZ"
+    # )

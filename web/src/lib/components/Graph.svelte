@@ -54,10 +54,40 @@
 
     // Flag controls state
     const UNFLAGGED_KEY = '(unflagged)';
-    let flagSettings = $state<Record<string, FlagSettings>>({
-        [UNFLAGGED_KEY]: { opacity: 1.0, strokeWidth: 4, dashed: false, dashLength: 5 }
-    });
+    const LOCAL_STORAGE_KEY = 'flagControlsSettings';
+    const DEFAULT_FLAG_SETTINGS: FlagSettings = { opacity: 1.0, strokeWidth: 4, dashed: false, dashLength: 5 };
+    
+    // Load initial settings from localStorage
+    function loadFlagSettings(): Record<string, FlagSettings> {
+        try {
+            const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                // Ensure unflagged key exists
+                if (!parsed[UNFLAGGED_KEY]) {
+                    parsed[UNFLAGGED_KEY] = { ...DEFAULT_FLAG_SETTINGS };
+                }
+                return parsed;
+            }
+        } catch (e) {
+            console.warn('Failed to load flag settings from localStorage:', e);
+        }
+        return { [UNFLAGGED_KEY]: { ...DEFAULT_FLAG_SETTINGS } };
+    }
+    
+    let flagSettings = $state<Record<string, FlagSettings>>(loadFlagSettings());
     let uniqueFlags = $state<string[]>([]);
+    
+    // Save settings to localStorage whenever they change
+    $effect(() => {
+        // Access flagSettings to create dependency
+        const settingsSnapshot = JSON.stringify(flagSettings);
+        try {
+            localStorage.setItem(LOCAL_STORAGE_KEY, settingsSnapshot);
+        } catch (e) {
+            console.warn('Failed to save flag settings to localStorage:', e);
+        }
+    });
 
     $effect(() => {
         if (!data || !data.transitions) return;
@@ -76,7 +106,7 @@
         untrack(() => {
             newFlags.forEach(f => {
                 if (flagSettings[f] === undefined) {
-                    flagSettings[f] = { opacity: 1.0, strokeWidth: 4, dashed: false, dashLength: 5 };
+                    flagSettings[f] = { ...DEFAULT_FLAG_SETTINGS };
                 }
             });
         });

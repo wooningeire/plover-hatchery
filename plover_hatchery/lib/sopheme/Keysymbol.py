@@ -5,7 +5,7 @@ from plover_hatchery_lib_rs import Keysymbol
 
 
 
-_KEYSYMBOL_OPTIONAL_SUB= re.compile(r"[\[\]]")
+_KEYSYMBOL_REMOVE_SUB = re.compile(r"[\[\]\d]")
 _NONPHONETIC_KEYSYMBOLS = tuple("*~-.<>{}#=$")
 _STRESS_KEYSYMBOLS = {
     "*": 1,
@@ -33,7 +33,7 @@ def parse_seq(transcription: str):
         if any(ch in keysymbol for ch in _NONPHONETIC_KEYSYMBOLS): continue
 
         optional = keysymbol.startswith("[") and keysymbol.endswith("]")
-        phonetic_keysymbols.append(Keysymbol(_KEYSYMBOL_OPTIONAL_SUB.sub("", keysymbol), next_stress, optional))
+        phonetic_keysymbols.append(Keysymbol(_KEYSYMBOL_REMOVE_SUB.sub("", keysymbol).lower(), next_stress, optional))
 
         next_stress = 0
 
