@@ -192,7 +192,7 @@ class NondeterministicTrie:
     def follow_chain(
         self,
         src_node_id: int,
-        key_ids: list[int | None],
+        key_ids: Sequence[int | None],
         cost: float,
         translation_id: int,
         /,
@@ -212,7 +212,7 @@ class NondeterministicTrie:
         self,
         src_node_id: int,
         dst_node_id: int,
-        key_ids: list[int | None],
+        key_ids: Sequence[int | None],
         cost: float,
         translation_id: int,
         /,
@@ -222,28 +222,28 @@ class NondeterministicTrie:
 
     def traverse(
         self,
-        src_node_paths: list[TriePath],
+        src_node_paths: Sequence[TriePath],
         key_id: int | None,
         /,
     ) -> list[TriePath]: ...
 
     def traverse_chain(
         self,
-        src_node_paths: list[TriePath],
-        key_ids: list[int | None],
+        src_node_paths: Sequence[TriePath],
+        key_ids: Sequence[int | None],
         /,
     ) -> list[TriePath]: ...
 
     def get_translations_and_costs_single(
         self,
         node_id: int,
-        transitions: list[TransitionKey],
+        transitions: Sequence[TransitionKey],
         /,
     ) -> list[tuple[int, float]]: ...
 
     def get_translations_and_costs(
         self,
-        node_paths: list[TriePath],
+        node_paths: Sequence[TriePath],
         /,
     ) -> list[LookupResult]: ...
 
@@ -263,7 +263,7 @@ class NondeterministicTrie:
 
     def get_translations_and_min_costs(
         self,
-        node_paths: list[TriePath],
+        node_paths: Sequence[TriePath],
         /,
     ) -> list[LookupResult]: ...
 
@@ -299,6 +299,31 @@ class TransitionKey:
         /,
     ) -> None: ...
 
+class TransitionCostKey:
+    @property
+    def transition_key(self) -> TransitionKey: ...
+    @property
+    def translation_id(self) -> int: ...
+
+    def __init__(
+        self,
+        transition_key: TransitionKey,
+        translation_id: int,
+        /,
+    ) -> None: ...
+
+class TransitionCostInfo:
+    @property
+    def cost(self) -> float: ...
+    @property
+    def translation_id(self) -> int: ...
+
+    def __init__(
+        self,
+        cost: float,
+        translation_id: int,
+        /,
+    ) -> None: ...
 
 class TriePath:
     @property
@@ -309,7 +334,7 @@ class TriePath:
     def __init__(
         self,
         dst_node_id: int = 0,
-        transitions: list[TransitionKey] = ...,
+        transitions: Sequence[TransitionKey] = ...,
         /,
     ) -> None: ...
 
@@ -326,7 +351,7 @@ class LookupResult:
         self,
         translation_id: int,
         cost: float,
-        transitions: list[TransitionKey],
+        transitions: Sequence[TransitionKey],
         /,
     ) -> None: ...
 

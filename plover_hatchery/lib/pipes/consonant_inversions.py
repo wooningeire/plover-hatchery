@@ -9,8 +9,7 @@ from plover_hatchery_lib_rs import DefViewCursor, DefViewItem
 from plover_hatchery.lib.pipes.Plugin import define_plugin, GetPluginApi
 from plover_hatchery.lib.pipes.soph_trie import ChordToSophSearchResult, ChordToSophSearchResultWithSrcIndex, LookupResultWithAssociations, SophChordAssociation, SophsToTranslationSearchPath, soph_trie
 from plover_hatchery.lib.pipes.types import Soph
-from plover_hatchery.lib.trie import NondeterministicTrie, NodeSrc, JoinedTriePaths, TransitionFlag
-from plover_hatchery.lib.trie.Transition import TransitionCostKey
+from plover_hatchery.lib.trie import NondeterministicTrie, NodeSrc, JoinedTriePaths, TransitionFlag, TransitionCostKey
 
 
 consonant_inversions_transition_flag = TransitionFlag("inversion")

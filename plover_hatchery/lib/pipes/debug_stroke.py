@@ -10,8 +10,7 @@ from plover.steno import Stroke
 from plover_hatchery.lib.pipes.Plugin import GetPluginApi, Plugin, define_plugin
 from plover_hatchery.lib.pipes.soph_trie import LookupResultWithAssociations, SophChordAssociation, soph_trie
 from plover_hatchery.lib.pipes.types import Soph
-from plover_hatchery.lib.trie import NondeterministicTrie
-from plover_hatchery.lib.trie.Transition import TransitionKey
+from plover_hatchery.lib.trie import NondeterministicTrie, TransitionKey
 
 
 def debug_stroke(steno: str) -> Plugin[None]:

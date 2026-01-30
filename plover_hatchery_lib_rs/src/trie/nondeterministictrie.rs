@@ -1,15 +1,22 @@
 use std::collections::{HashMap, HashSet};
 
+use pyo3::prelude::*;
+
 use super::transition::{TransitionCostInfo, TransitionCostKey, TransitionKey};
 
 /// A path through the trie, tracking the destination node and transitions taken.
 #[derive(Clone, Debug)]
+#[pyclass]
 pub struct TriePath {
+    #[pyo3(get, set)]
     pub dst_node_id: usize,
+    #[pyo3(get, set)]
     pub transitions: Vec<TransitionKey>,
 }
 
+#[pymethods]
 impl TriePath {
+    #[new]
     pub fn new(dst_node_id: usize, transitions: Vec<TransitionKey>) -> Self {
         Self {
             dst_node_id,
@@ -17,6 +24,7 @@ impl TriePath {
         }
     }
 
+    #[staticmethod]
     pub fn root() -> Self {
         Self {
             dst_node_id: 0,
@@ -27,13 +35,19 @@ impl TriePath {
 
 /// Result of a translation lookup.
 #[derive(Clone, Debug)]
+#[pyclass]
 pub struct LookupResult {
+    #[pyo3(get, set)]
     pub translation_id: usize,
+    #[pyo3(get, set)]
     pub cost: f64,
+    #[pyo3(get, set)]
     pub transitions: Vec<TransitionKey>,
 }
 
+#[pymethods]
 impl LookupResult {
+    #[new]
     pub fn new(translation_id: usize, cost: f64, transitions: Vec<TransitionKey>) -> Self {
         Self {
             translation_id,
