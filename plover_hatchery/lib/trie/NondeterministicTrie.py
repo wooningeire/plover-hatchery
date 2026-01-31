@@ -14,6 +14,7 @@ from plover_hatchery_lib_rs import (
     TransitionSourceNode,
     JoinedTriePaths,
     JoinedTransitionSeq,
+    TransitionFlag,
 )
 from typing import Callable, Generator, final, override
 
@@ -28,10 +29,6 @@ class OnTraverse:
     ) -> bool: ...
 
 
-@final
-@dataclass(frozen=True)
-class TransitionFlag:
-    label: str
 
 @final
 class TransitionFlagManager:
