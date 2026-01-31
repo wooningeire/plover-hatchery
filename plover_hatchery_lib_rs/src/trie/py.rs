@@ -210,7 +210,7 @@ impl PyReverseTrieIndex {
         py: Python<'_>,
         trie: &PyNondeterministicTrie,
         translation_id: usize,
-    ) -> Option<PyObject> {
+    ) -> Option<Py<PyAny>> {
         // First get the raw data from Rust
         let subtrie_data = trie.trie.get_subtrie_data(
             &self.reverse_nodes,

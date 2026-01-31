@@ -33,7 +33,7 @@ impl<'a> DefViewRoot<'a> {
         }
     }
 
-    pub fn as_item_ref(&self) -> DefViewItemRef {
+    pub fn as_item_ref(&self) -> DefViewItemRef<'_> {
         DefViewItemRef::Def(&self.def_ref())
     }
 }
@@ -136,7 +136,7 @@ impl<'a> DefView<'a> {
     }
 
 
-    pub fn get(&self, indexes: &[usize]) -> Result<Option<DefViewItemRef>, DefViewErr> {
+    pub fn get(&self, indexes: &[usize]) -> Result<Option<DefViewItemRef<'_>>, DefViewErr> {
         let mut cur_item_ref = self.root.as_item_ref();
 
         for &index in indexes {
@@ -201,15 +201,15 @@ impl<'a> DefView<'a> {
     }
 
 
-    pub fn first_index(&self, predicate: impl Fn(DefViewItemRef) -> bool) -> Result<Option<DefViewCursor>, DefViewErr> {
+    pub fn first_index(&self, predicate: impl Fn(DefViewItemRef) -> bool) -> Result<Option<DefViewCursor<'_, '_>>, DefViewErr> {
         self.first_index_since(DefViewCursor::of_view_at_start(self), predicate)
     }
 
-    pub fn last_index(&self, predicate: impl Fn(DefViewItemRef) -> bool) -> Result<Option<DefViewCursor>, DefViewErr> {
+    pub fn last_index(&self, predicate: impl Fn(DefViewItemRef) -> bool) -> Result<Option<DefViewCursor<'_, '_>>, DefViewErr> {
         self.last_index_until(DefViewCursor::of_view_at_end(self)?, predicate)
     }
 
-    pub fn first_keysymbol_cur(&self, predicate: impl Fn(&Keysymbol) -> bool) -> Result<Option<DefViewCursor>, DefViewErr> {
+    pub fn first_keysymbol_cur(&self, predicate: impl Fn(&Keysymbol) -> bool) -> Result<Option<DefViewCursor<'_, '_>>, DefViewErr> {
         self.first_index(|item_ref| match item_ref {
             DefViewItemRef::Keysymbol(keysymbol) => predicate(keysymbol),
 
@@ -217,7 +217,7 @@ impl<'a> DefView<'a> {
         })
     }
 
-    pub fn last_keysymbol_cur(&self, predicate: impl Fn(&Keysymbol) -> bool) -> Result<Option<DefViewCursor>, DefViewErr> {
+    pub fn last_keysymbol_cur(&self, predicate: impl Fn(&Keysymbol) -> bool) -> Result<Option<DefViewCursor<'_, '_>>, DefViewErr> {
         self.last_index(|item_ref| match item_ref {
             DefViewItemRef::Keysymbol(keysymbol) => predicate(keysymbol),
 
@@ -225,19 +225,19 @@ impl<'a> DefView<'a> {
         })
     }
 
-    pub fn first_consonant_cur(&self) -> Result<Option<DefViewCursor>, DefViewErr> {
+    pub fn first_consonant_cur(&self) -> Result<Option<DefViewCursor<'_, '_>>, DefViewErr> {
         self.first_keysymbol_cur(|keysymbol| keysymbol.is_consonant())
     }
 
-    pub fn last_consonant_cur(&self) -> Result<Option<DefViewCursor>, DefViewErr> {
+    pub fn last_consonant_cur(&self) -> Result<Option<DefViewCursor<'_, '_>>, DefViewErr> {
         self.last_keysymbol_cur(|keysymbol| keysymbol.is_consonant())
     }
 
-    pub fn first_vowel_cur(&self) -> Result<Option<DefViewCursor>, DefViewErr> {
+    pub fn first_vowel_cur(&self) -> Result<Option<DefViewCursor<'_, '_>>, DefViewErr> {
         self.first_keysymbol_cur(|keysymbol| keysymbol.is_vowel())
     }
 
-    pub fn last_vowel_cur(&self) -> Result<Option<DefViewCursor>, DefViewErr> {
+    pub fn last_vowel_cur(&self) -> Result<Option<DefViewCursor<'_, '_>>, DefViewErr> {
         self.last_keysymbol_cur(|keysymbol| keysymbol.is_vowel())
     }
 }

@@ -20,7 +20,7 @@ pub struct PyDefViewCursor {
 
 impl Clone for PyDefViewCursor {
     fn clone(&self) -> Self {
-        Python::with_gil(|py| PyDefViewCursor {
+        Python::attach(|py| PyDefViewCursor {
             view: self.view.clone_ref(py),
             index_stack: self.index_stack.clone(),
         })

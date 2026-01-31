@@ -9,6 +9,7 @@ use super::super::{
     view::{
         DefViewItemRef,
         DefViewErr,
+        DefView,
     },
     py::{
         PyDefDict,
@@ -30,23 +31,23 @@ pub struct PyDefView {
 }
 
 impl PyDefView {
-    pub fn with_rs_of<T>(py: Python, defs: Py<PyDefDict>, root_def: Py<Def>, mut func: impl FnMut(super::DefView) -> T) -> T {
+    pub fn with_rs_of<T>(py: Python, defs: Py<PyDefDict>, root_def: Py<Def>, mut func: impl FnMut(DefView) -> T) -> T {
         let defs = defs.borrow(py);
         let root_def = root_def.borrow(py);
-        let view_rs = super::DefView::new_ref(&defs.dict, &root_def);
+        let view_rs = DefView::new_ref(&defs.dict, &root_def);
 
         func(view_rs)
     }
 
-    pub fn with_rs<T>(&self, py: Python, mut func: impl FnMut(super::DefView) -> T) -> T {
+    pub fn with_rs<T>(&self, py: Python, mut func: impl FnMut(DefView) -> T) -> T {
         let defs = self.defs.borrow(py);
         let root_def = self.root_def.borrow(py);
-        let view_rs = super::DefView::new_ref(&defs.dict, &root_def);
+        let view_rs = DefView::new_ref(&defs.dict, &root_def);
 
         func(view_rs)
     }
 
-    pub fn with_rs_result<T>(&self, py: Python, mut func: impl FnMut(super::DefView) -> Result<T, DefViewErr>) -> Result<T, PyErr> {
+    pub fn with_rs_result<T>(&self, py: Python, func: impl FnMut(DefView) -> Result<T, DefViewErr>) -> Result<T, PyErr> {
         self.with_rs(py, func)
             .map_err(|err| PyException::new_err(err.message()))
     }
@@ -95,7 +96,7 @@ impl PyDefView {
     }
 
 
-    pub fn foreach(pyself: Py<Self>, callable: PyObject, py: Python) -> Result<(), PyErr> {
+    pub fn foreach(pyself: Py<Self>, callable: Py<PyAny>, py: Python) -> Result<(), PyErr> {
         pyself.borrow(py).with_rs_result(py, |view_rs| {
             view_rs.foreach(|_, cur| {
                 _ = callable.call(py, (PyDefViewCursor::of(pyself.clone_ref(py), &cur),), None);
@@ -103,11 +104,11 @@ impl PyDefView {
         })
     }
 
-    pub fn foreach_keysymbol(pyself: Py<Self>, callable: PyObject, py: Python) -> Result<(), PyErr> {
+    pub fn foreach_keysymbol(pyself: Py<Self>, callable: Py<PyAny>, py: Python) -> Result<(), PyErr> {
         pyself.borrow(py).with_rs_result(py, |view_rs| {
             view_rs.foreach(|item_ref, cur| {
                 match item_ref {
-                    super::DefViewItemRef::Keysymbol(keysymbol) => {
+                    DefViewItemRef::Keysymbol(keysymbol) => {
                         _ = callable.call(py, (PyDefViewCursor::of(pyself.clone_ref(py), &cur), keysymbol.clone()), None);
                     },
 

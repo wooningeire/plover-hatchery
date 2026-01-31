@@ -187,7 +187,7 @@ impl<'defs, 'view> DefViewCursor<'defs, 'view> {
             .collect::<Vec<_>>()
     }
 
-    pub fn prev_keysymbol_cur(&self) -> Result<Option<DefViewCursor>, DefViewErr> {
+    pub fn prev_keysymbol_cur(&self) -> Result<Option<DefViewCursor<'_, '_>>, DefViewErr> {
         self.view.last_index_before(
             self.clone(),
             |item_ref| match item_ref {
@@ -198,7 +198,7 @@ impl<'defs, 'view> DefViewCursor<'defs, 'view> {
         )
     }
 
-    pub fn next_keysymbol_cur(&self) -> Result<Option<DefViewCursor>, DefViewErr> {
+    pub fn next_keysymbol_cur(&self) -> Result<Option<DefViewCursor<'_, '_>>, DefViewErr> {
         self.view.first_index_after(
             self.clone(),
             |item_ref| match item_ref {
@@ -209,7 +209,7 @@ impl<'defs, 'view> DefViewCursor<'defs, 'view> {
         )
     }
 
-    pub fn occurs_before(&self, cur: Option<DefViewCursor>) -> bool {
+    pub fn occurs_before(&self, cur: Option<DefViewCursor<'_, '_>>) -> bool {
         match cur {
             Some(cur) => seq_less_than(self.indexes(), cur.indexes()),
 
@@ -217,7 +217,7 @@ impl<'defs, 'view> DefViewCursor<'defs, 'view> {
         }
     }
 
-    pub fn occurs_after(&self, cur: Option<DefViewCursor>) -> bool {
+    pub fn occurs_after(&self, cur: Option<DefViewCursor<'_, '_>>) -> bool {
         match cur {
             Some(cur) => seq_less_than(cur.indexes(), self.indexes()),
 

@@ -1,17 +1,11 @@
-use std::collections::HashSet;
-
-use crate::pipes::Soph;
 use crate::trie::{
-    NondeterministicTrie, TransitionSourceNode, JoinedTriePaths, TransitionKey, TransitionCostKey,
+    TransitionSourceNode, JoinedTriePaths, TransitionCostKey,
     py::PyNondeterministicTrie,
 };
-use crate::defs::{
-    DefViewItemRef, Keysymbol,
-    py::{PyDefView, PyDefViewCursor, PyDefViewItem},
-};
+use crate::defs::py::{PyDefView, PyDefViewCursor, PyDefViewItem};
 
 use pyo3::prelude::*;
-use pyo3::types::{PyAnyMethods, PySet, PyDict, PyTuple};
+use pyo3::types::{PyDict, PyTuple};
 
 
 
@@ -55,13 +49,13 @@ pub fn add_soph_trie_entry(
     trie: Py<PyNondeterministicTrie>,
     entry_id: usize,
     view: Py<PyDefView>,
-    map_to_sophs: PyObject,
-    get_key_ids_else_create: PyObject,
-    register_transition: PyObject,
-    add_transition_flag: PyObject,
+    map_to_sophs: Py<PyAny>,
+    get_key_ids_else_create: Py<PyAny>,
+    register_transition: Py<PyAny>,
+    add_transition_flag: Py<PyAny>,
     skip_transition_flag_id: usize,
-    emit_begin_add_entry: PyObject,
-    emit_add_soph_transition: PyObject,
+    emit_begin_add_entry: Py<PyAny>,
+    emit_add_soph_transition: Py<PyAny>,
 ) -> PyResult<()> {
     let kwargs = PyDict::new(py);
     kwargs.set_item("trie", trie.clone_ref(py))?;
@@ -69,15 +63,14 @@ pub fn add_soph_trie_entry(
     let states = emit_begin_add_entry.call(py, (), Some(&kwargs))?;
 
 
-    /// The nodes from which the next transition will depart
+    // The nodes from which the next transition will depart
     let mut source_nodes: Vec<TransitionSourceNode> = vec![TransitionSourceNode::root()];
-    /// The stack of source nodes and cursor positions for tracking nested structures in a Def
+    // The stack of source nodes and cursor positions for tracking nested structures in a Def
     let mut source_node_position_stack: Vec<SourceNodePositionStackItem> = vec![];
-    /// The latest destination node ID for joined paths
+    // The latest destination node ID for joined paths
     let mut last_dst_node_id: Option<usize> = None;
 
 
-    // Helper closure for step_in
     let step_in = |
         cursor: &PyDefViewCursor,
         source_nodes: &Vec<TransitionSourceNode>,
@@ -97,7 +90,6 @@ pub fn add_soph_trie_entry(
     };
 
 
-    // Helper closure for step_out
     let step_out = |
         py: Python,
         n_steps: usize,
@@ -106,13 +98,13 @@ pub fn add_soph_trie_entry(
         last_dst_node_id: &mut Option<usize>,
         trie: &Py<PyNondeterministicTrie>,
         entry_id: usize,
-        map_to_sophs: &PyObject,
-        get_key_ids_else_create: &PyObject,
-        register_transition: &PyObject,
-        add_transition_flag: &PyObject,
+        map_to_sophs: &Py<PyAny>,
+        get_key_ids_else_create: &Py<PyAny>,
+        register_transition: &Py<PyAny>,
+        add_transition_flag: &Py<PyAny>,
         skip_transition_flag_id: usize,
-        emit_add_soph_transition: &PyObject,
-        states: &PyObject,
+        emit_add_soph_transition: &Py<PyAny>,
+        states: &Py<PyAny>,
     | -> PyResult<()> {
         let mut has_keysymbols = false;
         let mut new_source_nodes: Vec<TransitionSourceNode> = vec![];

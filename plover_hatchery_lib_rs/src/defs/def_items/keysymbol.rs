@@ -7,9 +7,6 @@ use std::{
 use pyo3::{prelude::*};
 use regex::Regex;
 
-use crate::defs::def_items::keysymbol;
-
-
 
 #[pyclass]
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]

@@ -13,7 +13,7 @@ use crate::defs::{
 use pyo3::prelude::*;
 
 #[pyfunction]
-pub fn optionalize_keysymbols(view: Py<PyDefView>, condition: PyObject, py: Python) -> Result<Def, PyErr> {
+pub fn optionalize_keysymbols(view: Py<PyDefView>, condition: Py<PyAny>, py: Python) -> Result<Def, PyErr> {
     view.borrow(py).with_rs(py, |view_rs| {
         let mut cur = DefViewCursor::of_view_at_start(&view_rs);
 
