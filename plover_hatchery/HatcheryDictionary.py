@@ -31,7 +31,8 @@ class HatcheryDictionary(StenoDictionary):
         self.__maybe_lookup = lookup.lookup
         self.__maybe_reverse_lookup = lookup.reverse_lookup
 
-        store.breakdown = lookup.breakdown
+        store.breakdown_translation = lookup.breakdown_translation
+        store.breakdown_lookup = lookup.breakdown_lookup
             
 
     def __getitem__(self, stroke_stenos: tuple[str, ...]) -> str:

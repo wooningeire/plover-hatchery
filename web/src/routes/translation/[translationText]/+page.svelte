@@ -6,37 +6,64 @@ let {
     data,
 } = $props();
 
-let breakdownData = $state(null);
+let translationBreakdownData = $state(null);
 
+const translationBreakdownPromise = fetch(`http://localhost:5325/api/breakdown_translation/${encodeURIComponent(data.translationText)}`);
 onMount(async () => {
-    const breakdownResponse = await fetch(`http://localhost:5325/api/translation/${encodeURIComponent(data.translationText)}`);
-    breakdownData = await breakdownResponse.json();
+    const translationBreakdownResponse = await translationBreakdownPromise;
+    translationBreakdownData = await translationBreakdownResponse.json();
 });
 
 let breakdownIndex = $state(0);
 
-let breakdown = $derived(breakdownData?.[breakdownIndex] ?? null);
+let breakdown = $derived(translationBreakdownData?.[breakdownIndex] ?? null);
 
 let testOutline = $state("");
+let lookupBreakdownData = $state(null);
+let timeoutId = 0;
+$effect(() => {
+    if (testOutline === "") {
+        lookupBreakdownData = null;
+        return;
+    }
+
+    clearTimeout(timeoutId);
+
+    timeoutId = setTimeout(async () => {
+        const lookupBreakdownResponse = await fetch(`http://localhost:5325/api/breakdown_lookup/${encodeURIComponent(testOutline.replaceAll("/", " "))}`);
+        lookupBreakdownData = await lookupBreakdownResponse.json();
+        console.log(lookupBreakdownData);
+    }, 500);
+});
 </script>
 
 
 <div class="page">
-    <div class="heading">
-        <button onclick={() => breakdownIndex = breakdownIndex === 0 ? breakdownData.length - 1 : breakdownIndex - 1}>Previous</button>
-        <button onclick={() => breakdownIndex = breakdownIndex === breakdownData.length - 1 ? 0 : breakdownIndex + 1}>Next</button>
+    <div class="entry-controls">
+        <button onclick={() => breakdownIndex = breakdownIndex === 0 ? translationBreakdownData.length - 1 : breakdownIndex - 1}>Previous</button>
+        <button onclick={() => breakdownIndex = breakdownIndex === translationBreakdownData.length - 1 ? 0 : breakdownIndex + 1}>Next</button>
 
-        Entry {`${breakdownIndex + 1}\u2044${breakdownData?.length ?? 0}`}
+        <div class="entry-number">
+            Entry <sup>{breakdownIndex + 1}</sup>&#x2044;<sub>{translationBreakdownData?.length ?? 0}</sub>
+        </div>
+        
+        {breakdown?.entry}
     </div>
 
-    {#if breakdown !== null}
-        {breakdown.entry}
-        <Graph
-            data={breakdown.subtrie}
-        />
-    {:else}
+    {#await translationBreakdownPromise}
         <div>Loading...</div>
-    {/if}
+    {:then _}
+        {#if breakdown !== null}
+            <Graph
+                data={breakdown.subtrie}
+                highlightData={lookupBreakdownData}
+            />
+        {:else}
+            <div>No breakdown found for "{data.translationText}"</div>
+        {/if}
+    {:catch error}
+        <div>Failed to load breakdown for "{data.translationText}": {error}</div>
+    {/await}
 
     <div class="test-outline-container">
         Test outline
@@ -55,6 +82,14 @@ let testOutline = $state("");
 
     display: flex;
     flex-direction: column;
+}
+
+.entry-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    
+    padding: 1rem;
 }
 
 .test-outline-container {

@@ -30,9 +30,10 @@ class TheoryHooks:
         def __call__(self, *, stroke_stenos: tuple[str, ...], translations: list[str]) -> str | None: ...
     class ReverseLookup(Protocol):
         def __call__(self, *, translation: str, reverse_translations: dict[str, list[int]]) -> Iterable[tuple[str, ...]]: ...
-    class Breakdown(Protocol):
+    class BreakdownTranslation(Protocol):
         def __call__(self, *, translation: str, entries: list[str], reverse_translations: dict[str, list[int]]) -> str | None: ...
-    
+    class BreakdownLookup(Protocol):
+        def __call__(self, *, stroke_stenos: tuple[str, ...], translations: list[str]) -> str | None: ...
 
     begin_build_lookup = Hook(BeginBuildLookup)
     complete_build_lookup = Hook(CompleteBuildLookup)
@@ -40,7 +41,8 @@ class TheoryHooks:
     add_entry = Hook(AddEntry)
     lookup = Hook(Lookup)
     reverse_lookup = Hook(ReverseLookup)
-    breakdown = Hook(Breakdown)
+    breakdown_translation = Hook(BreakdownTranslation)
+    breakdown_lookup = Hook(BreakdownLookup)
 
 
 def compile_theory(
@@ -188,10 +190,13 @@ def compile_theory(
         def true_reverse_lookup(translation: str):
             return reverse_lookup(states, translation, reverse_translations)
 
-        def true_breakdown(translation: str):
-            return breakdown(states, translation, defs_list, reverse_translations)
+        def true_breakdown_translation(translation: str):
+            return breakdown_translation(states, translation, defs_list, reverse_translations)
 
-        return TheoryLookup(true_lookup, true_reverse_lookup, true_breakdown)
+        def true_breakdown_lookup(stroke_stenos: tuple[str, ...], translations: list[str]):
+            return breakdown_lookup(states, stroke_stenos, translations)
+
+        return TheoryLookup(true_lookup, true_reverse_lookup, true_breakdown_translation, true_breakdown_lookup)
         
 
     def process_def(view: DefView):
@@ -225,9 +230,17 @@ def compile_theory(
         return results
 
 
-    def breakdown(states: dict[int, Any], translation: str, entries: list[str], reverse_translations: dict[str, list[int]]) -> str | None:
-        for plugin_id, handler in hooks.breakdown.ids_handlers():
+    def breakdown_translation(states: dict[int, Any], translation: str, entries: list[str], reverse_translations: dict[str, list[int]]) -> str | None:
+        for plugin_id, handler in hooks.breakdown_translation.ids_handlers():
             result = handler(translation=translation, entries=entries, reverse_translations=reverse_translations)
+            if result is not None:
+                return result
+        
+        return None
+
+    def breakdown_lookup(states: dict[int, Any], stroke_stenos: tuple[str, ...], translations: list[str]) -> str | None:
+        for plugin_id, handler in hooks.breakdown_lookup.ids_handlers():
+            result = handler(stroke_stenos=stroke_stenos, translations=translations)
             if result is not None:
                 return result
         

@@ -29,11 +29,20 @@ class HatcheryWebServerExtension:
             response.headers.add("Access-Control-Allow-Methods", "GET,PATCH,PUT,POST,DELETE,OPTIONS")
             return response
         
-        @app.route("/api/translation/<translation>")
-        def index_route(translation: str):
-            breakdown = store.breakdown(translation)
+        @app.route("/api/breakdown_translation/<translation>")
+        def breakdown_translation_route(translation: str):
+            breakdown = store.breakdown_translation(translation)
             if breakdown is None:
                 return jsonify({})
+
+            return breakdown
+        
+        @app.route("/api/breakdown_lookup/<outline>")
+        def breakdown_lookup_route(outline: str):
+            print(outline)
+            breakdown = store.breakdown_lookup(tuple(outline.split(" ")), store.translations)
+            if breakdown is None:
+                return jsonify([])
 
             return breakdown
         

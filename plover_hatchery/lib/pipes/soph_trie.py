@@ -1,5 +1,6 @@
 from collections import defaultdict
 from dataclasses import dataclass, field
+import json
 from typing import Any, Callable, Iterable, NamedTuple, Protocol, final
 
 from plover.steno import Stroke
@@ -474,10 +475,7 @@ def soph_trie(
                     return None
             
             
-            translation_choices = MinTranslationBuilder().build(outline, original_outline, states)
-
-            # if debug:
-            #     return _join_all_translations(trie, translation_choices, translations)
+            translation_choices = MinTranslationBuilder.build(outline, original_outline, states)
             
             if len(translation_choices) == 0: return None
 
@@ -502,16 +500,61 @@ def soph_trie(
             return translation
 
 
+        @base_hooks.breakdown_lookup.listen(soph_trie)
+        def _(stroke_stenos: tuple[str, ...], translations: list[str], **_):
+            original_outline = tuple(Stroke.from_steno(steno) for steno in stroke_stenos)
+
+
+            states = api.begin_lookup.emit_and_store_outputs(outline=original_outline)
+
+
+            if len(original_outline[0]) == 0: return None # TODO
+
+
+            outline = original_outline
+            for state, handler in api.process_outline.states_handlers(states):
+                outline = handler(state=state, outline=outline)
+                if outline is None:
+                    return None
+            
+            
+            summaries = []
+            for final_path in SophsToTranslationPathFinder.get_paths_from_outline(outline, states):
+                nodes_by_association: list[list[int]] = []
+
+                for i, association in enumerate(final_path.sophs_and_chords_used):
+                    if i == len(final_path.sophs_and_chords_used) - 1:
+                        next_node = final_path.trie_path.dst_node_id
+                    else:
+                        next_node = final_path.sophs_and_chords_used[i + 1].transitions[0].src_node_index
+
+                    nodes_by_association.append((
+                        *(transition.src_node_index for transition in association.transitions),
+                        next_node,
+                    ))
+
+
+                summaries.append({
+                    "path": [
+                        {
+                            "sophs": [soph.value for soph in association.sophs],
+                            "chord": association.chord.rtfcre,
+                            "nodes": nodes_by_association[i],
+                        }
+                        for i, association in enumerate(final_path.sophs_and_chords_used)
+                    ],
+                })
+                
+
+            return json.dumps(summaries)
 
 
         ### Reverse lookup ##############################################################
 
         subtrie_builders: dict[int, Callable[[int], dict[str, Any] | None]] = {}
 
-        @base_hooks.breakdown.listen(soph_trie)
+        @base_hooks.breakdown_translation.listen(soph_trie)
         def _(translation: str, entries: list[str], reverse_translations: dict[str, list[int]], **_):
-            import json
-
             if id(trie) in subtrie_builders:
                 subtrie_builder = subtrie_builders[id(trie)]
             else:

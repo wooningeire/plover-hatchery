@@ -11,7 +11,8 @@ from ..sopheme import Sopheme
 class TheoryLookup:
     lookup: Callable[[tuple[str, ...]], str | None]
     reverse_lookup: Callable[[str], list[tuple[str, ...]]]
-    breakdown: Callable[[str], str | None]
+    breakdown_translation: Callable[[str], str | None]
+    breakdown_lookup: Callable[[tuple[str, ...], list[str]], str | None]
 
 
 @final

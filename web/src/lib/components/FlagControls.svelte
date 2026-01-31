@@ -15,7 +15,7 @@
 </script>
 
 <div class="controls">
-    <h3>Transition Flags</h3>
+    <h3>Transition flags</h3>
 
     <div class="controls-grid">
         {#if flags.length === 0}
@@ -84,13 +84,12 @@ h3 {
 
 .controls-grid {
     display: grid;
-    grid-template-columns: repeat(2, auto);
-    gap: 1rem;
+    grid-template-columns: min-content auto;
+    gap: 1rem 2rem;
 }
 
 .flag-name {
-    display: block;
-    margin-bottom: 0.5rem;
+    text-align: end;
 }
 .control-row {
     display: flex;

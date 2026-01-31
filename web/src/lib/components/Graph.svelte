@@ -33,10 +33,22 @@
         }[];
     }
 
+    interface BreakdownPathStep {
+        sophs: string[];
+        chord: string;
+        nodes: number[]; // [source, target]
+    }
+
+    interface BreakdownPath {
+        path: BreakdownPathStep[];
+    }
+
     let {
         data,
+        highlightData = null,
     }: {
         data: GraphData,
+        highlightData?: BreakdownPath[] | null,
     } = $props();
 
     const translationNodesSet = $derived(new Set(data.translation_nodes));
@@ -243,7 +255,6 @@
             .attr("stroke-opacity", (d: LinkData) => d.opacity * 0.6)
             .attr("stroke-width", (d: LinkData) => d.strokeWidth)
             .attr("stroke-dasharray", (d: LinkData) => d.dashArray)
-            .attr("marker-end", "url(#arrowhead)")
              .attr("d", (d: LinkData) => {
                 const source = nodeMap.get(d.source)!;
                 const target = nodeMap.get(d.target)!;
@@ -260,6 +271,84 @@
                 
                 return `M${source.x},${source.y} C${cp1x},${cp1y} ${cp2x},${cp2y} ${target.x},${target.y}`;
             });
+
+        // Highlights for lookup path
+        const highlightedNodes = new Set<number>();
+        const highlightedLinks: { source: number, target: number, chord: string }[] = [];
+
+        if (highlightData) {
+            highlightData.forEach(pathData => {
+                pathData.path.forEach(step => {
+                    if (step.nodes && step.nodes.length >= 2) {
+                        const source = step.nodes[0];
+                        const target = step.nodes[1];
+                        highlightedLinks.push({ source, target, chord: step.chord });
+                        highlightedNodes.add(source);
+                        highlightedNodes.add(target);
+                    }
+                });
+            });
+        }
+
+        const highlightGroup = g.append("g").attr("class", "highlights");
+
+        // Highlight Links
+        highlightGroup.selectAll("path")
+            .data(highlightedLinks)
+            .join("path")
+            .attr("fill", "none")
+            .attr("stroke", "red")
+            .attr("stroke-width", 6)
+            .attr("stroke-opacity", 0.8)
+            .attr("d", d => {
+                const source = nodeMap.get(d.source);
+                const target = nodeMap.get(d.target);
+                
+                if (!source || !target) return "";
+
+                const dx = target.x - source.x;
+                const h = Math.abs(dx) * arc;
+                const dir = dx > 0 ? -1 : 1;
+                
+                const cp1x = source.x + dx / 4;
+                const cp1y = source.y + h * dir;
+                
+                const cp2x = target.x - dx / 4;
+                const cp2y = target.y + h * dir;
+                
+                return `M${source.x},${source.y} C${cp1x},${cp1y} ${cp2x},${cp2y} ${target.x},${target.y}`;
+            });
+
+        // Highlight Link Labels (Chord)
+        highlightGroup.selectAll("text")
+            .data(highlightedLinks)
+            .join("text")
+            .attr("font-family", "Atkinson Hyperlegible Next")
+            .attr("font-size", 14)
+            .attr("fill", "red")
+            .attr("font-weight", "bold")
+            .attr("text-anchor", "middle")
+            .attr("x", d => {
+                const source = nodeMap.get(d.source);
+                const target = nodeMap.get(d.target);
+                return source && target ? (source.x + target.x) / 2 : 0;
+            })
+            .attr("y", d => {
+                const source = nodeMap.get(d.source);
+                const target = nodeMap.get(d.target);
+                if (!source || !target) return 0;
+                
+                const dx = target.x - source.x;
+                const dir = dx > 0 ? -1 : 1;
+                const h = Math.abs(dx) * arc;
+                // Position slightly above the path's midpoint
+                return source.y + h * dir * 0.75 - 15; 
+            })
+            .style("background-color", "rgba(255, 255, 255, 0.9)")
+             // Add a small background rect for readability if needed, or text-shadow
+            .style("text-shadow", "0px 0px 4px white")
+            .text(d => d.chord);
+
             
         // Link Labels
         g.append("g")
@@ -302,6 +391,17 @@
             .attr("stroke", (d: NodeData) => d.color)
             .attr("stroke-opacity", 0.5)
             .attr("stroke-width", (d: NodeData) => translationNodesSet.has(d.id) ? 36 : 0);
+        
+        
+        nodeGroups.append("circle")
+            .filter((d: NodeData) =>highlightedNodes.has(d.id))
+            .attr("r", nodeRadius)
+            .attr("fill", "none")
+            .attr("stroke", "#f00")
+            .attr("stroke-opacity", 0.8)
+            .attr("stroke-width", 6);
+    
+
             
          // Node labels (ID)
          nodeGroups.append("text")
@@ -331,7 +431,7 @@
 .graph-container {
     overflow: hidden;
 
-    background-color: oklch(0.985 0.01 190);
+    background-color: oklch(0.98 0.003 150);
     border-radius: 4px;
 }
 </style>
