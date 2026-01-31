@@ -324,7 +324,6 @@
             .data(highlightedLinks)
             .join("text")
             .attr("font-family", "Atkinson Hyperlegible Next")
-            .attr("font-size", 14)
             .attr("fill", "red")
             .attr("font-weight", "bold")
             .attr("text-anchor", "middle")
@@ -342,8 +341,9 @@
                 const dir = dx > 0 ? -1 : 1;
                 const h = Math.abs(dx) * arc;
                 // Position slightly above the path's midpoint
-                return source.y + h * dir * 0.75 - 15; 
+                return source.y + h * dir * 0.8 - 15; 
             })
+            .style("font-size", "2rem")
             .style("background-color", "rgba(255, 255, 255, 0.9)")
              // Add a small background rect for readability if needed, or text-shadow
             .style("text-shadow", "0px 0px 4px white")
