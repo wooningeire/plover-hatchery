@@ -10,7 +10,7 @@ from .Store import store
 
 allowed_origins = re.compile(r"https?://localhost:\d+|https://vaie\.art")
 
-class HatcheryExtension:
+class HatcheryWebServerExtension:
     def __init__(self, engine: StenoEngine):
         app = Flask(__name__)
 

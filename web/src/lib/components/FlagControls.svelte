@@ -16,12 +16,15 @@
 
 <div class="controls">
     <h3>Transition Flags</h3>
-    {#if flags.length === 0}
-        <div class="empty">No flags found</div>
-    {/if}
-    {#each flags as flag}
-        <div class="flag-control">
-            <span class="flag-name">{flag}</span>
+
+    <div class="controls-grid">
+        {#if flags.length === 0}
+            <div class="empty">No flags found</div>
+        {/if}
+
+        {#each flags as flag}
+            <div class="flag-name">{flag}</div>
+
             <div class="control-row">
                 <label class="opacity-control">
                     Opacity
@@ -66,70 +69,48 @@
                     </label>
                 {/if}
             </div>
-        </div>
-    {/each}
+        {/each}
+    </div>
 </div>
 
 <style>
-    .controls {
-        margin-bottom: 1rem;
-        padding: 1rem;
-        background: #f9f9f9;
-        border: 1px solid #eee;
-        border-radius: 4px;
-        max-height: 300px;
-        overflow-y: auto;
-    }
-    .flag-control {
-        margin-bottom: 0.75rem;
-        padding-bottom: 0.75rem;
-        border-bottom: 1px solid #eee;
-    }
-    .flag-control:last-child {
-        border-bottom: none;
-        margin-bottom: 0;
-        padding-bottom: 0;
-    }
-    .flag-name {
-        font-weight: 600;
-        display: block;
-        margin-bottom: 0.5rem;
-    }
-    .control-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 1rem;
-        align-items: center;
-    }
-    .opacity-control,
-    .stroke-width-control,
-    .dash-length-control {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-    .dashed-control {
-        display: flex;
-        align-items: center;
-        gap: 0.25rem;
-        cursor: pointer;
-    }
-    .value {
-        min-width: 2.5rem;
-        text-align: right;
-        font-variant-numeric: tabular-nums;
-        color: #666;
-        font-size: 0.875rem;
-    }
-    input[type="range"] {
-        width: 100px;
-        cursor: pointer;
-    }
-    input[type="checkbox"] {
-        cursor: pointer;
-    }
-    .empty {
-        color: #666;
-        font-style: italic;
-    }
+.controls {
+    padding: 1rem;
+}
+
+h3 {
+    font-weight: 700;
+}
+
+.controls-grid {
+    display: grid;
+    grid-template-columns: repeat(2, auto);
+    gap: 1rem;
+}
+
+.flag-name {
+    display: block;
+    margin-bottom: 0.5rem;
+}
+.control-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+
+    font-size: 0.8rem;
+}
+.opacity-control,
+.stroke-width-control,
+.dash-length-control {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.dashed-control {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    cursor: pointer;
+}
 </style>

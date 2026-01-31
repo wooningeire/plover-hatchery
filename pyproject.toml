@@ -32,7 +32,7 @@ writeouts-json = "plover_hatchery.WriteoutsDictionary:WriteoutsDictionary"
 hatchery = "plover_hatchery.HatcheryDictionary:HatcheryDictionary"
 
 [project.entry-points."plover.extension"]
-"Hatchery web server" = "plover_hatchery.HatcheryExtension:HatcheryExtension"
+"Hatchery web server" = "plover_hatchery.HatcheryWebServerExtension:HatcheryWebServerExtension"
 
 [tool.setuptools]
 zip-safe = true
