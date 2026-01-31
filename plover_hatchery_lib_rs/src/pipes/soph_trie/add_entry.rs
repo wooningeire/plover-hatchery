@@ -69,58 +69,57 @@ pub fn add_soph_trie_entry(
     let states = emit_begin_add_entry.call(py, (), Some(&kwargs))?;
 
 
+    /// The nodes from which the next transition will depart
     let mut source_nodes: Vec<TransitionSourceNode> = vec![TransitionSourceNode::root()];
+    /// The stack of source nodes and cursor positions for tracking nested structures in a Def
     let mut source_node_position_stack: Vec<SourceNodePositionStackItem> = vec![];
+    /// The latest destination node ID for joined paths
     let mut last_dst_node_id: Option<usize> = None;
 
 
     // Helper closure for step_in
-    // def step_in(cursor: DefViewCursor):
-    //     while cursor.stack_len > len(positions_and_src_nodes_stack):
-    //         positions_and_src_nodes_stack.append((cursor, list(src_nodes)))
     let step_in = |
         cursor: &PyDefViewCursor,
         source_nodes: &Vec<TransitionSourceNode>,
         source_node_position_stack: &mut Vec<SourceNodePositionStackItem>,
-    | {
+    | -> PyResult<()> {
         while cursor.stack_len() > source_node_position_stack.len() {
             source_node_position_stack.push(SourceNodePositionStackItem {
-                cursor: PyDefViewCursor::new(cursor.view.clone_ref(py), cursor.index_stack(py).unwrap().extract::<Vec<usize>>().unwrap()),
+                cursor: PyDefViewCursor::new(
+                    cursor.view.clone_ref(py),
+                    cursor.index_stack(py)?.extract::<Vec<usize>>()?,
+                ),
                 source_nodes: source_nodes.clone(),
             });
         }
+
+        Ok(())
     };
 
 
     // Helper closure for step_out
-    // def step_out(n_steps: int):
-    let step_out = |py: Python,
-                    n_steps: usize,
-                    source_nodes: &mut Vec<TransitionSourceNode>,
-                    source_node_position_stack: &mut Vec<SourceNodePositionStackItem>,
-                    last_dst_node_id: &mut Option<usize>,
-                    trie: &Py<PyNondeterministicTrie>,
-                    entry_id: usize,
-                    map_to_sophs: &PyObject,
-                    get_key_ids_else_create: &PyObject,
-                    register_transition: &PyObject,
-                    add_transition_flag: &PyObject,
-                    skip_transition_flag_id: usize,
-                    emit_add_soph_transition: &PyObject,
-                    states: &PyObject| -> PyResult<()> {
-        // nonlocal src_nodes, last_dst_node_id
-
-        // has_keysymbols = False
+    let step_out = |
+        py: Python,
+        n_steps: usize,
+        source_nodes: &mut Vec<TransitionSourceNode>,
+        source_node_position_stack: &mut Vec<SourceNodePositionStackItem>,
+        last_dst_node_id: &mut Option<usize>,
+        trie: &Py<PyNondeterministicTrie>,
+        entry_id: usize,
+        map_to_sophs: &PyObject,
+        get_key_ids_else_create: &PyObject,
+        register_transition: &PyObject,
+        add_transition_flag: &PyObject,
+        skip_transition_flag_id: usize,
+        emit_add_soph_transition: &PyObject,
+        states: &PyObject,
+    | -> PyResult<()> {
         let mut has_keysymbols = false;
-        // new_src_nodes: list[TransitionSourceNode] = []
         let mut new_source_nodes: Vec<TransitionSourceNode> = vec![];
 
-        // dst_node_id = None
-        let mut dst_node_id: Option<usize> = None;
+        let mut join_dst_node_id: Option<usize> = None;
 
-        // for _ in range(n_steps):
         for _ in 0..n_steps {
-            // old_cursor, old_src_nodes = positions_and_src_nodes_stack.pop()
             let SourceNodePositionStackItem {
                 cursor: old_cursor,
                 source_nodes: old_source_nodes,
@@ -128,28 +127,20 @@ pub fn add_soph_trie_entry(
                 pyo3::exceptions::PyRuntimeError::new_err("Stack underflow in step_out")
             })?;
 
-            // match old_cursor.tip():
             let maybe_tip = old_cursor.maybe_tip(py)?;
 
             match maybe_tip {
-                // case DefViewItem.Keysymbol(keysymbol):
                 Some(PyDefViewItem::Keysymbol(keysymbol)) => {
-                    // has_keysymbols = True
                     has_keysymbols = true;
 
-                    // if keysymbol.optional:
                     if keysymbol.optional() {
-                        // new_src_nodes.extend(TransitionSourceNode.add_flags(TransitionSourceNode.increment_costs(old_src_nodes, 5), (skip_transition_flag,)))
                         let incremented = TransitionSourceNode::increment_costs(old_source_nodes.clone(), 5.0);
                         let with_flags = TransitionSourceNode::add_flags(incremented, vec![skip_transition_flag_id]);
                         new_source_nodes.extend(with_flags);
                     }
                 }
 
-                // case _:
                 _ => {
-                    // if not has_keysymbols:
-                    //     new_src_nodes.extend(old_src_nodes)
                     if !has_keysymbols {
                         new_source_nodes.extend(old_source_nodes.clone());
                     }
@@ -157,49 +148,36 @@ pub fn add_soph_trie_entry(
             }
 
 
-            // sophs = set(Soph(value) for value in map_to_sophs(old_cursor))
             let py_cursor = old_cursor.clone();
             let py_sophs = map_to_sophs.call1(py, (py_cursor,))?;
-            // key_ids = key_id_manager.get_key_ids_else_create(sophs)
+
             let key_ids_result = get_key_ids_else_create.call1(py, (&py_sophs,))?;
             let key_ids: Vec<Option<usize>> = key_ids_result.extract(py)?;
 
-            // Convert old_source_nodes to the format needed by link_join
-            let old_source_nodes_for_join: Vec<TransitionSourceNode> = old_source_nodes.clone();
-
-            // paths = trie.link_join(old_src_nodes, dst_node_id, key_id_manager.get_key_ids_else_create(sophs), entry_id)
             let paths: JoinedTriePaths = {
                 let mut trie_mut = trie.borrow_mut(py);
                 trie_mut.trie.link_join(
-                    &old_source_nodes_for_join,
-                    dst_node_id,
+                    &old_source_nodes,
+                    join_dst_node_id,
                     &key_ids,
                     entry_id,
                 )
             };
 
-            // if dst_node_id is None and paths.dst_node_id is not None:
-            //     dst_node_id = paths.dst_node_id
-            if dst_node_id.is_none() && paths.dst_node_id.is_some() {
-                dst_node_id = paths.dst_node_id;
+            // If we already have a previous join destination node, then we can reuse that node
+            // as the destination for the next join
+            if join_dst_node_id.is_none() && paths.dst_node_id.is_some() {
+                join_dst_node_id = paths.dst_node_id;
             }
 
-            // for seq in paths.transition_seqs:
             for seq in &paths.transition_seqs {
-                // api.register_transition(seq.transitions[0], entry_id, old_cursor)
                 if !seq.transitions.is_empty() {
                     let first_transition = seq.transitions[0];
                     register_transition.call1(py, (first_transition, entry_id, old_cursor.clone()))?;
                 }
 
-                // for transition in seq.transitions:
                 for transition in &seq.transitions {
                     // # TODO could optimize this linear search
-                    // if any(
-                    //     old_src_node.node == transition.src_node_index and skip_transition_flag in old_src_node.outgoing_transition_flags
-                    //     for old_src_node in old_src_nodes
-                    // ):
-                    //     transition_flags.mappings[TransitionCostKey(transition, entry_id)].append(skip_transition_flag)
                     let should_add_flag = old_source_nodes.iter().any(|old_src_node| {
                         old_src_node.src_node_index == transition.src_node_index
                             && old_src_node.outgoing_transition_flags.contains(&skip_transition_flag_id)
@@ -211,17 +189,6 @@ pub fn add_soph_trie_entry(
                     }
                 }
             }
-
-            // api.add_soph_transition.emit_with_states(
-            //     states,
-            //     cursor=old_cursor,
-            //     sophs=sophs,
-            //     paths=paths,
-            //     node_srcs=tuple(old_src_nodes),
-            //     new_node_srcs=src_nodes,
-            //     trie=trie,
-            //     entry_id=entry_id,
-            // )
 
             let kwargs = PyDict::new(py);
             kwargs.set_item("cursor", old_cursor.clone())?;
@@ -235,33 +202,20 @@ pub fn add_soph_trie_entry(
             emit_add_soph_transition.call(py, (states.clone_ref(py),), Some(&kwargs))?;
         }
 
-        // if dst_node_id is not None:
-        //     new_src_nodes.append(TransitionSourceNode(dst_node_id))
-        //     last_dst_node_id = dst_node_id
-        if let Some(dst) = dst_node_id {
+        if let Some(dst) = join_dst_node_id {
             new_source_nodes.push(TransitionSourceNode::new(dst, 0.0, vec![]));
             *last_dst_node_id = Some(dst);
         }
 
-        // src_nodes = new_src_nodes
         *source_nodes = new_source_nodes;
 
         Ok(())
     };
 
+    
 
-    // @view.foreach
-    // def _(cursor: DefViewCursor):
-    //     nonlocal src_nodes
-    //
-    //     if cursor.stack_len <= len(positions_and_src_nodes_stack):
-    //         dst_node_id = step_out(len(positions_and_src_nodes_stack) - cursor.stack_len + 1)
-    //         if dst_node_id is not None:
-    //             src_nodes.append(TransitionSourceNode(dst_node_id))
-    //
-    //     step_in(cursor)
+    let mut foreach_result = Ok(());
 
-    // Use the view's foreach method
     view.borrow(py).with_rs_result(py, |view_rs| {
         view_rs.foreach(|_, cur| {
             let cursor = PyDefViewCursor::of(view.clone_ref(py), &cur);
@@ -270,7 +224,7 @@ pub fn add_soph_trie_entry(
             if cursor_stack_len <= source_node_position_stack.len() {
                 let n_steps = source_node_position_stack.len() - cursor_stack_len + 1;
 
-                if let Err(e) = step_out(
+                if let Err(err) = step_out(
                     py,
                     n_steps,
                     &mut source_nodes,
@@ -286,17 +240,20 @@ pub fn add_soph_trie_entry(
                     &emit_add_soph_transition,
                     &states,
                 ) {
-                    // Log error but continue - matching Python behavior
-                    eprintln!("Error in step_out: {:?}", e);
+                    foreach_result = Err(err);
+                    return;
                 }
             }
 
-            step_in(&cursor, &source_nodes, &mut source_node_position_stack);
+            if let Err(err) = step_in(&cursor, &source_nodes, &mut source_node_position_stack) {
+                foreach_result = Err(err);
+            }
         })
     })?;
 
+    foreach_result?;
 
-    // step_out(len(positions_and_src_nodes_stack))
+
     let remaining_steps = source_node_position_stack.len();
     if remaining_steps > 0 {
         step_out(
@@ -317,8 +274,6 @@ pub fn add_soph_trie_entry(
         )?;
     }
 
-    // if last_dst_node_id is not None:
-    //     trie.set_translation(last_dst_node_id, entry_id)
     if let Some(dst_node_id) = last_dst_node_id {
         trie.borrow_mut(py).trie.set_translation(dst_node_id, entry_id);
     }
