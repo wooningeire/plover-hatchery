@@ -58,8 +58,6 @@ pub fn add_soph_trie_entry(
     let mut source_nodes: Vec<TransitionSourceNode> = vec![TransitionSourceNode::root()];
     // The stack of source nodes and cursor positions for tracking nested structures in a Def
     let mut source_node_position_stack: Vec<SourceNodePositionStackItem> = vec![];
-    // The latest destination node ID for joined paths
-    let mut last_dst_node_id: Option<usize> = None;
 
 
     let step_in = |
@@ -86,7 +84,6 @@ pub fn add_soph_trie_entry(
         n_steps: usize,
         source_nodes: &mut Vec<TransitionSourceNode>,
         source_node_position_stack: &mut Vec<SourceNodePositionStackItem>,
-        last_dst_node_id: &mut Option<usize>,
         trie: &Py<PyNondeterministicTrie>,
         entry_id: usize,
         map_to_sophs: &Py<PyAny>,
@@ -103,7 +100,7 @@ pub fn add_soph_trie_entry(
 
         let mut last_old_source_nodes: Vec<TransitionSourceNode> = vec![];
 
-        
+
         let mut old_source_nodes_copied = false;
         for _ in 0..n_steps {
             let SourceNodePositionStackItem {
@@ -158,7 +155,7 @@ pub fn add_soph_trie_entry(
             };
 
             // If we already have a previous join destination node, then we can reuse that node
-            // as the destination for the next join
+            // as the destination for the next join as we continue to step out
             if join_dst_node_id.is_none() && paths.dst_node_id.is_some() {
                 join_dst_node_id = paths.dst_node_id;
             }
@@ -198,7 +195,6 @@ pub fn add_soph_trie_entry(
 
         if let Some(dst) = join_dst_node_id {
             new_source_nodes.push(TransitionSourceNode::new(dst, 0.0, vec![]));
-            *last_dst_node_id = Some(dst);
         }
 
         *source_nodes = new_source_nodes;
@@ -223,7 +219,6 @@ pub fn add_soph_trie_entry(
                     n_steps,
                     &mut source_nodes,
                     &mut source_node_position_stack,
-                    &mut last_dst_node_id,
                     &trie,
                     entry_id,
                     &map_to_sophs,
@@ -255,7 +250,6 @@ pub fn add_soph_trie_entry(
             remaining_steps,
             &mut source_nodes,
             &mut source_node_position_stack,
-            &mut last_dst_node_id,
             &trie,
             entry_id,
             &map_to_sophs,
@@ -268,8 +262,8 @@ pub fn add_soph_trie_entry(
         )?;
     }
 
-    if let Some(dst_node_id) = last_dst_node_id {
-        trie.borrow_mut(py).trie.set_translation(dst_node_id, entry_id);
+    for source_node in source_nodes {
+        trie.borrow_mut(py).trie.set_translation(source_node.src_node_index, entry_id);
     }
 
     Ok(())
