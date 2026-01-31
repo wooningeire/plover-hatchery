@@ -24,6 +24,7 @@ use pipes::{
     optionalize_keysymbols,
     add_diphthong_keysymbols,
     add_soph_trie_entry,
+    Soph,
 };
 
 mod morphology;
@@ -43,6 +44,9 @@ use trie::{
     TransitionCostInfo,
     TriePath,
     LookupResult,
+    NodeSrc,
+    JoinedTriePaths,
+    JoinedTransitionSeq,
 };
 
 
@@ -76,6 +80,11 @@ pub fn plover_hatchery_lib_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<TriePath>()?;
     m.add_class::<LookupResult>()?;
     m.add_class::<PyReverseTrieIndex>()?;
+
+    m.add_class::<Soph>()?;
+    m.add_class::<NodeSrc>()?;
+    m.add_class::<JoinedTriePaths>()?;
+    m.add_class::<JoinedTransitionSeq>()?;
 
     Ok(())
 }

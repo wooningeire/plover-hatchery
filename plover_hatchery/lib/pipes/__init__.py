@@ -22,4 +22,4 @@ from .Theory import Theory
 from .compile_theory import compile_theory
 
 from .stroke_conditions import *
-from .types import *
+from plover_hatchery_lib_rs import Soph

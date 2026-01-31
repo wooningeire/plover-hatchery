@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+use crate::pipes::Soph;
 use crate::trie::{
     NondeterministicTrie, NodeSrc, JoinedTriePaths, TransitionKey, TransitionCostKey,
     py::PyNondeterministicTrie,
@@ -161,12 +162,9 @@ pub fn add_soph_trie_entry(
 
             // sophs = set(Soph(value) for value in map_to_sophs(old_cursor))
             let py_cursor = old_cursor.clone();
-            let sophs_result = map_to_sophs.call1(py, (py_cursor,))?;
-            let sophs_set: HashSet<String> = sophs_result.extract(py)?;
-
+            let py_sophs = map_to_sophs.call1(py, (py_cursor,))?;
             // key_ids = key_id_manager.get_key_ids_else_create(sophs)
-            let py_sophs = PySet::new(py, sophs_set.iter())?;
-            let key_ids_result = get_key_ids_else_create.call1(py, (py_sophs,))?;
+            let key_ids_result = get_key_ids_else_create.call1(py, (&py_sophs,))?;
             let key_ids: Vec<Option<usize>> = key_ids_result.extract(py)?;
 
             // Convert old_source_nodes to the format needed by link_join
@@ -227,11 +225,10 @@ pub fn add_soph_trie_entry(
             //     trie=trie,
             //     entry_id=entry_id,
             // )
-            let py_sophs_for_emit = PySet::new(py, sophs_set.iter())?;
 
             let kwargs = PyDict::new(py);
             kwargs.set_item("cursor", old_cursor.clone())?;
-            kwargs.set_item("sophs", py_sophs_for_emit)?;
+            kwargs.set_item("sophs", &py_sophs)?;
             kwargs.set_item("paths", paths.clone())?;
             kwargs.set_item("node_srcs", PyTuple::new(py, old_source_nodes.clone())?)?;
             kwargs.set_item("new_node_srcs", source_nodes.clone())?;

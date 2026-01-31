@@ -4,7 +4,7 @@ from typing import TypeVar
 
 from plover.steno import Stroke
 
-from plover_hatchery.lib.pipes.types import Soph
+from plover_hatchery_lib_rs import Soph
 
 
 T = TypeVar("T")

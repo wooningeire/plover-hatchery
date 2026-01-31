@@ -11,10 +11,11 @@ from plover_hatchery_lib_rs import (
     TransitionCostInfo,
     TransitionCostKey,
     ReverseTrieIndex as RsReverseTrieIndex,
+    NodeSrc,
+    JoinedTriePaths,
+    JoinedTransitionSeq,
 )
 from typing import Callable, Generator, final, override
-
-from .TriePath import JoinedTransitionSeq, JoinedTriePaths
 
 
 class OnTraverse:
@@ -31,23 +32,6 @@ class OnTraverse:
 @dataclass(frozen=True)
 class TransitionFlag:
     label: str
-
-@final
-@dataclass(frozen=True)
-class NodeSrc:
-    node: int
-    cost: int = 0
-    outgoing_transition_flags: tuple[TransitionFlag, ...] = ()
-
-    @staticmethod
-    def increment_costs(srcs: "Iterable[NodeSrc]", cost_change: int):
-        for src in srcs:
-            yield dataclasses.replace(src, cost=src.cost + cost_change)
-
-    @staticmethod
-    def add_flags(srcs: "Iterable[NodeSrc]", flags: tuple[TransitionFlag, ...]):
-        for src in srcs:
-            yield dataclasses.replace(src, outgoing_transition_flags=src.outgoing_transition_flags + flags)
 
 @final
 class TransitionFlagManager:

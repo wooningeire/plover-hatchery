@@ -11,7 +11,7 @@ from plover_hatchery.lib.pipes.floating_keys import floating_keys
 from plover_hatchery.lib.pipes.plugin_utils import iife, join_sophs_to_chords_dicts
 from plover_hatchery.lib.trie import KeyIdManager, LookupResult, NondeterministicTrie, NodeSrc, Trie, JoinedTriePaths, TransitionFlagManager, TransitionFlag
 from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
-from plover_hatchery.lib.pipes.types import Soph
+from plover_hatchery_lib_rs import Soph
 
 
 
@@ -173,10 +173,10 @@ def soph_trie(
         def _(view: DefView, entry_id: int, **_):
 
             def map_to_sophs_wrapper(cursor: DefViewCursor):
-                return map_to_sophs(cursor)
+                return set(Soph(soph_label) for soph_label in map_to_sophs(cursor))
                 
-            def get_key_ids_wrapper(sophs: set[str]):
-                return key_id_manager.get_key_ids_else_create(set(Soph(s) for s in sophs))
+            def get_key_ids_wrapper(sophs: set[Soph]):
+                return key_id_manager.get_key_ids_else_create(sophs)
             
             def register_transition_wrapper(transition: TransitionKey, entry_id: int, cursor: DefViewCursor):
                 api.register_transition(transition, entry_id, cursor)
