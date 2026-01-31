@@ -1,6 +1,6 @@
 use pyo3::prelude::*;
 
-use super::nondeterministic_trie::{LookupResult, NondeterministicTrie, TriePath, NodeSrc, JoinedTriePaths};
+use super::nondeterministic_trie::{LookupResult, NondeterministicTrie, TriePath, TransitionSourceNode, JoinedTriePaths};
 use super::transition::{TransitionCostInfo, TransitionKey};
 
 
@@ -76,24 +76,24 @@ impl PyNondeterministicTrie {
     /// Link multiple source nodes to a common destination node with a single key per source.
     pub fn link_join(
         &mut self,
-        src_nodes: Vec<PyRef<NodeSrc>>,
+        src_nodes: Vec<PyRef<TransitionSourceNode>>,
         dst_node_id: Option<usize>,
         key_ids: Vec<Option<usize>>,
         translation_id: usize,
     ) -> JoinedTriePaths {
-        let rs_src_nodes: Vec<NodeSrc> = src_nodes.iter().map(|s| (*s).clone()).collect();
+        let rs_src_nodes: Vec<TransitionSourceNode> = src_nodes.iter().map(|s| (*s).clone()).collect();
         self.trie.link_join(&rs_src_nodes, dst_node_id, &key_ids, translation_id)
     }
 
     /// Link multiple source nodes to a common destination node with key chains per source.
     pub fn link_join_chain(
         &mut self,
-        src_nodes: Vec<PyRef<NodeSrc>>,
+        src_nodes: Vec<PyRef<TransitionSourceNode>>,
         dst_node_id: Option<usize>,
         key_id_chains: Vec<Vec<Option<usize>>>,
         translation_id: usize,
     ) -> JoinedTriePaths {
-        let rs_src_nodes: Vec<NodeSrc> = src_nodes.iter().map(|s| (*s).clone()).collect();
+        let rs_src_nodes: Vec<TransitionSourceNode> = src_nodes.iter().map(|s| (*s).clone()).collect();
         self.trie.link_join_chain(&rs_src_nodes, dst_node_id, &key_id_chains, translation_id)
     }
 

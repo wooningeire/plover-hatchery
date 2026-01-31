@@ -91,7 +91,7 @@ pub struct NondeterministicTrie {
 /// Used for building trie entries from multiple starting points.
 #[derive(Clone, Debug)]
 #[pyclass]
-pub struct NodeSrc {
+pub struct TransitionSourceNode {
     #[pyo3(get, set)]
     pub src_node_index: usize,
     #[pyo3(get, set)]
@@ -101,7 +101,7 @@ pub struct NodeSrc {
 }
 
 #[pymethods]
-impl NodeSrc {
+impl TransitionSourceNode {
     #[new]
     #[pyo3(signature = (src_node_index, outgoing_cost=0.0, outgoing_transition_flags=vec![]))]
     pub fn new(src_node_index: usize, outgoing_cost: f64, outgoing_transition_flags: Vec<usize>) -> Self {
@@ -123,9 +123,9 @@ impl NodeSrc {
 
     /// Creates copies of source nodes with incremented costs.
     #[staticmethod]
-    pub fn increment_costs(srcs: Vec<NodeSrc>, cost_change: f64) -> Vec<NodeSrc> {
+    pub fn increment_costs(srcs: Vec<TransitionSourceNode>, cost_change: f64) -> Vec<TransitionSourceNode> {
         srcs.into_iter()
-            .map(|src| NodeSrc {
+            .map(|src| TransitionSourceNode {
                 src_node_index: src.src_node_index,
                 outgoing_cost: src.outgoing_cost + cost_change,
                 outgoing_transition_flags: src.outgoing_transition_flags,
@@ -135,12 +135,12 @@ impl NodeSrc {
 
     /// Creates copies of source nodes with additional flags.
     #[staticmethod]
-    pub fn add_flags(srcs: Vec<NodeSrc>, flags: Vec<usize>) -> Vec<NodeSrc> {
+    pub fn add_flags(srcs: Vec<TransitionSourceNode>, flags: Vec<usize>) -> Vec<TransitionSourceNode> {
         srcs.into_iter()
             .map(|src| {
                 let mut new_flags = src.outgoing_transition_flags.clone();
                 new_flags.extend(flags.iter());
-                NodeSrc {
+                TransitionSourceNode {
                     src_node_index: src.src_node_index,
                     outgoing_cost: src.outgoing_cost,
                     outgoing_transition_flags: new_flags,
@@ -378,7 +378,7 @@ impl NondeterministicTrie {
     /// Returns the destination node and all transition sequences created.
     pub fn link_join(
         &mut self,
-        src_nodes: &[NodeSrc],
+        src_nodes: &[TransitionSourceNode],
         dst_node_id: Option<usize>,
         key_ids: &[Option<usize>],
         translation_id: usize,
@@ -396,7 +396,7 @@ impl NondeterministicTrie {
     /// Returns the destination node and all transition sequences created.
     pub fn link_join_chain(
         &mut self,
-        src_nodes: &[NodeSrc],
+        src_nodes: &[TransitionSourceNode],
         dst_node_id: Option<usize>,
         key_id_chains: &[Vec<Option<usize>>],
         translation_id: usize,
@@ -409,7 +409,7 @@ impl NondeterministicTrie {
         }
 
         // Build all (src_node, key_chain) pairs
-        let mut pairs: Vec<(&NodeSrc, &Vec<Option<usize>>)> = Vec::new();
+        let mut pairs: Vec<(&TransitionSourceNode, &Vec<Option<usize>>)> = Vec::new();
         for src_node in src_nodes {
             for key_chain in key_id_chains {
                 pairs.push((src_node, key_chain));

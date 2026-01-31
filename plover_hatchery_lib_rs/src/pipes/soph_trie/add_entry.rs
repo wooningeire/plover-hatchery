@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::pipes::Soph;
 use crate::trie::{
-    NondeterministicTrie, NodeSrc, JoinedTriePaths, TransitionKey, TransitionCostKey,
+    NondeterministicTrie, TransitionSourceNode, JoinedTriePaths, TransitionKey, TransitionCostKey,
     py::PyNondeterministicTrie,
 };
 use crate::defs::{
@@ -18,7 +18,7 @@ use pyo3::types::{PyAnyMethods, PySet, PyDict, PyTuple};
 /// Stack item for tracking cursor position and source nodes during entry building.
 struct SourceNodePositionStackItem {
     cursor: PyDefViewCursor,
-    source_nodes: Vec<NodeSrc>,
+    source_nodes: Vec<TransitionSourceNode>,
 }
 
 /// Add an entry to the soph trie.
@@ -63,17 +63,14 @@ pub fn add_soph_trie_entry(
     emit_begin_add_entry: PyObject,
     emit_add_soph_transition: PyObject,
 ) -> PyResult<()> {
-    // states = api.begin_add_entry.emit_and_store_outputs(trie=trie, entry_id=entry_id)
     let kwargs = PyDict::new(py);
     kwargs.set_item("trie", trie.clone_ref(py))?;
     kwargs.set_item("entry_id", entry_id)?;
     let states = emit_begin_add_entry.call(py, (), Some(&kwargs))?;
 
-    // src_nodes: list[NodeSrc] = [NodeSrc(0)]
-    let mut source_nodes: Vec<NodeSrc> = vec![NodeSrc::root()];
-    // positions_and_src_nodes_stack: list[tuple[DefViewCursor, list[NodeSrc]]] = []
+
+    let mut source_nodes: Vec<TransitionSourceNode> = vec![TransitionSourceNode::root()];
     let mut source_node_position_stack: Vec<SourceNodePositionStackItem> = vec![];
-    // last_dst_node_id: int | None = None
     let mut last_dst_node_id: Option<usize> = None;
 
 
@@ -83,7 +80,7 @@ pub fn add_soph_trie_entry(
     //         positions_and_src_nodes_stack.append((cursor, list(src_nodes)))
     let step_in = |
         cursor: &PyDefViewCursor,
-        source_nodes: &Vec<NodeSrc>,
+        source_nodes: &Vec<TransitionSourceNode>,
         source_node_position_stack: &mut Vec<SourceNodePositionStackItem>,
     | {
         while cursor.stack_len() > source_node_position_stack.len() {
@@ -99,7 +96,7 @@ pub fn add_soph_trie_entry(
     // def step_out(n_steps: int):
     let step_out = |py: Python,
                     n_steps: usize,
-                    source_nodes: &mut Vec<NodeSrc>,
+                    source_nodes: &mut Vec<TransitionSourceNode>,
                     source_node_position_stack: &mut Vec<SourceNodePositionStackItem>,
                     last_dst_node_id: &mut Option<usize>,
                     trie: &Py<PyNondeterministicTrie>,
@@ -115,8 +112,8 @@ pub fn add_soph_trie_entry(
 
         // has_keysymbols = False
         let mut has_keysymbols = false;
-        // new_src_nodes: list[NodeSrc] = []
-        let mut new_source_nodes: Vec<NodeSrc> = vec![];
+        // new_src_nodes: list[TransitionSourceNode] = []
+        let mut new_source_nodes: Vec<TransitionSourceNode> = vec![];
 
         // dst_node_id = None
         let mut dst_node_id: Option<usize> = None;
@@ -142,9 +139,9 @@ pub fn add_soph_trie_entry(
 
                     // if keysymbol.optional:
                     if keysymbol.optional() {
-                        // new_src_nodes.extend(NodeSrc.add_flags(NodeSrc.increment_costs(old_src_nodes, 5), (skip_transition_flag,)))
-                        let incremented = NodeSrc::increment_costs(old_source_nodes.clone(), 5.0);
-                        let with_flags = NodeSrc::add_flags(incremented, vec![skip_transition_flag_id]);
+                        // new_src_nodes.extend(TransitionSourceNode.add_flags(TransitionSourceNode.increment_costs(old_src_nodes, 5), (skip_transition_flag,)))
+                        let incremented = TransitionSourceNode::increment_costs(old_source_nodes.clone(), 5.0);
+                        let with_flags = TransitionSourceNode::add_flags(incremented, vec![skip_transition_flag_id]);
                         new_source_nodes.extend(with_flags);
                     }
                 }
@@ -168,7 +165,7 @@ pub fn add_soph_trie_entry(
             let key_ids: Vec<Option<usize>> = key_ids_result.extract(py)?;
 
             // Convert old_source_nodes to the format needed by link_join
-            let old_source_nodes_for_join: Vec<NodeSrc> = old_source_nodes.clone();
+            let old_source_nodes_for_join: Vec<TransitionSourceNode> = old_source_nodes.clone();
 
             // paths = trie.link_join(old_src_nodes, dst_node_id, key_id_manager.get_key_ids_else_create(sophs), entry_id)
             let paths: JoinedTriePaths = {
@@ -239,10 +236,10 @@ pub fn add_soph_trie_entry(
         }
 
         // if dst_node_id is not None:
-        //     new_src_nodes.append(NodeSrc(dst_node_id))
+        //     new_src_nodes.append(TransitionSourceNode(dst_node_id))
         //     last_dst_node_id = dst_node_id
         if let Some(dst) = dst_node_id {
-            new_source_nodes.push(NodeSrc::new(dst, 0.0, vec![]));
+            new_source_nodes.push(TransitionSourceNode::new(dst, 0.0, vec![]));
             *last_dst_node_id = Some(dst);
         }
 
@@ -260,7 +257,7 @@ pub fn add_soph_trie_entry(
     //     if cursor.stack_len <= len(positions_and_src_nodes_stack):
     //         dst_node_id = step_out(len(positions_and_src_nodes_stack) - cursor.stack_len + 1)
     //         if dst_node_id is not None:
-    //             src_nodes.append(NodeSrc(dst_node_id))
+    //             src_nodes.append(TransitionSourceNode(dst_node_id))
     //
     //     step_in(cursor)
 

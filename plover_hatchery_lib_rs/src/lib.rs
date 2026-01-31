@@ -44,7 +44,7 @@ use trie::{
     TransitionCostInfo,
     TriePath,
     LookupResult,
-    NodeSrc,
+    TransitionSourceNode,
     JoinedTriePaths,
     JoinedTransitionSeq,
 };
@@ -82,7 +82,7 @@ pub fn plover_hatchery_lib_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyReverseTrieIndex>()?;
 
     m.add_class::<Soph>()?;
-    m.add_class::<NodeSrc>()?;
+    m.add_class::<TransitionSourceNode>()?;
     m.add_class::<JoinedTriePaths>()?;
     m.add_class::<JoinedTransitionSeq>()?;
 

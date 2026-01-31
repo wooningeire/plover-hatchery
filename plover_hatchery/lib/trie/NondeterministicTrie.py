@@ -11,7 +11,7 @@ from plover_hatchery_lib_rs import (
     TransitionCostInfo,
     TransitionCostKey,
     ReverseTrieIndex as RsReverseTrieIndex,
-    NodeSrc,
+    TransitionSourceNode,
     JoinedTriePaths,
     JoinedTransitionSeq,
 )
@@ -69,7 +69,7 @@ class NondeterministicTrie:
 
     def join(
         self,
-        src_nodes: Iterable[NodeSrc],
+        src_nodes: Iterable[TransitionSourceNode],
         key_ids_iter: Iterable[int | None],
         translation_id: int,
     ):
@@ -78,7 +78,7 @@ class NondeterministicTrie:
 
     def join_chain(
         self,
-        src_nodes: Iterable[NodeSrc],
+        src_nodes: Iterable[TransitionSourceNode],
         key_ids_iter: Iterable[Sequence[int | None]],
         translation_id: int,
     ):
@@ -106,7 +106,7 @@ class NondeterministicTrie:
 
     def link_join(
         self,
-        src_nodes: Iterable[NodeSrc],
+        src_nodes: Iterable[TransitionSourceNode],
         dst_node: int | None,
         key_ids_iter: Iterable[int | None],
         translation_id: int,
@@ -116,7 +116,7 @@ class NondeterministicTrie:
 
     def link_join_chain(
         self,
-        src_nodes: Iterable[NodeSrc],
+        src_nodes: Iterable[TransitionSourceNode],
         dst_node: int | None,
         key_ids_iter: Iterable[tuple[int | None, ...]],
         translation_id: int,

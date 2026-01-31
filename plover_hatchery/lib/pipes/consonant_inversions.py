@@ -9,7 +9,7 @@ from plover_hatchery_lib_rs import DefViewCursor, DefViewItem
 from plover_hatchery.lib.pipes.Plugin import define_plugin, GetPluginApi
 from plover_hatchery.lib.pipes.soph_trie import ChordToSophSearchResult, ChordToSophSearchResultWithSrcIndex, LookupResultWithAssociations, SophChordAssociation, SophsToTranslationSearchPath, soph_trie
 from plover_hatchery_lib_rs import Soph
-from plover_hatchery.lib.trie import NondeterministicTrie, NodeSrc, JoinedTriePaths, TransitionFlag, TransitionCostKey
+from plover_hatchery.lib.trie import NondeterministicTrie, TransitionSourceNode, JoinedTriePaths, TransitionFlag, TransitionCostKey
 
 
 consonant_inversions_transition_flag = TransitionFlag("inversion")
@@ -29,7 +29,7 @@ def consonant_inversions(*, consonant_sophs_str: str, inversion_domains_steno: s
 
         @dataclass(frozen=True)
         class PastConsonant:
-            node_srcs: tuple[NodeSrc, ...]
+            node_srcs: tuple[TransitionSourceNode, ...]
             sophs: tuple[Soph, ...]
             cursor: DefViewCursor
 
@@ -75,7 +75,7 @@ def consonant_inversions(*, consonant_sophs_str: str, inversion_domains_steno: s
             sophs: set[Soph],
             cursor: DefViewCursor,
             paths: JoinedTriePaths,
-            node_srcs: tuple[NodeSrc, ...],
+            node_srcs: tuple[TransitionSourceNode, ...],
             trie: NondeterministicTrie,
             entry_id: int,
             **_,
@@ -105,7 +105,7 @@ def consonant_inversions(*, consonant_sophs_str: str, inversion_domains_steno: s
                 for i, consonant in enumerate(state.past_consonants[:-1]):
                     inversion_sophs = get_inversion_sophs(state.past_consonants[i:])
                     new_paths = trie.link_join(
-                        tuple(NodeSrc.increment_costs(consonant.node_srcs, 50)),
+                        tuple(TransitionSourceNode.increment_costs(consonant.node_srcs, 50)),
                         paths.dst_node_id,
                         soph_trie_api.key_id_manager.get_key_ids_else_create(inversion_sophs),
                         entry_id

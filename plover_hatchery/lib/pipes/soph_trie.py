@@ -9,7 +9,7 @@ from plover_hatchery.lib.pipes.Hook import Hook
 from plover_hatchery.lib.pipes.Plugin import GetPluginApi, Plugin, define_plugin
 from plover_hatchery.lib.pipes.floating_keys import floating_keys
 from plover_hatchery.lib.pipes.plugin_utils import iife, join_sophs_to_chords_dicts
-from plover_hatchery.lib.trie import KeyIdManager, LookupResult, NondeterministicTrie, NodeSrc, Trie, JoinedTriePaths, TransitionFlagManager, TransitionFlag
+from plover_hatchery.lib.trie import KeyIdManager, LookupResult, NondeterministicTrie, TransitionSourceNode, Trie, JoinedTriePaths, TransitionFlagManager, TransitionFlag
 from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
 from plover_hatchery_lib_rs import Soph
 
@@ -64,8 +64,8 @@ class SophTrieApi:
             cursor: DefViewCursor,
             sophs: set[Soph],
             paths: JoinedTriePaths,
-            node_srcs: tuple[NodeSrc, ...],
-            new_node_srcs: list[NodeSrc],
+            node_srcs: tuple[TransitionSourceNode, ...],
+            new_node_srcs: list[TransitionSourceNode],
             trie: NondeterministicTrie,
             entry_id: int,
         ): ...
