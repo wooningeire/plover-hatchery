@@ -33,7 +33,7 @@ $effect(() => {
         const lookupBreakdownResponse = await fetch(`http://localhost:5325/api/breakdown_lookup/${encodeURIComponent(testOutline.replaceAll("/", " "))}`);
         lookupBreakdownData = await lookupBreakdownResponse.json();
         console.log(lookupBreakdownData);
-    }, 500);
+    }, 250);
 });
 </script>
 

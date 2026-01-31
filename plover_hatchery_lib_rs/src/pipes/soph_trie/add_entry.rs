@@ -1,5 +1,6 @@
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyTuple};
+use pyo3::exceptions::PyRuntimeError;
 
 use crate::trie::{
     TransitionSourceNode,
@@ -96,35 +97,45 @@ pub fn add_soph_trie_entry(
         emit_add_soph_transition: &Py<PyAny>,
         states: &Py<PyAny>,
     | -> PyResult<()> {
-        let mut has_keysymbols = false;
         let mut new_source_nodes: Vec<TransitionSourceNode> = vec![];
 
         let mut join_dst_node_id: Option<usize> = None;
 
+        let mut last_old_source_nodes: Vec<TransitionSourceNode> = vec![];
+
+        
+        let mut old_source_nodes_copied = false;
         for _ in 0..n_steps {
             let SourceNodePositionStackItem {
                 cursor: old_cursor,
                 source_nodes: old_source_nodes,
             } = source_node_position_stack.pop().ok_or_else(|| {
-                pyo3::exceptions::PyRuntimeError::new_err("Stack underflow in step_out")
+                PyRuntimeError::new_err("Stack underflow in step_out")
             })?;
 
             let maybe_tip = old_cursor.maybe_tip(py)?;
 
             match maybe_tip {
                 Some(PyDefViewItem::Keysymbol(keysymbol)) => {
-                    has_keysymbols = true;
-
+                    // Can we skip this keysymbol?
                     if keysymbol.optional() {
+                        // Add all existing nodes and mark them with the skip flag and costs
                         let incremented = TransitionSourceNode::increment_costs(old_source_nodes.clone(), 5.0);
                         let with_flags = TransitionSourceNode::add_flags(incremented, vec![skip_transition_flag_id]);
                         new_source_nodes.extend(with_flags);
                     }
+
+                    old_source_nodes_copied = true;
+                }
+
+                None => {
+                    return Err(PyRuntimeError::new_err("Cursor is not pointing to anything"));
                 }
 
                 _ => {
-                    if !has_keysymbols {
+                    if !old_source_nodes_copied {
                         new_source_nodes.extend(old_source_nodes.clone());
+                        old_source_nodes_copied = true;
                     }
                 }
             }
@@ -183,6 +194,7 @@ pub fn add_soph_trie_entry(
 
             emit_add_soph_transition.call(py, (states.clone_ref(py),), Some(&kwargs))?;
         }
+                
 
         if let Some(dst) = join_dst_node_id {
             new_source_nodes.push(TransitionSourceNode::new(dst, 0.0, vec![]));

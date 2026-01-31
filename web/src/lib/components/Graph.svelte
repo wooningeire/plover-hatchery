@@ -277,17 +277,30 @@
         const highlightedLinks: { source: number, target: number, chord: string }[] = [];
 
         if (highlightData) {
-            highlightData.forEach(pathData => {
-                pathData.path.forEach(step => {
+            pathLoop:
+            for (const pathData of highlightData) {
+                const links: { source: number, target: number, chord: string }[] = [];
+                const nodes = new Set<number>();
+                for (const step of pathData.path) {
                     if (step.nodes && step.nodes.length >= 2) {
-                        const source = step.nodes[0];
-                        const target = step.nodes[1];
-                        highlightedLinks.push({ source, target, chord: step.chord });
-                        highlightedNodes.add(source);
-                        highlightedNodes.add(target);
+                        for (let i = 0; i < step.nodes.length - 1; i++) {
+                            const source = step.nodes[i];
+                            const target = step.nodes[i + 1];
+
+                            if (!nodeMap.has(source) || !nodeMap.has(target)) continue pathLoop;
+
+                            links.push({ source, target, chord: i === 0 ? step.chord : "..." });
+                            nodes.add(source);
+                            nodes.add(target);
+                        }
                     }
-                });
-            });
+                }
+
+                highlightedLinks.push(...links);
+                for (const node of nodes.values()) {
+                    highlightedNodes.add(node);
+                }
+            }
         }
 
         const highlightGroup = g.append("g").attr("class", "highlights");

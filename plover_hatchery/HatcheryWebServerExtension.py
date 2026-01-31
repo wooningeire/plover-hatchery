@@ -39,7 +39,6 @@ class HatcheryWebServerExtension:
         
         @app.route("/api/breakdown_lookup/<outline>")
         def breakdown_lookup_route(outline: str):
-            print(outline)
             breakdown = store.breakdown_lookup(tuple(outline.split(" ")), store.translations)
             if breakdown is None:
                 return jsonify([])
