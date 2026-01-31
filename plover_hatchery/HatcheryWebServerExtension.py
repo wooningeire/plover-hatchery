@@ -29,12 +29,8 @@ class HatcheryWebServerExtension:
             response.headers.add("Access-Control-Allow-Methods", "GET,PATCH,PUT,POST,DELETE,OPTIONS")
             return response
         
-        @app.route("/")
-        def index_route():
-            from flask import request
-
-            translation = request.args.get("translation")
-
+        @app.route("/api/translation/<translation>")
+        def index_route(translation: str):
             breakdown = store.breakdown(translation)
             if breakdown is None:
                 return jsonify({})

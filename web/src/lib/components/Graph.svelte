@@ -318,14 +318,20 @@
 
 <FlagControls flags={uniqueFlags} bind:settings={flagSettings} />
 
-<div bind:this={container} class="graph-container">
+<div
+    bind:this={container}
+    bind:clientWidth={() => null!, containerWidth => width = containerWidth}
+    bind:clientHeight={() => null!, containerHeight => height = containerHeight}
+    class="graph-container"
+>
     <svg bind:this={svg} {width} {height} viewBox="0 0 {width} {height}"></svg>
 </div>
 
 <style>
-    .graph-container {
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        overflow: hidden;
-    }
+.graph-container {
+    overflow: hidden;
+
+    background-color: oklch(0.985 0.01 190);
+    border-radius: 4px;
+}
 </style>
