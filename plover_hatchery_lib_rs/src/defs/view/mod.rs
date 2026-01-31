@@ -150,7 +150,7 @@ impl<'a> DefView<'a> {
         Ok(Some(cur_item_ref))
     }
 
-    pub fn foreach(&self, func: impl Fn(DefViewItemRef, &DefViewCursor)) -> Result<(), DefViewErr> {
+    pub fn foreach(&self, mut func: impl FnMut(DefViewItemRef, &DefViewCursor)) -> Result<(), DefViewErr> {
         let mut cursor = DefViewCursor::of_view_at_start(self);
 
         while let Some(item_ref) = cursor.step_forward()? {

@@ -23,6 +23,7 @@ mod pipes;
 use pipes::{
     optionalize_keysymbols,
     add_diphthong_keysymbols,
+    add_soph_trie_entry,
 };
 
 mod morphology;
@@ -66,6 +67,7 @@ pub fn plover_hatchery_lib_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_parse_entry_definition, m)?)?;
     m.add_function(wrap_pyfunction!(py_parse_sopheme_seq, m)?)?;
     m.add_function(wrap_pyfunction!(py_parse_keysymbol_seq, m)?)?;
+    m.add_function(wrap_pyfunction!(add_soph_trie_entry, m)?)?;
 
     m.add_class::<PyNondeterministicTrie>()?;
     m.add_class::<TransitionKey>()?;

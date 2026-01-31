@@ -87,6 +87,106 @@ pub struct NondeterministicTrie {
     used_nodes_by_translation: HashMap<usize, HashSet<usize>>,
 }
 
+/// A source node with associated cost and outgoing transition flags.
+/// Used for building trie entries from multiple starting points.
+#[derive(Clone, Debug)]
+#[pyclass]
+pub struct NodeSrc {
+    #[pyo3(get, set)]
+    pub src_node_index: usize,
+    #[pyo3(get, set)]
+    pub outgoing_cost: f64,
+    #[pyo3(get, set)]
+    pub outgoing_transition_flags: Vec<usize>,
+}
+
+#[pymethods]
+impl NodeSrc {
+    #[new]
+    #[pyo3(signature = (src_node_index, outgoing_cost=0.0, outgoing_transition_flags=vec![]))]
+    pub fn new(src_node_index: usize, outgoing_cost: f64, outgoing_transition_flags: Vec<usize>) -> Self {
+        Self {
+            src_node_index,
+            outgoing_cost,
+            outgoing_transition_flags,
+        }
+    }
+
+    #[staticmethod]
+    pub fn root() -> Self {
+        Self {
+            src_node_index: 0,
+            outgoing_cost: 0.0,
+            outgoing_transition_flags: vec![],
+        }
+    }
+
+    /// Creates copies of source nodes with incremented costs.
+    #[staticmethod]
+    pub fn increment_costs(srcs: Vec<NodeSrc>, cost_change: f64) -> Vec<NodeSrc> {
+        srcs.into_iter()
+            .map(|src| NodeSrc {
+                src_node_index: src.src_node_index,
+                outgoing_cost: src.outgoing_cost + cost_change,
+                outgoing_transition_flags: src.outgoing_transition_flags,
+            })
+            .collect()
+    }
+
+    /// Creates copies of source nodes with additional flags.
+    #[staticmethod]
+    pub fn add_flags(srcs: Vec<NodeSrc>, flags: Vec<usize>) -> Vec<NodeSrc> {
+        srcs.into_iter()
+            .map(|src| {
+                let mut new_flags = src.outgoing_transition_flags.clone();
+                new_flags.extend(flags.iter());
+                NodeSrc {
+                    src_node_index: src.src_node_index,
+                    outgoing_cost: src.outgoing_cost,
+                    outgoing_transition_flags: new_flags,
+                }
+            })
+            .collect()
+    }
+}
+
+/// A sequence of transitions created by a join operation.
+#[derive(Clone, Debug)]
+#[pyclass]
+pub struct JoinedTransitionSeq {
+    #[pyo3(get, set)]
+    pub transitions: Vec<TransitionKey>,
+}
+
+#[pymethods]
+impl JoinedTransitionSeq {
+    #[new]
+    pub fn new(transitions: Vec<TransitionKey>) -> Self {
+        Self { transitions }
+    }
+}
+
+/// Result of a link_join operation, containing the destination node and all transition sequences.
+#[derive(Clone, Debug)]
+#[pyclass]
+pub struct JoinedTriePaths {
+    #[pyo3(get, set)]
+    pub dst_node_id: Option<usize>,
+    #[pyo3(get, set)]
+    pub transition_seqs: Vec<JoinedTransitionSeq>,
+}
+
+#[pymethods]
+impl JoinedTriePaths {
+    #[new]
+    pub fn new(dst_node_id: Option<usize>, transition_seqs: Vec<JoinedTransitionSeq>) -> Self {
+        Self {
+            dst_node_id,
+            transition_seqs,
+        }
+    }
+}
+
 impl NondeterministicTrie {
     pub const ROOT: usize = 0;
 
@@ -271,6 +371,93 @@ impl NondeterministicTrie {
         let mut transitions = path.transitions;
         transitions.push(transition);
         transitions
+    }
+
+    /// Links multiple source nodes to a common destination node with a single key per source.
+    /// If dst_node_id is None, creates a new destination node from the first source.
+    /// Returns the destination node and all transition sequences created.
+    pub fn link_join(
+        &mut self,
+        src_nodes: &[NodeSrc],
+        dst_node_id: Option<usize>,
+        key_ids: &[Option<usize>],
+        translation_id: usize,
+    ) -> JoinedTriePaths {
+        self.link_join_chain(
+            src_nodes,
+            dst_node_id,
+            &key_ids.iter().map(|k| vec![*k]).collect::<Vec<_>>(),
+            translation_id,
+        )
+    }
+
+    /// Links multiple source nodes to a common destination node with key chains per source.
+    /// If dst_node_id is None, creates a new destination node from the first source.
+    /// Returns the destination node and all transition sequences created.
+    pub fn link_join_chain(
+        &mut self,
+        src_nodes: &[NodeSrc],
+        dst_node_id: Option<usize>,
+        key_id_chains: &[Vec<Option<usize>>],
+        translation_id: usize,
+    ) -> JoinedTriePaths {
+        if src_nodes.is_empty() || key_id_chains.is_empty() {
+            return JoinedTriePaths {
+                dst_node_id: None,
+                transition_seqs: Vec::new(),
+            };
+        }
+
+        // Build all (src_node, key_chain) pairs
+        let mut pairs: Vec<(&NodeSrc, &Vec<Option<usize>>)> = Vec::new();
+        for src_node in src_nodes {
+            for key_chain in key_id_chains {
+                pairs.push((src_node, key_chain));
+            }
+        }
+
+        if pairs.is_empty() {
+            return JoinedTriePaths {
+                dst_node_id: None,
+                transition_seqs: Vec::new(),
+            };
+        }
+
+        let mut transition_seqs: Vec<JoinedTransitionSeq> = Vec::new();
+
+        // If dst_node_id is None, create it from the first pair
+        let actual_dst_node_id = if let Some(dst) = dst_node_id {
+            dst
+        } else {
+            let (first_src, first_keys) = pairs[0];
+            let cost_info = TransitionCostInfo::new(first_src.outgoing_cost, translation_id);
+            let first_path = self.follow_chain(first_src.src_node_index, first_keys, &cost_info);
+            transition_seqs.push(JoinedTransitionSeq {
+                transitions: first_path.transitions,
+            });
+            // Link remaining pairs to this new destination
+            for (src, keys) in pairs.iter().skip(1) {
+                let cost_info = TransitionCostInfo::new(src.outgoing_cost, translation_id);
+                let transitions = self.link_chain(src.src_node_index, first_path.dst_node_id, keys, &cost_info);
+                transition_seqs.push(JoinedTransitionSeq { transitions });
+            }
+            return JoinedTriePaths {
+                dst_node_id: Some(first_path.dst_node_id),
+                transition_seqs,
+            };
+        };
+
+        // dst_node_id is Some, link all pairs to it
+        for (src, keys) in pairs {
+            let cost_info = TransitionCostInfo::new(src.outgoing_cost, translation_id);
+            let transitions = self.link_chain(src.src_node_index, actual_dst_node_id, keys, &cost_info);
+            transition_seqs.push(JoinedTransitionSeq { transitions });
+        }
+
+        JoinedTriePaths {
+            dst_node_id: Some(actual_dst_node_id),
+            transition_seqs,
+        }
     }
 
     /// Sets a translation at a node.

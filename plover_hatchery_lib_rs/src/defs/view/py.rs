@@ -30,7 +30,7 @@ pub struct PyDefView {
 }
 
 impl PyDefView {
-    pub fn with_rs_of<T>(py: Python, defs: Py<PyDefDict>, root_def: Py<Def>, func: impl Fn(super::DefView) -> T) -> T {
+    pub fn with_rs_of<T>(py: Python, defs: Py<PyDefDict>, root_def: Py<Def>, mut func: impl FnMut(super::DefView) -> T) -> T {
         let defs = defs.borrow(py);
         let root_def = root_def.borrow(py);
         let view_rs = super::DefView::new_ref(&defs.dict, &root_def);
@@ -38,7 +38,7 @@ impl PyDefView {
         func(view_rs)
     }
 
-    pub fn with_rs<T>(&self, py: Python, func: impl Fn(super::DefView) -> T) -> T {
+    pub fn with_rs<T>(&self, py: Python, mut func: impl FnMut(super::DefView) -> T) -> T {
         let defs = self.defs.borrow(py);
         let root_def = self.root_def.borrow(py);
         let view_rs = super::DefView::new_ref(&defs.dict, &root_def);
@@ -46,7 +46,7 @@ impl PyDefView {
         func(view_rs)
     }
 
-    pub fn with_rs_result<T>(&self, py: Python, func: impl Fn(super::DefView) -> Result<T, DefViewErr>) -> Result<T, PyErr> {
+    pub fn with_rs_result<T>(&self, py: Python, mut func: impl FnMut(super::DefView) -> Result<T, DefViewErr>) -> Result<T, PyErr> {
         self.with_rs(py, func)
             .map_err(|err| PyException::new_err(err.message()))
     }

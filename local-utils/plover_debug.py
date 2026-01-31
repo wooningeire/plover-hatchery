@@ -10,7 +10,7 @@ def _main(args: argparse.Namespace):
     if exit_code != 0:
         raise Exception
     
-    time.sleep(1)
+    time.sleep(2)
 
     exit_code = os.system(fr"""plover_console -l debug""")
     if exit_code != 0:

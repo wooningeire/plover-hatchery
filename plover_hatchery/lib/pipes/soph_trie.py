@@ -1,16 +1,15 @@
-from codecs import lookup
 from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any, Callable, Iterable, NamedTuple, Protocol, final
 
 from plover.steno import Stroke
-from plover_hatchery_lib_rs import DefView, DefViewCursor, DefViewItem, Keysymbol, Sopheme, SophemeSeq
+from plover_hatchery_lib_rs import DefView, DefViewCursor, add_soph_trie_entry, TriePath, TransitionCostKey, TransitionKey
 
 from plover_hatchery.lib.pipes.Hook import Hook
 from plover_hatchery.lib.pipes.Plugin import GetPluginApi, Plugin, define_plugin
 from plover_hatchery.lib.pipes.floating_keys import floating_keys
 from plover_hatchery.lib.pipes.plugin_utils import iife, join_sophs_to_chords_dicts
-from plover_hatchery.lib.trie import KeyIdManager, LookupResult, NondeterministicTrie, NodeSrc, Trie, TriePath, JoinedTriePaths, TransitionCostKey, TransitionKey, TransitionFlagManager, TransitionFlag
+from plover_hatchery.lib.trie import KeyIdManager, LookupResult, NondeterministicTrie, NodeSrc, Trie, JoinedTriePaths, TransitionFlagManager, TransitionFlag
 from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
 from plover_hatchery.lib.pipes.types import Soph
 
@@ -37,7 +36,7 @@ class SophChordAssociationWithUnresolvedPhonemes(NamedTuple):
 
 @dataclass(frozen=True)
 class SophsToTranslationSearchPath:
-    trie_path: TriePath = field(default_factory=TriePath)
+    trie_path: TriePath = field(default_factory=TriePath.root)
     sophs_and_chords_used: tuple[SophChordAssociationWithUnresolvedPhonemes, ...] = ()
 
 
@@ -142,7 +141,7 @@ skip_transition_flag = TransitionFlag("skip")
 
 def soph_trie(
     *,
-    map_to_sophs: Callable[[DefViewCursor], Iterable[str]],
+    map_to_sophs: Callable[[DefViewCursor], set[str]],
     sophs_to_chords_dicts: Iterable[dict[str, str]],
 ) -> Plugin[SophTrieApi]:
     sophs_to_chords = join_sophs_to_chords_dicts(sophs_to_chords_dicts)
@@ -172,101 +171,37 @@ def soph_trie(
 
         @base_hooks.add_entry.listen(soph_trie)
         def _(view: DefView, entry_id: int, **_):
-            states = api.begin_add_entry.emit_and_store_outputs(trie=trie, entry_id=entry_id)
 
+            def map_to_sophs_wrapper(cursor: DefViewCursor):
+                return map_to_sophs(cursor)
+                
+            def get_key_ids_wrapper(sophs: set[str]):
+                return key_id_manager.get_key_ids_else_create(set(Soph(s) for s in sophs))
+            
+            def register_transition_wrapper(transition: TransitionKey, entry_id: int, cursor: DefViewCursor):
+                api.register_transition(transition, entry_id, cursor)
+                
+            def add_transition_flag_wrapper(cost_key: TransitionCostKey, flag_id: int):
+                # We know flag_id is skip_transition_flag since that's the only one we pass
+                transition_flags.mappings[cost_key].append(skip_transition_flag)
+                
+            skip_flag_id = 0 # Placeholder, as TransitionFlag is not integer based in Python but we can pass dummy int
 
-            src_nodes: list[NodeSrc] = [NodeSrc(0)]
-            positions_and_src_nodes_stack: list[tuple[DefViewCursor, list[NodeSrc]]] = []
-            last_dst_node_id: int | None = None
-
-
-            def step_in(cursor: DefViewCursor):
-                while cursor.stack_len > len(positions_and_src_nodes_stack):
-                    positions_and_src_nodes_stack.append((cursor, list(src_nodes)))
-
-            def step_out(n_steps: int):
-                nonlocal src_nodes, last_dst_node_id
-
-
-                has_keysymbols = False
-                new_src_nodes: list[NodeSrc] = []
-
-
-                dst_node_id = None
-                for _ in range(n_steps):
-                    old_cursor, old_src_nodes = positions_and_src_nodes_stack.pop()
-
-                    match old_cursor.tip():
-                        case DefViewItem.Keysymbol(keysymbol):
-                            has_keysymbols = True
-
-                            if keysymbol.optional:
-                                new_src_nodes.extend(NodeSrc.add_flags(NodeSrc.increment_costs(old_src_nodes, 5), (skip_transition_flag,)))
-
-                        case _:
-                            if not has_keysymbols:
-                                new_src_nodes.extend(old_src_nodes)
-
-    
-
-                    sophs = set(Soph(value) for value in map_to_sophs(old_cursor))
-                    paths = trie.link_join(old_src_nodes, dst_node_id, key_id_manager.get_key_ids_else_create(sophs), entry_id)
-                    if dst_node_id is None and paths.dst_node_id is not None:
-                        dst_node_id = paths.dst_node_id
-
-                    for seq in paths.transition_seqs:
-                        api.register_transition(seq.transitions[0], entry_id, old_cursor)
-
-                        for transition in seq.transitions:
-                            # TODO could optimize this linear search
-                            if any(
-                                old_src_node.node == transition.src_node_index and skip_transition_flag in old_src_node.outgoing_transition_flags
-                                for old_src_node in old_src_nodes
-                            ):
-                                transition_flags.mappings[TransitionCostKey(transition, entry_id)].append(skip_transition_flag)
+            add_soph_trie_entry(
+                trie.rs,
+                entry_id,
+                view,
+                map_to_sophs_wrapper,
+                get_key_ids_wrapper,
+                register_transition_wrapper,
+                add_transition_flag_wrapper,
+                skip_flag_id,
+                api.begin_add_entry.emit_and_store_outputs,
+                api.add_soph_transition.emit_with_states
+            )
 
 
 
-                    api.add_soph_transition.emit_with_states(
-                        states,
-                        cursor=old_cursor,
-                        sophs=sophs,
-                        paths=paths,
-                        node_srcs=tuple(old_src_nodes),
-                        new_node_srcs=src_nodes,
-                        trie=trie,
-                        entry_id=entry_id,
-                    )
-
-
-                if dst_node_id is not None:
-                    new_src_nodes.append(NodeSrc(dst_node_id))
-                    last_dst_node_id = dst_node_id
-
-
-                src_nodes = new_src_nodes
-
-
-            @view.foreach
-            def _(cursor: DefViewCursor):
-                nonlocal src_nodes
-
-                if cursor.stack_len <= len(positions_and_src_nodes_stack):
-
-
-                    dst_node_id = step_out(len(positions_and_src_nodes_stack) - cursor.stack_len + 1)
-                    if dst_node_id is not None:
-                        src_nodes.append(NodeSrc(dst_node_id))
-
-
-                step_in(cursor)
-
-
-
-            step_out(len(positions_and_src_nodes_stack))
-
-            if last_dst_node_id is not None:
-                trie.set_translation(last_dst_node_id, entry_id)
 
 
         # @base_hooks.complete_build_lookup.listen(soph_trie)

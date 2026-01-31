@@ -1,6 +1,6 @@
 use pyo3::prelude::*;
 
-use super::nondeterministictrie::{LookupResult, NondeterministicTrie, TriePath};
+use super::nondeterministic_trie::{LookupResult, NondeterministicTrie, TriePath};
 use super::transition::{TransitionCostInfo, TransitionKey};
 
 
@@ -169,8 +169,8 @@ impl PyNondeterministicTrie {
 #[pyclass]
 #[pyo3(name = "ReverseTrieIndex")]
 pub struct PyReverseTrieIndex {
-    reverse_nodes: crate::trie::nondeterministictrie::ReverseNodes,
-    reverse_translations: crate::trie::nondeterministictrie::ReverseTranslations,
+    reverse_nodes: crate::trie::nondeterministic_trie::ReverseNodes,
+    reverse_translations: crate::trie::nondeterministic_trie::ReverseTranslations,
 }
 
 #[pymethods]

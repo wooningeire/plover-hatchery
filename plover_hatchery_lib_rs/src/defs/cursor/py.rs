@@ -14,8 +14,17 @@ use super::super::{
 #[pyclass]
 #[pyo3(name = "DefViewCursor")]
 pub struct PyDefViewCursor {
-    #[pyo3(get)] view: Py<PyDefView>,
+    #[pyo3(get)] pub view: Py<PyDefView>,
     index_stack: Vec<usize>,
+}
+
+impl Clone for PyDefViewCursor {
+    fn clone(&self) -> Self {
+        Python::with_gil(|py| PyDefViewCursor {
+            view: self.view.clone_ref(py),
+            index_stack: self.index_stack.clone(),
+        })
+    }
 }
 
 impl PyDefViewCursor {

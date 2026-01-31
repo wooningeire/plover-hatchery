@@ -86,8 +86,7 @@ def consonant_inversions(*, consonant_sophs_str: str, inversion_domains_steno: s
 
                 case _:
                     return
-                    
-                    
+
             if any(soph not in consonant_sophs for soph in sophs):
                 keysymbol = cursor.tip().keysymbol()
 
@@ -105,14 +104,14 @@ def consonant_inversions(*, consonant_sophs_str: str, inversion_domains_steno: s
             if paths.dst_node_id is not None:
                 for i, consonant in enumerate(state.past_consonants[:-1]):
                     inversion_sophs = get_inversion_sophs(state.past_consonants[i:])
-                    paths = trie.link_join(
+                    new_paths = trie.link_join(
                         NodeSrc.increment_costs(consonant.node_srcs, 50),
                         paths.dst_node_id,
                         soph_trie_api.key_id_manager.get_key_ids_else_create(inversion_sophs),
                         entry_id
                     )
 
-                    for transition_seq in paths.transition_seqs:
+                    for transition_seq in new_paths.transition_seqs:
                         for transition in transition_seq.transitions:
                             soph_trie_api.transition_flags.mappings[TransitionCostKey(transition, entry_id)].append(consonant_inversions_transition_flag)
 

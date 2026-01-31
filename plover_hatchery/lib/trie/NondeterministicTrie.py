@@ -62,7 +62,7 @@ class NondeterministicTrie:
     ROOT = 0
     
     def __init__(self):
-        self.__rs = RsNondeterministicTrie()
+        self.rs = RsNondeterministicTrie()
         self.__on_try_traverse: list[OnTraverse] = []
 
 
@@ -71,7 +71,7 @@ class NondeterministicTrie:
         Gets the destination node obtained by following an existing transition associated with the given key
         from the given source node, or creates it if it does not exist. The node will not yet have been used by the current translation
         """
-        return self.__rs.follow(src_node_id, key_id, cost_info.cost, cost_info.translation_id)
+        return self.rs.follow(src_node_id, key_id, cost_info.cost, cost_info.translation_id)
     
 
     def follow_chain(self, src_node_id: int, key_ids: Sequence[int | None], cost_info: TransitionCostInfo):
@@ -80,7 +80,7 @@ class NondeterministicTrie:
         from the given source node, or creates it (and any missing intermediate nodes) if it does not exist. Any nodes in the chain will
         not have bewen used by the current translation 
         """
-        return self.__rs.follow_chain(src_node_id, key_ids, cost_info.cost, cost_info.translation_id)
+        return self.rs.follow_chain(src_node_id, key_ids, cost_info.cost, cost_info.translation_id)
 
 
     def join(
@@ -180,7 +180,7 @@ class NondeterministicTrie:
 
         # If we have traverse handlers, we need to filter in Python
         if self.__on_try_traverse:
-            results = self.__rs.traverse(paths_list, key_id)
+            results = self.rs.traverse(paths_list, key_id)
             
             for path in results:
                 # Check the last transition against handlers
@@ -193,7 +193,7 @@ class NondeterministicTrie:
                 yield path
         else:
             # Fast path: no handlers, just delegate to Rust
-            yield from self.__rs.traverse(paths_list, key_id)
+            yield from self.rs.traverse(paths_list, key_id)
 
     
     def traverse_chain(self, src_node_paths: Iterable[TriePath], key_ids: tuple[int | None, ...]) -> Iterable[TriePath]:
@@ -215,7 +215,7 @@ class NondeterministicTrie:
         """
         Creates a transition from a given source node and key to an already-existing destination node
         """
-        return self.__rs.link(src_node_id, dst_node_id, key_id, cost_info.cost, cost_info.translation_id)
+        return self.rs.link(src_node_id, dst_node_id, key_id, cost_info.cost, cost_info.translation_id)
 
     
     def link_chain(self, src_node_id: int, dst_node_id: int, key_ids: Sequence[int | None], cost_info: TransitionCostInfo) -> list[TransitionKey]:
@@ -223,48 +223,48 @@ class NondeterministicTrie:
         Follows all but the final transition from a given source node and series of keys, and then creates the final transition
         to the given already-existing destination node
         """
-        return self.__rs.link_chain(src_node_id, dst_node_id, key_ids, cost_info.cost, cost_info.translation_id)
+        return self.rs.link_chain(src_node_id, dst_node_id, key_ids, cost_info.cost, cost_info.translation_id)
     
 
     def set_translation(self, node_id: int, translation_id: int):
-        self.__rs.set_translation(node_id, translation_id)
+        self.rs.set_translation(node_id, translation_id)
         
     
     def get_translations_and_costs_single(self, node_id: int, transitions: Sequence[TransitionKey]):
-        return self.__rs.get_translations_and_costs_single(node_id, transitions)
+        return self.rs.get_translations_and_costs_single(node_id, transitions)
 
 
     def get_translations_and_costs(self, node_paths: Sequence[TriePath]):
-        return self.__rs.get_translations_and_costs(node_paths)
+        return self.rs.get_translations_and_costs(node_paths)
 
 
     def get_translations_and_min_costs(self, node_paths: Sequence[TriePath]):
-        return self.__rs.get_translations_and_min_costs(node_paths)
+        return self.rs.get_translations_and_min_costs(node_paths)
     
     
     def transition_has_key(self, transition: TransitionKey, key_id: int | None):
-        return self.__rs.transition_has_key(transition, key_id)
+        return self.rs.transition_has_key(transition, key_id)
     
     @override
     def __str__(self) -> str:
-        n_nodes = self.__rs.n_nodes()
-        n_translations = len(self.__rs.get_all_translation_ids())
+        n_nodes = self.rs.n_nodes()
+        n_translations = len(self.rs.get_all_translation_ids())
         return f"NondeterministicTrie (Rust-backed): {n_nodes:,} nodes, {n_translations:,} translations"
 
 
     def build_reverse_lookup(self):
-        reverse_index = self.__rs.create_reverse_index()
+        reverse_index = self.rs.create_reverse_index()
 
         def get_sequences(translation_id: int) -> list[LookupResult]:
-            return reverse_index.get_sequences(self.__rs, translation_id)
+            return reverse_index.get_sequences(self.rs, translation_id)
         
         return get_sequences
 
     def build_subtrie_builder(self, transition_flags: TransitionFlagManager, get_key_str: Callable[[int | None], str]):
-        reverse_index = self.__rs.create_reverse_index()
+        reverse_index = self.rs.create_reverse_index()
 
         def build_subtrie(translation_id: int):
-            raw_data = reverse_index.get_subtrie_data(self.__rs, translation_id)
+            raw_data = reverse_index.get_subtrie_data(self.rs, translation_id)
             if raw_data is None: return None
             
             processed_transitions = []
@@ -300,7 +300,7 @@ class NondeterministicTrie:
 
 
     def get_transition_cost(self, transition: TransitionKey, translation_id: int):
-        cost = self.__rs.get_transition_cost(transition, translation_id)
+        cost = self.rs.get_transition_cost(transition, translation_id)
         if cost is None:
             raise KeyError(f"pairing of translation {translation_id} and transition {transition} (key: {transition.key_id}) is not associated with a cost")
         return cost
@@ -311,6 +311,6 @@ class NondeterministicTrie:
             yield self.get_transition_cost(transition, translation_id)
 
     def profile(self):
-        n_nodes = self.__rs.n_nodes()
-        n_translations = len(self.__rs.get_all_translation_ids())
+        n_nodes = self.rs.n_nodes()
+        n_translations = len(self.rs.get_all_translation_ids())
         return f"Rust-backed trie: {n_nodes:,} nodes, {n_translations:,} translations"

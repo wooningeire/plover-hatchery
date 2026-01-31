@@ -12,6 +12,7 @@ mod dict;
 
 mod view;
 pub use view::{
+    DefView,
     DefViewItemRef,
     DefViewErr,
 };
