@@ -1,5 +1,6 @@
 use pyo3::prelude::*;
 
+#[derive(Debug, Clone)]
 #[pyclass]
 pub struct TransitionFlag {
     #[pyo3(get, set)]

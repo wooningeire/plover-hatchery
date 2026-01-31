@@ -14,4 +14,7 @@ pub use transition::TransitionCostInfo;
 mod transition_flag;
 pub use transition_flag::TransitionFlag;
 
+mod transition_flag_manager;
+pub use transition_flag_manager::TransitionFlagManager;
+
 pub mod py;

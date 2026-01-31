@@ -1,12 +1,14 @@
-use crate::trie::{
-    TransitionSourceNode, JoinedTriePaths, TransitionCostKey,
-    py::PyNondeterministicTrie,
-};
-use crate::defs::py::{PyDefView, PyDefViewCursor, PyDefViewItem};
-
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyTuple};
 
+use crate::trie::{
+    TransitionSourceNode,
+    JoinedTriePaths,
+    TransitionCostKey,
+    TransitionFlagManager,
+    py::PyNondeterministicTrie,
+};
+use crate::defs::py::{PyDefView, PyDefViewCursor, PyDefViewItem};
 
 
 /// Stack item for tracking cursor position and source nodes during entry building.
@@ -27,35 +29,23 @@ struct SourceNodePositionStackItem {
 /// * `map_to_sophs` - Callback to get sophs from a cursor position
 /// * `get_key_ids_else_create` - Callback to get or create key IDs for a set of sophs
 /// * `register_transition` - Callback to register a transition with phoneme data
-/// * `add_transition_flag` - Callback to add a skip flag to a transition
+/// * `transition_flags` - The transition flag manager
 /// * `skip_transition_flag_id` - The flag ID for skip transitions
 /// * `emit_begin_add_entry` - Hook callback for begin_add_entry event
 /// * `emit_add_soph_transition` - Hook callback for add_soph_transition event
 #[pyfunction]
-#[pyo3(signature = (
-    trie,
-    entry_id,
-    view,
-    map_to_sophs,
-    get_key_ids_else_create,
-    register_transition,
-    add_transition_flag,
-    skip_transition_flag_id,
-    emit_begin_add_entry,
-    emit_add_soph_transition,
-))]
 pub fn add_soph_trie_entry(
-    py: Python,
     trie: Py<PyNondeterministicTrie>,
     entry_id: usize,
     view: Py<PyDefView>,
     map_to_sophs: Py<PyAny>,
     get_key_ids_else_create: Py<PyAny>,
     register_transition: Py<PyAny>,
-    add_transition_flag: Py<PyAny>,
+    transition_flags: Py<TransitionFlagManager>,
     skip_transition_flag_id: usize,
     emit_begin_add_entry: Py<PyAny>,
     emit_add_soph_transition: Py<PyAny>,
+    py: Python,
 ) -> PyResult<()> {
     let kwargs = PyDict::new(py);
     kwargs.set_item("trie", trie.clone_ref(py))?;
@@ -101,7 +91,7 @@ pub fn add_soph_trie_entry(
         map_to_sophs: &Py<PyAny>,
         get_key_ids_else_create: &Py<PyAny>,
         register_transition: &Py<PyAny>,
-        add_transition_flag: &Py<PyAny>,
+        transition_flags: &Py<TransitionFlagManager>,
         skip_transition_flag_id: usize,
         emit_add_soph_transition: &Py<PyAny>,
         states: &Py<PyAny>,
@@ -177,7 +167,7 @@ pub fn add_soph_trie_entry(
 
                     if should_add_flag {
                         let cost_key = TransitionCostKey::new(*transition, entry_id);
-                        add_transition_flag.call1(py, (cost_key, skip_transition_flag_id))?;
+                        transition_flags.borrow_mut(py).flag_transition(cost_key, skip_transition_flag_id);
                     }
                 }
             }
@@ -227,7 +217,7 @@ pub fn add_soph_trie_entry(
                     &map_to_sophs,
                     &get_key_ids_else_create,
                     &register_transition,
-                    &add_transition_flag,
+                    &transition_flags,
                     skip_transition_flag_id,
                     &emit_add_soph_transition,
                     &states,
@@ -259,7 +249,7 @@ pub fn add_soph_trie_entry(
             &map_to_sophs,
             &get_key_ids_else_create,
             &register_transition,
-            &add_transition_flag,
+            &transition_flags,
             skip_transition_flag_id,
             &emit_add_soph_transition,
             &states,

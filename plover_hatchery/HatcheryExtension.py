@@ -37,7 +37,7 @@ class HatcheryExtension:
 
             breakdown = store.breakdown(translation)
             if breakdown is None:
-                return jsonify([])
+                return jsonify({})
 
             return breakdown
         

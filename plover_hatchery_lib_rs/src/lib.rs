@@ -43,6 +43,7 @@ use trie::{
     TransitionCostKey,
     TransitionCostInfo,
     TransitionFlag,
+    TransitionFlagManager,
     TriePath,
     LookupResult,
     TransitionSourceNode,
@@ -79,6 +80,7 @@ pub fn plover_hatchery_lib_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<TransitionCostKey>()?;
     m.add_class::<TransitionCostInfo>()?;
     m.add_class::<TransitionFlag>()?;
+    m.add_class::<TransitionFlagManager>()?;
     m.add_class::<TriePath>()?;
     m.add_class::<LookupResult>()?;
     m.add_class::<PyReverseTrieIndex>()?;

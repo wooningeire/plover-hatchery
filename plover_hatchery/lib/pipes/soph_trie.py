@@ -9,9 +9,9 @@ from plover_hatchery.lib.pipes.Hook import Hook
 from plover_hatchery.lib.pipes.Plugin import GetPluginApi, Plugin, define_plugin
 from plover_hatchery.lib.pipes.floating_keys import floating_keys
 from plover_hatchery.lib.pipes.plugin_utils import iife, join_sophs_to_chords_dicts
-from plover_hatchery.lib.trie import KeyIdManager, LookupResult, NondeterministicTrie, TransitionSourceNode, Trie, JoinedTriePaths, TransitionFlagManager, TransitionFlag
+from plover_hatchery.lib.trie import KeyIdManager, LookupResult, NondeterministicTrie, TransitionSourceNode, Trie, JoinedTriePaths
 from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
-from plover_hatchery_lib_rs import Soph
+from plover_hatchery_lib_rs import Soph, TransitionFlagManager
 
 
 
@@ -137,8 +137,6 @@ class SophTrieApi:
     modify_translation = Hook(ModifyTranslation)
 
 
-skip_transition_flag = TransitionFlag("skip")
-
 def soph_trie(
     *,
     map_to_sophs: Callable[[DefViewCursor], set[str]],
@@ -158,6 +156,9 @@ def soph_trie(
         transition_phonemes: dict[TransitionCostKey, DefViewCursor] = {}
         transition_flags = TransitionFlagManager()
         key_id_manager = KeyIdManager[Soph]()
+
+        
+        skip_transition_flag = transition_flags.new_flag("skip")
 
         store.trie = trie
 
@@ -181,11 +182,6 @@ def soph_trie(
             def register_transition_wrapper(transition: TransitionKey, entry_id: int, cursor: DefViewCursor):
                 api.register_transition(transition, entry_id, cursor)
                 
-            def add_transition_flag_wrapper(cost_key: TransitionCostKey, flag_id: int):
-                # We know flag_id is skip_transition_flag since that's the only one we pass
-                transition_flags.mappings[cost_key].append(skip_transition_flag)
-                
-            skip_flag_id = 0 # Placeholder, as TransitionFlag is not integer based in Python but we can pass dummy int
 
             add_soph_trie_entry(
                 trie.rs,
@@ -194,8 +190,8 @@ def soph_trie(
                 map_to_sophs_wrapper,
                 get_key_ids_wrapper,
                 register_transition_wrapper,
-                add_transition_flag_wrapper,
-                skip_flag_id,
+                transition_flags,
+                skip_transition_flag,
                 api.begin_add_entry.emit_and_store_outputs,
                 api.add_soph_transition.emit_with_states
             )

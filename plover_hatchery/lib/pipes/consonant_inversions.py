@@ -8,11 +8,10 @@ from plover.steno import Stroke
 from plover_hatchery_lib_rs import DefViewCursor, DefViewItem
 from plover_hatchery.lib.pipes.Plugin import define_plugin, GetPluginApi
 from plover_hatchery.lib.pipes.soph_trie import ChordToSophSearchResult, ChordToSophSearchResultWithSrcIndex, LookupResultWithAssociations, SophChordAssociation, SophsToTranslationSearchPath, soph_trie
-from plover_hatchery_lib_rs import Soph
+from plover_hatchery_lib_rs import Soph, TransitionFlagManager
 from plover_hatchery.lib.trie import NondeterministicTrie, TransitionSourceNode, JoinedTriePaths, TransitionFlag, TransitionCostKey
 
 
-consonant_inversions_transition_flag = TransitionFlag("inversion")
 
 def consonant_inversions(*, consonant_sophs_str: str, inversion_domains_steno: str):
     consonant_sophs = set(Soph(value) for value in consonant_sophs_str.split())
@@ -25,6 +24,8 @@ def consonant_inversions(*, consonant_sophs_str: str, inversion_domains_steno: s
     @define_plugin(consonant_inversions)
     def plugin(get_plugin_api: GetPluginApi, **_):
         soph_trie_api = get_plugin_api(soph_trie)
+
+        inversion_flag = soph_trie_api.transition_flags.new_flag("inversion")
 
 
         @dataclass(frozen=True)
@@ -113,7 +114,7 @@ def consonant_inversions(*, consonant_sophs_str: str, inversion_domains_steno: s
 
                     for transition_seq in new_paths.transition_seqs:
                         for transition in transition_seq.transitions:
-                            soph_trie_api.transition_flags.mappings[TransitionCostKey(transition, entry_id)].append(consonant_inversions_transition_flag)
+                            soph_trie_api.transition_flags.flag_transition(TransitionCostKey(transition, entry_id), inversion_flag)
 
 
 

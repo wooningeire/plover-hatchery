@@ -15,6 +15,7 @@ from plover_hatchery_lib_rs import (
     JoinedTriePaths,
     JoinedTransitionSeq,
     TransitionFlag,
+    TransitionFlagManager,
 )
 from typing import Callable, Generator, final, override
 
@@ -27,14 +28,6 @@ class OnTraverse:
         new_transition: TransitionKey,
         /,
     ) -> bool: ...
-
-
-
-@final
-class TransitionFlagManager:
-    def __init__(self):
-        self.mappings = defaultdict[TransitionCostKey, list[TransitionFlag]](list)
-        self.flag_types = set[TransitionFlag]()
 
 @final
 class NondeterministicTrie:
@@ -257,7 +250,7 @@ class NondeterministicTrie:
                    key_str = get_key_str(key_id)
                    py_key = TransitionKey(src, key_id, idx)
                    cost_key = TransitionCostKey(py_key, translation_id)
-                   flags = [flag.label for flag in transition_flags.mappings.get(cost_key, [])]
+                   flags = [transition_flags.get_label(flag) for flag in transition_flags.get_flags(cost_key)]
                    
                    keys_costs.append({
                        "key": key_str,
