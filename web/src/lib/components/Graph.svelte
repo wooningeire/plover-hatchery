@@ -281,6 +281,7 @@
         // Highlights for lookup path
         const highlightedNodes = new Set<number>();
         const highlightedLinks: { source: number, target: number, chord: string }[] = [];
+        const highlightedLinkKeys = new Set<string>();
 
         if (highlightData) {
             pathLoop:
@@ -302,7 +303,13 @@
                     }
                 }
 
-                highlightedLinks.push(...links);
+                links.forEach(link => {
+                    const key = `${link.source}-${link.target}`;
+                    if (!highlightedLinkKeys.has(key)) {
+                        highlightedLinkKeys.add(key);
+                        highlightedLinks.push(link);
+                    }
+                });
                 for (const node of nodes.values()) {
                     highlightedNodes.add(node);
                 }
