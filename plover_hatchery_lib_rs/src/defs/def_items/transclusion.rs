@@ -38,3 +38,21 @@ impl Transclusion {
         self.to_string()
     }
 }
+
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn to_string_reports_varname() {
+        let transclusion = Transclusion::new("dragon".to_string(), 0);
+        assert_eq!(transclusion.to_string(), "{dragon}");
+    }
+
+    #[test]
+    fn to_string_reports_varname_and_stress() {
+        let transclusion = Transclusion::new("amphi".to_string(), 1);
+        assert_eq!(transclusion.to_string(), "{amphi}!1");
+    }
+}

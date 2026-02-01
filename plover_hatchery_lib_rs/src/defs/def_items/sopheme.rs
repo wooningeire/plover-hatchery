@@ -70,3 +70,27 @@ impl SophemeSeq {
         }
     }
 }
+
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use super::super::keysymbol::Keysymbol;
+
+    #[test]
+    fn to_string_reports_chars_and_keysymbols() {
+        let sopheme = Sopheme::new("ph".to_string(), vec![
+            Keysymbol::new("f".to_string(), 0, false),
+        ]);
+        assert_eq!(sopheme.to_string(), "ph.f");
+    }
+
+    #[test]
+    fn to_string_reports_multikeysymbol_sophemes_in_parentheses() {
+        let sopheme = Sopheme::new("u".to_string(), vec![
+            Keysymbol::new("y".to_string(), 0, false), 
+            Keysymbol::new("uu".to_string(), 1, false), 
+        ]);
+        assert_eq!(sopheme.to_string(), "u.(y uu!1)");
+    }
+}

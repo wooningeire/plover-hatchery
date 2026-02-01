@@ -206,3 +206,33 @@ impl KeysymbolOptions {
     }
 }
 
+
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn to_string_reports_symbol() {
+        let keysymbol = Keysymbol::new("a".to_string(), 0, false);
+        assert_eq!(keysymbol.to_string(), "a");
+    }
+
+    #[test]
+    fn to_string_reports_stress_number() {
+        let keysymbol = Keysymbol::new("ee".to_string(), 1, false);
+        assert_eq!(keysymbol.to_string(), "ee!1");
+    }
+
+    #[test]
+    fn to_string_reports_optional() {
+        let keysymbol = Keysymbol::new("@@r".to_string(), 0, true);
+        assert_eq!(keysymbol.to_string(), "@@r?");
+    }
+
+    #[test]
+    fn to_string_reports_all() {
+        let keysymbol = Keysymbol::new("i".to_string(), 3, true);
+        assert_eq!(keysymbol.to_string(), "i!3?");
+    }
+}

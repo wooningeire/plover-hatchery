@@ -396,7 +396,7 @@ pub fn parse_keysymbol_seq(seq: &str) -> Result<Vec<Keysymbol>, ParseErr> {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use super::*;
 
     

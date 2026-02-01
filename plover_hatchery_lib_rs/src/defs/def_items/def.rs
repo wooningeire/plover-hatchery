@@ -48,11 +48,28 @@ impl Def {
 
 #[pymethods]
 impl Def {
-    pub fn __str__(&self) -> String {
+    fn __str__(&self) -> String {
         self.to_string()
     }
 
-    pub fn __repr__(&self) -> String {
+    fn __repr__(&self) -> String {
         self.to_string()
+    }
+}
+
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use super::super::transclusion::Transclusion;
+
+    #[test]
+    fn to_string_reports_varname_and_entities() {
+        let def = Def::of(vec![
+            Entity::Transclusion(Transclusion::new("amphi".to_string(), 1)), 
+            Entity::Transclusion(Transclusion::new("vern".to_string(), 2)), 
+        ], "amphivern".to_string());
+
+        assert_eq!(def.to_string(), "amphivern = {amphi}!1 {vern}!2");
     }
 }
