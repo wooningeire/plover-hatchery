@@ -2,7 +2,7 @@ from collections import defaultdict
 from collections.abc import Generator, Iterable, Sequence
 from dataclasses import dataclass, field
 import dataclasses
-from itertools import product
+
 from plover_hatchery_lib_rs import (
     NondeterministicTrie as RsNondeterministicTrie,
     TransitionKey,
@@ -63,7 +63,7 @@ class NondeterministicTrie:
         key_ids_iter: Iterable[int | None],
         translation_id: int,
     ):
-        return self.join_chain(src_nodes, ((key_id,) for key_id in key_ids_iter), translation_id)
+        return self.link_join(src_nodes, None, key_ids_iter, translation_id)
 
 
     def join_chain(
@@ -72,26 +72,7 @@ class NondeterministicTrie:
         key_ids_iter: Iterable[Sequence[int | None]],
         translation_id: int,
     ):
-        """Given a set of source nodes and a set of keys, creates a common destination node from those source nodes when following any of the keys."""
-
-        products = product(src_nodes, key_ids_iter)
-
-        try:
-            first_src, first_keys = next(products)
-        except StopIteration:
-            return JoinedTriePaths(None, ())
-
-        transition_seqs: list[JoinedTransitionSeq] = []
-        
-        first_path = self.follow_chain(first_src.node, first_keys, TransitionCostInfo(first_src.cost, translation_id))
-        
-        transition_seqs.append(JoinedTransitionSeq(first_path.transitions))
-        
-        for src, keys in products:
-            transitions = self.link_chain(src.node, first_path.dst_node_id, keys, TransitionCostInfo(src.cost, translation_id))
-            transition_seqs.append(JoinedTransitionSeq(transitions))
-
-        return JoinedTriePaths(first_path.dst_node_id, tuple(transition_seqs))
+        return self.link_join_chain(src_nodes, None, key_ids_iter, translation_id)
 
 
     def link_join(
@@ -101,32 +82,19 @@ class NondeterministicTrie:
         key_ids_iter: Iterable[int | None],
         translation_id: int,
     ):
-        return self.link_join_chain(src_nodes, dst_node, ((key_id,) for key_id in key_ids_iter), translation_id)
+        return self.rs.link_join(list(src_nodes), dst_node, list(key_ids_iter), translation_id)
 
 
     def link_join_chain(
         self,
         src_nodes: Iterable[TransitionSourceNode],
         dst_node: int | None,
-        key_ids_iter: Iterable[tuple[int | None, ...]],
+        key_ids_iter: Iterable[Sequence[int | None]],
         translation_id: int,
     ):
-        """
-        Given a set of source nodes, a set of strokes, and a destination node, links all source nodes to the given destination node when following any of the strokes.
-        Creates a new destination node if it is None.
-        """
-
-        if dst_node is None:
-            return self.join_chain(src_nodes, key_ids_iter, translation_id)
-
-
-        transition_seqs: list[JoinedTransitionSeq] = []
-
-        for src_node, key_ids in product(src_nodes, key_ids_iter):
-            transitions = self.link_chain(src_node.node, dst_node, key_ids, TransitionCostInfo(src_node.cost, translation_id))
-            transition_seqs.append(JoinedTransitionSeq(transitions))
-
-        return JoinedTriePaths(dst_node, tuple(transition_seqs))
+        # Rust expects Vec<Vec<Option<usize>>>, so we need to ensure inner sequences are lists
+        key_chains = [list(chain) for chain in key_ids_iter]
+        return self.rs.link_join_chain(list(src_nodes), dst_node, key_chains, translation_id)
 
 
     def __call_try_traverse_handlers(self, trie_path: TriePath, transition: TransitionKey):

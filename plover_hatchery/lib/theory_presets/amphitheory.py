@@ -292,8 +292,8 @@ def theory():
         "@": "@",
 
 
-        "C": "KPW",
-        "SC": "SKPW",
+        "C": "KPW -S",
+        "SC": "SKPW -S",
     }
 
     sophs_to_alternate_chords = {

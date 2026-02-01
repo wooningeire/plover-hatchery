@@ -1,18 +1,17 @@
 from collections import defaultdict
 from dataclasses import dataclass, field
 import json
-from typing import Any, Callable, Iterable, NamedTuple, Protocol, final
+from typing import Any, Callable, Iterable, NamedTuple, Protocol, Sequence, final
 
 from plover.steno import Stroke
-from plover_hatchery_lib_rs import DefView, DefViewCursor, add_soph_trie_entry, TriePath, TransitionCostKey, TransitionKey
 
+from plover_hatchery_lib_rs import DefView, DefViewCursor, add_soph_trie_entry, TriePath, TransitionCostKey, TransitionKey, Soph, TransitionFlagManager
 from plover_hatchery.lib.pipes.Hook import Hook
 from plover_hatchery.lib.pipes.Plugin import GetPluginApi, Plugin, define_plugin
 from plover_hatchery.lib.pipes.floating_keys import floating_keys
 from plover_hatchery.lib.pipes.plugin_utils import iife, join_sophs_to_chords_dicts
 from plover_hatchery.lib.trie import KeyIdManager, LookupResult, NondeterministicTrie, TransitionSourceNode, Trie, JoinedTriePaths
 from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
-from plover_hatchery_lib_rs import Soph, TransitionFlagManager
 
 
 
@@ -21,7 +20,7 @@ class SophChordAssociation(NamedTuple):
     chord: Stroke
     chord_starts_new_stroke: bool
     phonemes: tuple[DefViewCursor, ...]
-    transitions: tuple[TransitionKey, ...]
+    transitions: Sequence[TransitionKey]
 
 class LookupResultWithAssociations(NamedTuple):
     lookup_result: LookupResult
@@ -32,7 +31,7 @@ class SophChordAssociationWithUnresolvedPhonemes(NamedTuple):
     sophs: tuple[Soph, ...]
     chord: Stroke
     chord_starts_new_stroke: bool
-    transitions: tuple[TransitionKey, ...]
+    transitions: Sequence[TransitionKey]
 
 
 @dataclass(frozen=True)
@@ -518,9 +517,9 @@ def soph_trie(
                     return None
             
             
-            summaries = []
+            summaries: list[dict[str, Any]] = []
             for final_path in SophsToTranslationPathFinder.get_paths_from_outline(outline, states):
-                nodes_by_association: list[list[int]] = []
+                nodes_by_association: list[Sequence[int]] = []
 
                 for i, association in enumerate(final_path.sophs_and_chords_used):
                     if i == len(final_path.sophs_and_chords_used) - 1:

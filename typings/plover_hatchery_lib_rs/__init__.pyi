@@ -175,6 +175,20 @@ def parse_keysymbol_seq(seq: str, /) -> list[Keysymbol]:
     ...
 
 
+def add_soph_trie_entry(
+    trie: NondeterministicTrie,
+    entry_id: int,
+    view: DefView,
+    map_to_sophs: Callable[[DefViewCursor], set[Soph]],
+    get_key_ids_else_create: Callable[[DefViewCursor], Sequence[int]],
+    register_transition: Callable[[TransitionKey, int, DefViewCursor], None],
+    transition_flags: TransitionFlagManager,
+    skip_transition_flag_id: int,
+    emit_begin_add_entry: Callable[[int], None],
+    emit_add_soph_transition: Callable[[int, int, int], None],
+) -> None: ...
+
+
 class NondeterministicTrie:
     ROOT: int
 
@@ -217,6 +231,24 @@ class NondeterministicTrie:
         translation_id: int,
         /,
     ) -> list[TransitionKey]: ...
+
+    def link_join(
+        self,
+        src_nodes: Sequence[TransitionSourceNode],
+        dst_node_id: int | None,
+        key_ids: Sequence[int | None],
+        translation_id: int,
+        /,
+    ) -> JoinedTriePaths: ...
+
+    def link_join_chain(
+        self,
+        src_nodes: Sequence[TransitionSourceNode],
+        dst_node_id: int | None,
+        key_id_chains: Sequence[Sequence[int | None]],
+        translation_id: int,
+        /,
+    ) -> JoinedTriePaths: ...
 
     def set_translation(self, node_id: int, translation_id: int, /) -> None: ...
 
@@ -338,6 +370,9 @@ class TriePath:
         /,
     ) -> None: ...
 
+    @staticmethod
+    def root() -> "TriePath": ...
+
 
 class LookupResult:
     @property
@@ -358,3 +393,59 @@ class LookupResult:
 class ReverseTrieIndex:
     def get_sequences(self, trie: NondeterministicTrie, translation_id: int, /) -> list[LookupResult]: ...
     def get_subtrie_data(self, trie: NondeterministicTrie, translation_id: int, /) -> dict[str, Any] | None: ...
+
+
+class Soph:
+    @property
+    def value(self) -> str: ...
+    
+    def __init__(self, value: str, /) -> None: ...
+    
+    @staticmethod
+    def parse_seq(seq: str, /) -> tuple[Soph, ...]: ...
+
+
+class TransitionSourceNode:
+    @property
+    def src_node_index(self) -> int: ...
+    @property
+    def outgoing_cost(self) -> float: ...
+    @property
+    def outgoing_transition_flags(self) -> list[int]: ...
+    
+    def __init__(self, src_node_index: int, outgoing_cost: float = 0.0, outgoing_transition_flags: Sequence[int] = ..., /) -> None: ...
+    
+    @staticmethod
+    def root() -> TransitionSourceNode: ...
+    
+    @staticmethod
+    def increment_costs(srcs: Sequence[TransitionSourceNode], cost_change: float, /) -> list[TransitionSourceNode]: ...
+    
+    @staticmethod
+    def add_flags(srcs: Sequence[TransitionSourceNode], flags: Sequence[int], /) -> list[TransitionSourceNode]: ...
+
+
+class JoinedTransitionSeq:
+    @property
+    def transitions(self) -> list[TransitionKey]: ...
+    
+    def __init__(self, transitions: Sequence[TransitionKey], /) -> None: ...
+
+
+class JoinedTriePaths:
+    @property
+    def dst_node_id(self) -> int | None: ...
+    @property
+    def transition_seqs(self) -> list[JoinedTransitionSeq]: ...
+    
+    def __init__(self, dst_node_id: int | None, transition_seqs: Sequence[JoinedTransitionSeq], /) -> None: ...
+
+
+class TransitionFlag:
+    def __init__(self, /) -> None: ...
+
+class TransitionFlagManager:
+    def __init__(self, /) -> None: ...
+    def new_flag(self, label: str, /) -> int: ...
+    def get_label(self, flag: int, /) -> str: ...
+    def get_flags(self, cost_key: TransitionCostKey, /) -> list[int]: ...
