@@ -2,6 +2,7 @@
     import { onMount, untrack } from 'svelte';
     import * as d3 from 'd3';
     import FlagControls, { type FlagSettings } from '$lib/components/FlagControls.svelte';
+    import { LINK_ARC, linkPathSegment, linkPathYMax } from './graph';
 
     interface NodeData {
         id: number;
@@ -157,7 +158,6 @@
         const nodeRadius = 25;
 		const nodeSpacing = 200;
         const margin = { top: height / 2, left: 50 }; // Center vertically
-        const arc = 0.5;
 
         const nodes: NodeData[] = data.nodes.map((id: number, index: number) => ({ 
             id, 
@@ -264,18 +264,8 @@
              .attr("d", (d: LinkData) => {
                 const source = nodeMap.get(d.source)!;
                 const target = nodeMap.get(d.target)!;
-                
-                const dx = target.x - source.x;
-                const h = Math.abs(dx) * arc;
-                const dir = dx > 0 ? -1 : 1;
-                
-                const cp1x = source.x + dx / 4;
-                const cp1y = source.y + h * dir;
-                
-                const cp2x = target.x - dx / 4;
-                const cp2y = target.y + h * dir;
-                
-                return `M${source.x},${source.y} C${cp1x},${cp1y} ${cp2x},${cp2y} ${target.x},${target.y}`;
+
+                return linkPathSegment(source.x, source.y, target.x, target.y);
             });
 
         // Highlights for lookup path
@@ -332,17 +322,7 @@
                 
                 if (!source || !target) return "";
 
-                const dx = target.x - source.x;
-                const h = Math.abs(dx) * arc;
-                const dir = dx > 0 ? -1 : 1;
-                
-                const cp1x = source.x + dx / 4;
-                const cp1y = source.y + h * dir;
-                
-                const cp2x = target.x - dx / 4;
-                const cp2y = target.y + h * dir;
-                
-                return `M${source.x},${source.y} C${cp1x},${cp1y} ${cp2x},${cp2y} ${target.x},${target.y}`;
+                return linkPathSegment(source.x, source.y, target.x, target.y);
             });
 
         // Highlight Link Labels (Chord)
@@ -363,11 +343,7 @@
                 const target = nodeMap.get(d.target);
                 if (!source || !target) return 0;
                 
-                const dx = target.x - source.x;
-                const dir = dx > 0 ? -1 : 1;
-                const h = Math.abs(dx) * arc;
-                // Position slightly above the path's midpoint
-                return source.y + h * dir * 0.8 - 15; 
+                return linkPathYMax(source.x, source.y, target.x, target.y) - 15; 
             })
             .style("font-size", "2rem")
             .style("background-color", "rgba(255, 255, 255, 0.9)")
@@ -394,10 +370,7 @@
              .attr("y", (d: LinkData) => {
                  const source = nodeMap.get(d.source)!;
                  const target = nodeMap.get(d.target)!;
-                 const dx = target.x - source.x;
-                 const dir = dx > 0 ? -1 : 1;
-                 const h = Math.abs(dx) * arc;
-                 return source.y + h * dir * 0.72; 
+                 return linkPathYMax(source.x, source.y, target.x, target.y) + 5; 
              })
              .style("background-color", "rgba(255, 255, 255, 0.8)") 
              .style("opacity", (d: LinkData) => d.opacity)
