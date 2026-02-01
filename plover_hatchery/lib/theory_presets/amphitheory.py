@@ -64,7 +64,12 @@ def theory():
                     elif "c" in sopheme.chars:
                         yield "C"
                         return
+                    elif "z" in sopheme.chars:
+                        yield "Z"
                 
+                if keysymbol.symbol == "z":
+                    if "s" in sopheme.chars:
+                        yield "S"
                 
                 if keysymbol.stress > 1:
                     if any(chars in sopheme.chars for chars in ("ai", "ay")):
@@ -271,8 +276,8 @@ def theory():
         "S T": "*S",
         "SH N": "-GS",
         "K SH N": "-BGS",
-        "NG G": "-PBG",
-        "NG K": "*PBG",
+        "NG G": "-PBG", # -PB/TKPW
+        "NG K": "*PBG", # -PB/K
 
         "@ N T": "SPW",
         "@ N D": "SPW",
@@ -285,6 +290,14 @@ def theory():
         "E K S T": "STKW",
         "E K S K": "SKW",
         "E K S P": "SKPW",
+        "E K C": "SKW",
+        "E K C T": "STKW",
+        "E K C K": "SKW",
+        "E K C P": "SKPW",
+        "E K SC": "SKW",
+        "E K SC T": "STKW",
+        "E K SC K": "SKW",
+        "E K SC P": "SKPW",
         "@ N S": "STPH",
         "@ N F": "TPW",
         "@ N V": "TPW",

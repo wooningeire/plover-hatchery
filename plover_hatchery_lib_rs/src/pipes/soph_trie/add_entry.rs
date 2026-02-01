@@ -48,11 +48,12 @@ pub fn add_soph_trie_entry(
     emit_add_soph_transition: Py<PyAny>,
     py: Python,
 ) -> PyResult<()> {
-    let kwargs = PyDict::new(py);
-    kwargs.set_item("trie", trie.clone_ref(py))?;
-    kwargs.set_item("entry_id", entry_id)?;
-    let states = emit_begin_add_entry.call(py, (), Some(&kwargs))?;
-
+    let states = {
+        let kwargs = PyDict::new(py);
+        kwargs.set_item("trie", trie.clone_ref(py))?;
+        kwargs.set_item("entry_id", entry_id)?;
+        emit_begin_add_entry.call(py, (), Some(&kwargs))?
+    };
 
     // The nodes from which the next transition will depart
     let mut source_nodes: Vec<TransitionSourceNode> = vec![TransitionSourceNode::root()];
