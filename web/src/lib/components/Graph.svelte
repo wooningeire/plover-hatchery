@@ -57,6 +57,8 @@
     let width = $state(800);
     let height = $state(600);
 
+    let mainGroup: d3.Selection<SVGGElement, unknown, null, undefined>;
+
     const resize = () => {
         width = innerWidth;
         height = innerHeight;
@@ -64,6 +66,19 @@
 
     onMount(() => {
         resize();
+        if (svg) {
+             const svgEl = d3.select(svg);
+             const g = svgEl.append("g");
+             mainGroup = g;
+
+            const zoom = d3.zoom<SVGSVGElement, unknown>()
+                .scaleExtent([0.1, 4])
+                .on("zoom", (event: d3.D3ZoomEvent<SVGSVGElement, unknown>) => {
+                    g.attr("transform", event.transform.toString());
+                });
+                
+            svgEl.call(zoom);
+        }
     });
 	let container: HTMLDivElement;
 
@@ -133,10 +148,10 @@
     });
 
     $effect(() => {
-        if (!data || !data.nodes || !data.transitions || !svg) return;
+        if (!data || !data.nodes || !data.transitions || !svg || !mainGroup) return;
 
-        // Clear previous render
-        d3.select(svg).selectAll("*").remove();
+        // Clear previous render content only within the main group
+        mainGroup.selectAll("*").remove();
 
         // Calculate positions: Linear layout based on array order
         const nodeRadius = 25;
@@ -209,18 +224,9 @@
             };
         }).filter(l => l !== null) as LinkData[];
 
-        const svgEl = d3.select(svg);
-        
-        const zoom = d3.zoom<SVGSVGElement, unknown>()
-            .scaleExtent([0.1, 4])
-            .on("zoom", (event: d3.D3ZoomEvent<SVGSVGElement, unknown>) => {
-                g.attr("transform", event.transform.toString());
-            });
-            
-        svgEl.call(zoom);
-        
-        const g = svgEl.append("g");
-        const defsInG = g.append("defs"); // Original code did this
+        // Use the main group for content
+        const g = mainGroup;
+        const defsInG = g.append("defs");
 
         // Gradients for links
         links.forEach(link => {
