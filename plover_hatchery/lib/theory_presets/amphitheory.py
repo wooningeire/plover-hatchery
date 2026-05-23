@@ -43,14 +43,7 @@ def theory():
                 if len(sopheme.keysymbols) > 0: return
 
                 spelling = cursor.spelling_including_silent()
-
-                if "ou" in spelling:
-                    yield "OU"
-                    return
-
-                if "o" in spelling:
-                    yield "O"
-                    return
+                yield from as_spelled_in(spelling).split()
 
 
             case DefViewItem.Keysymbol(keysymbol):

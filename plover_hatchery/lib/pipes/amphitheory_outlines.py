@@ -58,13 +58,13 @@ def amphitheory_outlines() -> Plugin[None]:
         @soph_trie_api.modify_translation.listen(amphitheory_outlines)
         def _(state: AmphitheoryOutlinesState, translation: str, **_):
             if state.link and state.capital:
-                return "{^~|}" + translation
+                return "{^-|^}" + translation
 
             elif state.link:
                 return "{^}" + translation
             
             elif state.capital:
-                return "{~|}" + translation
+                return "{-|}" + translation
             
             return translation
 
