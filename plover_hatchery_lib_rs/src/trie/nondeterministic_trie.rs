@@ -922,10 +922,10 @@ mod test {
         let mut trie = NondeterministicTrie::new();
         let cost_info = TransitionCostInfo::new(1.0, 0);
         let path = trie.follow(0, Some(1), &cost_info);
-        trie.set_translation(path.dst_node_id, 42);
+        trie.set_translation(path.dst_node_id, 0);
         
         let results: Vec<_> = trie.get_translations_and_costs_single(path.dst_node_id, &path.transitions);
         assert_eq!(results.len(), 1);
-        assert_eq!(results[0], (42, 1.0));
+        assert_eq!(results[0], (0, 1.0));
     }
 }

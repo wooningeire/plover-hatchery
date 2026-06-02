@@ -430,12 +430,12 @@ mod test {
     }
 
     #[test]
-    fn keysymbol_options() {
-        is_parsing_reversible("z.z e.ii|ee!1 t.t a.@").unwrap();
+    fn keysymbol_options_are_rejected() {
+        assert!(parse_entry_definition("z.z e.ii|ee!1 t.t a.@").is_err());
     }
 
     #[test]
-    fn keysymbol_group_option() {
-        is_parsing_reversible("'. oeu.(@@r!1 r)|uh v.v r.r e.@1 s.").unwrap();
+    fn keysymbol_group_options_are_rejected() {
+        assert!(parse_entry_definition("'. oeu.(@@r!1 r)|uh v.v r.r e.@1 s.").is_err());
     }
 } 

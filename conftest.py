@@ -7,9 +7,12 @@ from plover.config import DEFAULT_SYSTEM_NAME
 from plover.registry import registry
 
 
-@pytest.fixture(scope='session', autouse=True)
-def setup_plover():
+def _setup_plover() -> None:
     registry.update()
     system.setup(DEFAULT_SYSTEM_NAME)
+
+
+# Some modules build Stroke constants while pytest is still importing tests.
+_setup_plover()
 
 pytest.register_assert_rewrite('plover_build_utils.testing')

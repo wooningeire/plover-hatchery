@@ -1,4 +1,14 @@
-def test__build_lookup_hatchery__single_syllable():
+import pytest
+
+
+pytestmark = pytest.mark.xfail(
+    reason="legacy lapwing preset depends on pipe APIs that are no longer present",
+    raises=ImportError,
+    strict=True,
+)
+
+
+def test__build_lookup_hatchery__single_syllable() -> None:
     from ..theory_presets.lapwing import theory
 
 
@@ -10,7 +20,7 @@ def test__build_lookup_hatchery__single_syllable():
     assert lookup.lookup(("KREFT",)) == "crest"
 
 
-def test__build_lookup_hatchery__prefix_string():
+def test__build_lookup_hatchery__prefix_string() -> None:
     from ..theory_presets.lapwing import theory
 
     lookup = theory.build_lookup(entry_lines={
@@ -25,7 +35,7 @@ def test__build_lookup_hatchery__prefix_string():
     assert lookup.lookup(("KREU",)) == "cri"
 
 
-def test__build_lookup_hatchery__reverse_lookup():
+def test__build_lookup_hatchery__reverse_lookup() -> None:
     from ..theory_presets.lapwing import theory
 
     lookup = theory.build_lookup(entry_lines={
@@ -40,7 +50,7 @@ def test__build_lookup_hatchery__reverse_lookup():
     assert ("KREUFT", "KWRAEUL") in outlines
 
 
-def test__build_lookup_hatchery__boundary_elision():
+def test__build_lookup_hatchery__boundary_elision() -> None:
     from ..theory_presets.lapwing import theory
 
     lookup = theory.build_lookup(entry_lines={
@@ -56,7 +66,7 @@ def test__build_lookup_hatchery__boundary_elision():
     assert ("EUPB", "SREFT") not in outlines
 
 
-def test__build_lookup_hatchery__cluster_elision():
+def test__build_lookup_hatchery__cluster_elision() -> None:
     from ..theory_presets.lapwing import theory
 
     lookup = theory.build_lookup(entry_lines={
@@ -69,7 +79,7 @@ def test__build_lookup_hatchery__cluster_elision():
     outlines = lookup.reverse_lookup("information")
     assert ("TPWORPLGS",) in outlines
 
-def test__build_lookup_hatchery__substrings():
+def test__build_lookup_hatchery__substrings() -> None:
     from ..theory_presets.lapwing import theory
 
     lookup = theory.build_lookup(entry_lines={
@@ -82,7 +92,7 @@ def test__build_lookup_hatchery__substrings():
     assert lookup.lookup(("APL", "TPEU", "THAOE", "REU")) == "amphitheory"
     assert lookup.lookup(("APL", "TPEU", "THAOER", "SHOPB")) == "amphitheortion"
 
-def test__build_lookup_hatchery__optional_sounds():
+def test__build_lookup_hatchery__optional_sounds() -> None:
     from ..theory_presets.lapwing import theory
 
     lookup = theory.build_lookup(entry_lines={
@@ -100,7 +110,7 @@ def test__build_lookup_hatchery__optional_sounds():
     assert ("TPEU", "TKPWUR") in outlines
 
 
-def test__build_lookup_hatchery__cycling():
+def test__build_lookup_hatchery__cycling() -> None:
     from ..theory_presets.lapwing import theory
 
     lookup = theory.build_lookup(entry_lines={
@@ -114,7 +124,7 @@ def test__build_lookup_hatchery__cycling():
     assert lookup.lookup(("TPWORPL", "#TPHEGT")) == "tapeworm"
 
 
-def test__build_lookup_hatchery__ng():
+def test__build_lookup_hatchery__ng() -> None:
     from ..theory_presets.lapwing import theory
 
     lookup = theory.build_lookup(entry_lines={

@@ -334,5 +334,5 @@ class match_keysymbols_to_chars(
     def construct_match(keysymbols: tuple[Keysymbol, ...], translation: str, start_cell: Cell[_Cost, None], end_cell: Cell[_Cost, None], _: None):
         return Sopheme(
             translation[start_cell.y:end_cell.y],
-            keysymbols[start_cell.x:end_cell.x],
+            list(keysymbols[start_cell.x:end_cell.x]),
         )
