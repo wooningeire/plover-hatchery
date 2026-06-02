@@ -14,6 +14,21 @@ This plugin is not included in the plugins registry. [Instructions are available
 > [!IMPORTANT]
 > To be documented!
 
+### Definitions
+A **sopheme** is a unit of a word that represents an atomic grapheme-phoneme correspondence. That is, it stores a sequence of letters that a reader would think of as making certain sounds. Ideally, the set of sophemes that make up a word is solely based on its reading and pronunciation and is independent of a theory.
+* The letter `m` can make the `/m/` sound. The sopheme would be the pairing of that spelling and pronunciation together, which I denote with a dot: `m.m`.
+* The letter `c` can make the `/k/` (`c.k`) or `/s/` (`c.s`) sounds.
+* Multiple letters can make a single sound: `ph` makes the `/f/` sound (`ph.f`).
+* A single letter can make multiple sounds: `x` makes the `/ks/` sounds (`x.ks`).
+* Multiple letters can make multiple sounds: `wh` makes the `/hw/` sounds in some accents (`wh.hw`).
+* Letters can be silent: in `rate`, `e` makes no sound (`e.`).
+* Pronounciations can diverge from their spellings: in `comfortable`, `orta` makes the `/tər/` sounds (`orta.tər`).
+* *I called it that because "lexeme" was already taken :)*
+
+A **soph** is a unit of a word that is treated uniquely by a steno theory. These are defined by the theory.
+* In a lot of cases, these map one-to-one with specific phonemes, so e.g. any `/p/` sound is treated the same by a theory and thus can be represented with a single soph, which might be called `P`. (The soph names don't really matter; we just want a way to refer to them consistently.)
+* Suppose you want your theory to treat the `/s/` sound differently depending on how it is spelled, like with a `c`. Then the sopheme `c.s` could be given one soph probably named `C`, whereas any other occurrence of `/s/` would be given a soph named `S`.
+
 ## Entrypoints
 This plugin exposes the following tools and interfaces:
 
