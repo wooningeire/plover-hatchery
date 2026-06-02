@@ -104,7 +104,11 @@ pub struct TransitionSourceNode {
 impl TransitionSourceNode {
     #[new]
     #[pyo3(signature = (src_node_index, outgoing_cost=0.0, outgoing_transition_flags=vec![]))]
-    pub fn new(src_node_index: usize, outgoing_cost: f64, outgoing_transition_flags: Vec<usize>) -> Self {
+    pub fn new(
+        src_node_index: usize,
+        outgoing_cost: f64,
+        outgoing_transition_flags: Vec<usize>,
+    ) -> Self {
         Self {
             src_node_index,
             outgoing_cost,
@@ -123,7 +127,10 @@ impl TransitionSourceNode {
 
     /// Creates copies of source nodes with incremented costs.
     #[staticmethod]
-    pub fn increment_costs(srcs: Vec<TransitionSourceNode>, cost_change: f64) -> Vec<TransitionSourceNode> {
+    pub fn increment_costs(
+        srcs: Vec<TransitionSourceNode>,
+        cost_change: f64,
+    ) -> Vec<TransitionSourceNode> {
         srcs.into_iter()
             .map(|src| TransitionSourceNode {
                 src_node_index: src.src_node_index,
@@ -135,7 +142,10 @@ impl TransitionSourceNode {
 
     /// Creates copies of source nodes with additional flags.
     #[staticmethod]
-    pub fn add_flags(srcs: Vec<TransitionSourceNode>, flags: Vec<usize>) -> Vec<TransitionSourceNode> {
+    pub fn add_flags(
+        srcs: Vec<TransitionSourceNode>,
+        flags: Vec<usize>,
+    ) -> Vec<TransitionSourceNode> {
         srcs.into_iter()
             .map(|src| {
                 let mut new_flags = src.outgoing_transition_flags.clone();
@@ -218,8 +228,13 @@ impl NondeterministicTrie {
             TransitionKey::new(src_node_id, key_id, transition_index),
             cost_info.translation_id,
         );
-        let existing_cost = self.transition_costs.get(&cost_key).copied().unwrap_or(f64::INFINITY);
-        self.transition_costs.insert(cost_key, cost_info.cost.min(existing_cost));
+        let existing_cost = self
+            .transition_costs
+            .get(&cost_key)
+            .copied()
+            .unwrap_or(f64::INFINITY);
+        self.transition_costs
+            .insert(cost_key, cost_info.cost.min(existing_cost));
     }
 
     /// Gets the destination node by following an existing transition or creates it if it doesn't exist.
@@ -230,9 +245,10 @@ impl NondeterministicTrie {
         cost_info: &TransitionCostInfo,
     ) -> TriePath {
         let translation_id = cost_info.translation_id;
-        
+
         // Get or create the used nodes set for this translation
-        let used_nodes = self.used_nodes_by_translation
+        let used_nodes = self
+            .used_nodes_by_translation
             .entry(translation_id)
             .or_insert_with(HashSet::new);
 
@@ -274,7 +290,11 @@ impl NondeterministicTrie {
 
         TriePath::new(
             new_node_id,
-            vec![TransitionKey::new(src_node_id, key_id, new_transition_index)],
+            vec![TransitionKey::new(
+                src_node_id,
+                key_id,
+                new_transition_index,
+            )],
         )
     }
 
@@ -438,7 +458,8 @@ impl NondeterministicTrie {
             // Link remaining pairs to this new destination
             for (src, keys) in pairs.iter().skip(1) {
                 let cost_info = TransitionCostInfo::new(src.outgoing_cost, translation_id);
-                let transitions = self.link_chain(src.src_node_index, first_path.dst_node_id, keys, &cost_info);
+                let transitions =
+                    self.link_chain(src.src_node_index, first_path.dst_node_id, keys, &cost_info);
                 transition_seqs.push(JoinedTransitionSeq { transitions });
             }
             return JoinedTriePaths {
@@ -450,7 +471,8 @@ impl NondeterministicTrie {
         // dst_node_id is Some, link all pairs to it
         for (src, keys) in pairs {
             let cost_info = TransitionCostInfo::new(src.outgoing_cost, translation_id);
-            let transitions = self.link_chain(src.src_node_index, actual_dst_node_id, keys, &cost_info);
+            let transitions =
+                self.link_chain(src.src_node_index, actual_dst_node_id, keys, &cost_info);
             transition_seqs.push(JoinedTransitionSeq { transitions });
         }
 
@@ -473,26 +495,34 @@ impl NondeterministicTrie {
         &'a self,
         src_node_paths: impl Iterator<Item = TriePath> + 'a,
         key_id: Option<usize>,
-    ) -> impl Iterator<Item = TriePath> + 'a {
-        src_node_paths.flat_map(move |path| {
+    ) -> Box<dyn Iterator<Item = TriePath> + 'a> {
+        if key_id.is_none() {
+            return Box::new(std::iter::empty());
+        }
+
+        Box::new(src_node_paths.flat_map(move |path| {
             let transitions = &self.transitions[path.dst_node_id];
-            
-            transitions.get(&key_id).into_iter().flat_map(move |dst_node_ids| {
-                dst_node_ids.iter().enumerate().flat_map({
-                    let path = path.clone();
-                    move |(transition_index, &dst_node_id)| {
-                        let transition_key = TransitionKey::new(path.dst_node_id, key_id, transition_index);
-                        let mut new_transitions = path.transitions.clone();
-                        new_transitions.push(transition_key);
-                        
-                        self.dfs_empty_transitions(
-                            TriePath::new(dst_node_id, new_transitions),
-                            HashSet::new(),
-                        )
-                    }
+
+            transitions
+                .get(&key_id)
+                .into_iter()
+                .flat_map(move |dst_node_ids| {
+                    dst_node_ids.iter().enumerate().flat_map({
+                        let path = path.clone();
+                        move |(transition_index, &dst_node_id)| {
+                            let transition_key =
+                                TransitionKey::new(path.dst_node_id, key_id, transition_index);
+                            let mut new_transitions = path.transitions.clone();
+                            new_transitions.push(transition_key);
+
+                            self.dfs_empty_transitions(
+                                TriePath::new(dst_node_id, new_transitions),
+                                HashSet::new(),
+                            )
+                        }
+                    })
                 })
-            })
-        })
+        }))
     }
 
     /// DFS to follow empty (None key) transitions.
@@ -506,15 +536,16 @@ impl NondeterministicTrie {
         let transitions = &self.transitions[src_node_path.dst_node_id];
         if let Some(dst_node_ids) = transitions.get(&None) {
             for (transition_index, &dst_node_id) in dst_node_ids.iter().enumerate() {
-                let transition_key = TransitionKey::new(src_node_path.dst_node_id, None, transition_index);
-                
+                let transition_key =
+                    TransitionKey::new(src_node_path.dst_node_id, None, transition_index);
+
                 if visited_transitions.contains(&transition_key) {
                     continue;
                 }
 
                 let mut new_transitions = src_node_path.transitions.clone();
                 new_transitions.push(transition_key);
-                
+
                 let mut new_visited = visited_transitions.clone();
                 new_visited.insert(transition_key);
 
@@ -536,7 +567,7 @@ impl NondeterministicTrie {
     ) -> Box<dyn Iterator<Item = TriePath> + 'a> {
         let mut current: Box<dyn Iterator<Item = TriePath> + 'a> = Box::new(src_node_paths);
         for &key_id in key_ids {
-            current = Box::new(self.traverse(current, key_id));
+            current = self.traverse(current, key_id);
         }
         current
     }
@@ -638,7 +669,10 @@ impl NondeterministicTrie {
     }
 
     /// Gets all transitions from a node.
-    pub fn get_transitions_from_node(&self, node_id: usize) -> Option<&HashMap<Option<usize>, Vec<usize>>> {
+    pub fn get_transitions_from_node(
+        &self,
+        node_id: usize,
+    ) -> Option<&HashMap<Option<usize>, Vec<usize>>> {
         self.transitions.get(node_id)
     }
 
@@ -826,7 +860,10 @@ impl NondeterministicTrie {
         Some(SubtrieData {
             nodes: nodes_toposort,
             transitions,
-            translation_nodes: reverse_translations.get(&translation_id).cloned().unwrap_or_default(),
+            translation_nodes: reverse_translations
+                .get(&translation_id)
+                .cloned()
+                .unwrap_or_default(),
         })
     }
 
@@ -902,6 +939,17 @@ impl Default for NondeterministicTrie {
 mod test {
     use super::*;
 
+    fn transition_key_ids(transitions: &[TransitionKey]) -> Vec<Option<usize>> {
+        transitions
+            .iter()
+            .map(|transition| transition.key_id)
+            .collect()
+    }
+
+    fn result_key_ids(result: &LookupResult) -> Vec<Option<usize>> {
+        transition_key_ids(&result.transitions)
+    }
+
     #[test]
     fn test_new_trie() {
         let trie = NondeterministicTrie::new();
@@ -923,9 +971,248 @@ mod test {
         let cost_info = TransitionCostInfo::new(1.0, 0);
         let path = trie.follow(0, Some(1), &cost_info);
         trie.set_translation(path.dst_node_id, 0);
-        
-        let results: Vec<_> = trie.get_translations_and_costs_single(path.dst_node_id, &path.transitions);
+
+        let results: Vec<_> =
+            trie.get_translations_and_costs_single(path.dst_node_id, &path.transitions);
         assert_eq!(results.len(), 1);
         assert_eq!(results[0], (0, 1.0));
+    }
+
+    #[test]
+    fn follow_chain_assigns_cost_only_to_final_transition() {
+        let mut trie = NondeterministicTrie::new();
+        let path = trie.follow_chain(
+            NondeterministicTrie::ROOT,
+            &[Some(1), Some(2), Some(3)],
+            &TransitionCostInfo::new(3.5, 7),
+        );
+
+        trie.set_translation(path.dst_node_id, 7);
+        let results: Vec<_> = trie
+            .get_translations_and_costs(std::iter::once(path.clone()))
+            .collect();
+
+        assert_eq!(
+            transition_key_ids(&path.transitions),
+            vec![Some(1), Some(2), Some(3)]
+        );
+        assert_eq!(trie.get_transition_cost(&path.transitions[0], 7), Some(0.0));
+        assert_eq!(trie.get_transition_cost(&path.transitions[1], 7), Some(0.0));
+        assert_eq!(trie.get_transition_cost(&path.transitions[2], 7), Some(3.5));
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].translation_id, 7);
+        assert_eq!(results[0].cost, 3.5);
+    }
+
+    #[test]
+    fn follow_chain_reuses_nodes_for_other_translations_but_forks_for_same_translation() {
+        let mut trie = NondeterministicTrie::new();
+        let first_path = trie.follow_chain(
+            NondeterministicTrie::ROOT,
+            &[Some(1), Some(2)],
+            &TransitionCostInfo::new(1.0, 7),
+        );
+        let other_translation_path = trie.follow_chain(
+            NondeterministicTrie::ROOT,
+            &[Some(1), Some(2)],
+            &TransitionCostInfo::new(2.0, 8),
+        );
+        let repeated_translation_path = trie.follow_chain(
+            NondeterministicTrie::ROOT,
+            &[Some(1), Some(2)],
+            &TransitionCostInfo::new(3.0, 7),
+        );
+
+        assert_eq!(other_translation_path.dst_node_id, first_path.dst_node_id);
+        assert_ne!(
+            repeated_translation_path.dst_node_id,
+            first_path.dst_node_id
+        );
+        assert_eq!(
+            transition_key_ids(&repeated_translation_path.transitions),
+            vec![Some(1), Some(2)]
+        );
+    }
+
+    #[test]
+    fn traverse_follows_empty_transitions_after_key_but_not_as_explicit_key() {
+        let mut trie = NondeterministicTrie::new();
+        let _root_empty = trie.follow(
+            NondeterministicTrie::ROOT,
+            None,
+            &TransitionCostInfo::new(0.5, 99),
+        );
+        let keyed_path = trie.follow(
+            NondeterministicTrie::ROOT,
+            Some(1),
+            &TransitionCostInfo::new(0.0, 7),
+        );
+        trie.follow(
+            keyed_path.dst_node_id,
+            None,
+            &TransitionCostInfo::new(1.5, 7),
+        );
+
+        let explicit_empty_paths: Vec<_> = trie
+            .traverse(std::iter::once(TriePath::root()), None)
+            .collect();
+        let mut keyed_paths: Vec<_> = trie
+            .traverse(std::iter::once(TriePath::root()), Some(1))
+            .map(|path| transition_key_ids(&path.transitions))
+            .collect();
+        keyed_paths.sort();
+
+        assert!(explicit_empty_paths.is_empty());
+        assert_eq!(keyed_paths, vec![vec![Some(1)], vec![Some(1), None]]);
+    }
+
+    #[test]
+    fn link_join_chain_creates_cartesian_paths_to_common_destination() {
+        let mut trie = NondeterministicTrie::new();
+        let left_path = trie.follow(
+            NondeterministicTrie::ROOT,
+            Some(1),
+            &TransitionCostInfo::new(0.0, 7),
+        );
+        let right_path = trie.follow(
+            NondeterministicTrie::ROOT,
+            Some(2),
+            &TransitionCostInfo::new(0.0, 7),
+        );
+
+        let joined_paths = trie.link_join_chain(
+            &[
+                TransitionSourceNode::new(left_path.dst_node_id, 2.0, vec![]),
+                TransitionSourceNode::new(right_path.dst_node_id, 5.0, vec![]),
+            ],
+            None,
+            &[vec![Some(3)], vec![Some(4)]],
+            7,
+        );
+        let dst_node_id = joined_paths.dst_node_id.unwrap();
+        trie.set_translation(dst_node_id, 7);
+
+        let mut traversed_paths = Vec::new();
+        for key_ids in [
+            vec![Some(1), Some(3)],
+            vec![Some(1), Some(4)],
+            vec![Some(2), Some(3)],
+            vec![Some(2), Some(4)],
+        ] {
+            traversed_paths
+                .extend(trie.traverse_chain(std::iter::once(TriePath::root()), &key_ids));
+        }
+        let mut result_sequences: Vec<_> = trie
+            .get_translations_and_costs(traversed_paths.clone().into_iter())
+            .map(|result| (result_key_ids(&result), result.cost))
+            .collect();
+        result_sequences.sort_by(|a, b| a.0.cmp(&b.0));
+
+        assert_eq!(joined_paths.transition_seqs.len(), 4);
+        assert_eq!(
+            result_sequences,
+            vec![
+                (vec![Some(1), Some(3)], 2.0),
+                (vec![Some(1), Some(4)], 2.0),
+                (vec![Some(2), Some(3)], 5.0),
+                (vec![Some(2), Some(4)], 5.0),
+            ]
+        );
+    }
+
+    #[test]
+    fn get_translations_and_min_costs_keeps_lowest_cost_path_per_translation() {
+        let mut trie = NondeterministicTrie::new();
+        let cheap_path = trie.follow_chain(
+            NondeterministicTrie::ROOT,
+            &[Some(1), Some(2)],
+            &TransitionCostInfo::new(2.0, 7),
+        );
+        let expensive_path = trie.follow_chain(
+            NondeterministicTrie::ROOT,
+            &[Some(3), Some(4)],
+            &TransitionCostInfo::new(5.0, 7),
+        );
+        trie.set_translation(cheap_path.dst_node_id, 7);
+        trie.set_translation(expensive_path.dst_node_id, 7);
+
+        let results =
+            trie.get_translations_and_min_costs(vec![cheap_path, expensive_path].into_iter());
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].translation_id, 7);
+        assert_eq!(results[0].cost, 2.0);
+        assert_eq!(result_key_ids(&results[0]), vec![Some(1), Some(2)]);
+    }
+
+    #[test]
+    fn reverse_lookup_results_return_costed_paths_for_translation() {
+        let mut trie = NondeterministicTrie::new();
+        let first_path = trie.follow_chain(
+            NondeterministicTrie::ROOT,
+            &[Some(1), Some(2)],
+            &TransitionCostInfo::new(2.0, 7),
+        );
+        let second_path = trie.follow_chain(
+            NondeterministicTrie::ROOT,
+            &[Some(3), Some(4)],
+            &TransitionCostInfo::new(5.0, 7),
+        );
+        trie.set_translation(first_path.dst_node_id, 7);
+        trie.set_translation(second_path.dst_node_id, 7);
+
+        let reverse_nodes = trie.reversed_nodes();
+        let reverse_translations = trie.reversed_translations();
+        let mut results: Vec<_> = trie
+            .get_reverse_lookup_results(&reverse_nodes, &reverse_translations, 7)
+            .into_iter()
+            .map(|result| (result_key_ids(&result), result.cost))
+            .collect();
+        results.sort_by(|a, b| a.0.cmp(&b.0));
+
+        assert_eq!(
+            results,
+            vec![(vec![Some(1), Some(2)], 2.0), (vec![Some(3), Some(4)], 5.0),]
+        );
+    }
+
+    #[test]
+    fn subtrie_data_contains_only_paths_costed_for_translation() {
+        let mut trie = NondeterministicTrie::new();
+        let included_path = trie.follow_chain(
+            NondeterministicTrie::ROOT,
+            &[Some(1), Some(2)],
+            &TransitionCostInfo::new(2.0, 7),
+        );
+        let excluded_path = trie.follow_chain(
+            NondeterministicTrie::ROOT,
+            &[Some(1), Some(3)],
+            &TransitionCostInfo::new(4.0, 8),
+        );
+        trie.set_translation(included_path.dst_node_id, 7);
+        trie.set_translation(excluded_path.dst_node_id, 8);
+
+        let reverse_nodes = trie.reversed_nodes();
+        let reverse_translations = trie.reversed_translations();
+        let subtrie = trie
+            .get_subtrie_data(&reverse_nodes, &reverse_translations, 7)
+            .unwrap();
+        let mut transition_key_ids: Vec<_> = subtrie
+            .transitions
+            .iter()
+            .flat_map(|transition| {
+                transition
+                    .key_infos
+                    .iter()
+                    .map(|(key_id, _, cost)| (*key_id, *cost))
+            })
+            .collect();
+        transition_key_ids.sort_by(|a, b| a.0.cmp(&b.0));
+
+        assert!(subtrie.nodes.contains(&NondeterministicTrie::ROOT));
+        assert!(subtrie.nodes.contains(&included_path.dst_node_id));
+        assert!(!subtrie.nodes.contains(&excluded_path.dst_node_id));
+        assert_eq!(subtrie.translation_nodes, vec![included_path.dst_node_id]);
+        assert_eq!(transition_key_ids, vec![(Some(1), 0.0), (Some(2), 2.0)]);
     }
 }
