@@ -147,6 +147,9 @@ class NondeterministicTrie:
         :returns: A dictionary mapping destination IDs to the updated sequences of Transitions followed to get to those nodes
         """
 
+        if len(self.__on_try_traverse) == 0:
+            return self.rs.traverse_chain(list(src_node_paths), list(key_ids))
+
         current_nodes = src_node_paths
         for key_id in key_ids:
             current_nodes = self.traverse(current_nodes, key_id)

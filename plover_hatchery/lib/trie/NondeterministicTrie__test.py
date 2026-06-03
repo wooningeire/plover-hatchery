@@ -19,6 +19,29 @@ def _result_key_ids(result) -> tuple[int | None, ...]:
     return _transition_key_ids(result.transitions)
 
 
+class _RecordingRsTrie:
+    def __init__(self, wrapped):
+        self.__wrapped = wrapped
+        self.traverse_calls: list[tuple[tuple[int, ...], int | None]] = []
+        self.traverse_chain_calls: list[tuple[tuple[int, ...], tuple[int | None, ...]]] = []
+
+    def __getattr__(self, name: str):
+        return getattr(self.__wrapped, name)
+
+    def traverse(self, src_node_paths: list[TriePath], key_id: int | None):
+        paths = list(src_node_paths)
+        self.traverse_calls.append((tuple(path.dst_node_id for path in paths), key_id))
+        return self.__wrapped.traverse(paths, key_id)
+
+    def traverse_chain(self, src_node_paths: list[TriePath], key_ids: list[int | None]):
+        paths = list(src_node_paths)
+        self.traverse_chain_calls.append((
+            tuple(path.dst_node_id for path in paths),
+            tuple(key_ids),
+        ))
+        return self.__wrapped.traverse_chain(paths, key_ids)
+
+
 def test__nondeterministic_trie__returns_translation_costs_for_traversed_paths() -> None:
     trie = NondeterministicTrie()
     inserted_path = trie.follow_chain(
@@ -34,6 +57,40 @@ def test__nondeterministic_trie__returns_translation_costs_for_traversed_paths()
     assert len(paths) == 1
     assert paths[0].dst_node_id == inserted_path.dst_node_id
     assert [(result.translation_id, result.cost) for result in results] == [(7, 3.5)]
+
+
+def test__nondeterministic_trie__traverse_chain_uses_rust_batch_path_without_handlers() -> None:
+    trie = NondeterministicTrie()
+    inserted_path = trie.follow_chain(
+        NondeterministicTrie.ROOT,
+        (1, 2),
+        TransitionCostInfo(3.5, 7),
+    )
+    trie.set_translation(inserted_path.dst_node_id, 7)
+    recording_rs = _RecordingRsTrie(trie.rs)
+    trie.rs = recording_rs
+
+    paths = list(trie.traverse_chain((TriePath.root(),), (1, 2)))
+
+    assert [path.dst_node_id for path in paths] == [inserted_path.dst_node_id]
+    assert recording_rs.traverse_chain_calls == [((NondeterministicTrie.ROOT,), (1, 2))]
+    assert recording_rs.traverse_calls == []
+
+
+def test__nondeterministic_trie__traverse_chain_keeps_python_handler_path() -> None:
+    trie = NondeterministicTrie()
+    trie.follow_chain(NondeterministicTrie.ROOT, (1, 2), TransitionCostInfo(1.0, 3))
+    recording_rs = _RecordingRsTrie(trie.rs)
+    trie.rs = recording_rs
+
+    def block_second_key(_: NondeterministicTrie, __: TriePath, transition: TransitionKey) -> bool:
+        return transition.key_id != 2
+
+    trie.on_check_traverse(block_second_key)
+
+    assert list(trie.traverse_chain((TriePath.root(),), (1, 2))) == []
+    assert recording_rs.traverse_chain_calls == []
+    assert [key_id for _, key_id in recording_rs.traverse_calls] == [1, 2]
 
 
 def test__nondeterministic_trie__assigns_chain_cost_only_to_final_transition() -> None:
