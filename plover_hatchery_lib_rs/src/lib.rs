@@ -1,63 +1,41 @@
 use pyo3::{prelude::*, wrap_pyfunction};
 
+mod py_stroke;
+
+mod steno_annotations;
+use steno_annotations::AsteriskableKey;
+
 mod defs;
 use defs::{
-    Def,
     py::{
-        PyDefDict,
-        PyDefView,
-        PyDefViewCursor,
-        PyDefViewItem,
-        py_parse_entry_definition,
-        py_parse_sopheme_seq,
-        py_parse_keysymbol_seq,
+        py_parse_entry_definition, py_parse_keysymbol_seq, py_parse_sopheme_seq, PyDefDict,
+        PyDefView, PyDefViewCursor, PyDefViewItem,
     },
-    SophemeSeq,
-    Entity,
-    Sopheme,
-    Keysymbol,
-    Transclusion,
+    Def, Entity, Keysymbol, Sopheme, SophemeSeq, Transclusion,
 };
 
 mod pipes;
 use pipes::{
-    optionalize_keysymbols,
-    add_diphthong_keysymbols,
-    add_soph_trie_entry,
-    PyChordToSophSearchMatch,
-    PyChordToSophSearchNode,
-    PyChordToSophSearcher,
-    Soph,
+    add_diphthong_keysymbols, add_soph_trie_entry, optionalize_keysymbols,
+    PyChordToSophSearchMatch, PyChordToSophSearchNode, PyChordToSophSearchResult,
+    PyChordToSophSearcher, PySophsToTranslationSearchPath, Soph,
 };
 
 mod morphology;
-use morphology::{
-    AffixKey,
-};
+use morphology::AffixKey;
 
 mod trie;
 use trie::{
-    py::{
-        PyNondeterministicTrie,
-        PyReverseTrieIndex,
-    },
-    PyReadonlyTrie,
-    PyTrie,
-    TransitionKey,
-    TransitionCostKey,
-    TransitionCostInfo,
-    TransitionFlag,
-    TransitionFlagManager,
+    py::{PyNondeterministicTrie, PyReverseTrieIndex},
+    JoinedTransitionSeq, JoinedTriePaths, LookupResult, PyReadonlyTrie, PyTrie, TransitionCostInfo,
+    TransitionCostKey, TransitionFlag, TransitionFlagManager, TransitionKey, TransitionSourceNode,
     TriePath,
-    LookupResult,
-    TransitionSourceNode,
-    JoinedTriePaths,
-    JoinedTransitionSeq,
 };
-
 
 #[pymodule]
 pub fn plover_hatchery_lib_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_class::<AsteriskableKey>()?;
+
     m.add_class::<Def>()?;
     m.add_class::<PyDefDict>()?;
     m.add_class::<PyDefView>()?;
@@ -79,7 +57,9 @@ pub fn plover_hatchery_lib_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_parse_keysymbol_seq, m)?)?;
     m.add_function(wrap_pyfunction!(add_soph_trie_entry, m)?)?;
     m.add_class::<PyChordToSophSearchNode>()?;
+    m.add_class::<PyChordToSophSearchResult>()?;
     m.add_class::<PyChordToSophSearchMatch>()?;
+    m.add_class::<PySophsToTranslationSearchPath>()?;
     m.add_class::<PyChordToSophSearcher>()?;
 
     m.add_class::<PyTrie>()?;

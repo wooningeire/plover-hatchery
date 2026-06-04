@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Generic, TypeVar, Iterable
 
 from plover.steno import Stroke
+from plover_hatchery_lib_rs import AsteriskableKey
 
 from ..sophone.Sophone import Sophone
 
@@ -15,33 +16,6 @@ def can_add_stroke_on(src_stroke: Stroke, addon_stroke: Stroke):
         or len(addon_stroke - ASTERISK_SUBSTROKE) == 0
         or Stroke.from_keys(((src_stroke - ASTERISK_SUBSTROKE).keys()[-1],)) < Stroke.from_keys(((addon_stroke - ASTERISK_SUBSTROKE).keys()[0],))
     )
-
-@dataclass(frozen=True)
-class AsteriskableKey:
-    """A steno key, along with whether its stroke included a modifier key (asterisk)."""
-
-    key: str
-    asterisk: bool
-
-    @staticmethod
-    def annotations_from_outline(outline_steno: str):
-        return AsteriskableKey.annotations_from_strokes(Stroke.from_steno(steno) for steno in outline_steno.split("/"))
-    
-    @staticmethod
-    def annotations_from_strokes(strokes: Iterable[Stroke]):
-        return tuple(
-            AsteriskableKey(key, has_asterisk)
-            for stroke, has_asterisk in (
-                (stroke - ASTERISK_SUBSTROKE, ASTERISK_SUBSTROKE in stroke)
-                for stroke in strokes
-            )
-            for key in stroke.keys() 
-        )
-    
-    def __str__(self):
-        return f"{self.key}{'(*)' if self.asterisk else ''}"
-    
-    __repr__ = __str__
 
 T = TypeVar("T")
 

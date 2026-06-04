@@ -11,6 +11,14 @@ def test__annotations_from_outline__marks_keys_from_asterisked_strokes() -> None
     )
 
 
+def test__asteriskable_key__is_hashable_value_object() -> None:
+    assert AsteriskableKey("S-", True) == AsteriskableKey("S-", True)
+    assert AsteriskableKey("S-", True) != AsteriskableKey("S-", False)
+    assert {AsteriskableKey("S-", True)} == {AsteriskableKey("S-", True)}
+    assert str(AsteriskableKey("S-", True)) == "S*"
+    assert repr(AsteriskableKey("-F", False)) == "-F"
+
+
 def test__keys_to_strokes__keeps_ordered_keys_in_one_stroke() -> None:
     strokes = AnnotatedChord.keys_to_strokes(("S-", "T-", "-F"), (False, True, False))
 

@@ -1,6 +1,11 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    hash::{DefaultHasher, Hash, Hasher},
+};
 
-use pyo3::prelude::*;
+use pyo3::{prelude::*, types::PyTuple};
+
+use crate::{pipes::Soph, py_stroke::stroke_from_integer, trie::TriePath};
 
 const ROOT_NODE_ID: usize = 0;
 
@@ -26,11 +31,87 @@ impl PyChordToSophSearchNode {
     }
 }
 
+/// Candidate soph sequence found after matching a chord.
+#[derive(Clone, Debug)]
+#[pyclass]
+#[pyo3(name = "ChordToSophSearchResult")]
+pub struct PyChordToSophSearchResult {
+    sophs: Vec<Soph>,
+    chord: usize,
+}
+
+#[pymethods]
+impl PyChordToSophSearchResult {
+    #[new]
+    pub fn new(sophs: Vec<Soph>, chord: Py<PyAny>, py: Python<'_>) -> PyResult<Self> {
+        Ok(Self {
+            sophs,
+            chord: chord.extract(py)?,
+        })
+    }
+
+    #[getter]
+    pub fn sophs<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyTuple>> {
+        PyTuple::new(py, self.sophs.clone())
+    }
+
+    #[getter]
+    pub fn chord(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        Ok(stroke_from_integer(py, self.chord)?.unbind())
+    }
+
+    pub fn __hash__(&self) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        self.sophs.hash(&mut hasher);
+        self.chord.hash(&mut hasher);
+        hasher.finish()
+    }
+
+    pub fn __eq__(&self, other: &PyChordToSophSearchResult) -> bool {
+        self.sophs == other.sophs && self.chord == other.chord
+    }
+}
+
+/// A path through the soph trie during lookup, including unresolved chord associations.
+#[pyclass]
+#[pyo3(name = "SophsToTranslationSearchPath")]
+pub struct PySophsToTranslationSearchPath {
+    trie_path: TriePath,
+    sophs_and_chords_used: Py<PyAny>,
+}
+
+#[pymethods]
+impl PySophsToTranslationSearchPath {
+    #[new]
+    #[pyo3(signature = (trie_path=None, sophs_and_chords_used=None))]
+    pub fn new(
+        trie_path: Option<TriePath>,
+        sophs_and_chords_used: Option<Py<PyAny>>,
+        py: Python<'_>,
+    ) -> Self {
+        Self {
+            trie_path: trie_path.unwrap_or_else(TriePath::root),
+            sophs_and_chords_used: sophs_and_chords_used
+                .unwrap_or_else(|| PyTuple::empty(py).unbind().into_any()),
+        }
+    }
+
+    #[getter]
+    pub fn trie_path(&self) -> TriePath {
+        self.trie_path.clone()
+    }
+
+    #[getter]
+    pub fn sophs_and_chords_used(&self, py: Python<'_>) -> Py<PyAny> {
+        self.sophs_and_chords_used.clone_ref(py)
+    }
+}
+
 /// Soph result emitted by a chord lookup, paired with the key index where that chord began.
 #[pyclass]
 #[pyo3(name = "ChordToSophSearchMatch")]
 pub struct PyChordToSophSearchMatch {
-    soph_result: Py<PyAny>,
+    soph_result: Py<PyChordToSophSearchResult>,
     #[pyo3(get)]
     pub chord_starting_key_index: usize,
 }
@@ -38,7 +119,10 @@ pub struct PyChordToSophSearchMatch {
 #[pymethods]
 impl PyChordToSophSearchMatch {
     #[new]
-    pub fn new(soph_result: Py<PyAny>, chord_starting_key_index: usize) -> Self {
+    pub fn new(
+        soph_result: Py<PyChordToSophSearchResult>,
+        chord_starting_key_index: usize,
+    ) -> Self {
         Self {
             soph_result,
             chord_starting_key_index,
@@ -46,26 +130,25 @@ impl PyChordToSophSearchMatch {
     }
 
     #[getter]
-    pub fn soph_result(&self, py: Python<'_>) -> Py<PyAny> {
+    pub fn soph_result(&self, py: Python<'_>) -> Py<PyChordToSophSearchResult> {
         self.soph_result.clone_ref(py)
     }
 }
 
 /// Rust-owned trie for matching physical chord keys to Python soph search results.
 ///
-/// The searcher keeps `ChordToSophSearchResult` values as opaque Python objects because
-/// Python still owns the hook-facing result types and lookup customization points.
+/// The searcher keeps `ChordToSophSearchResult` values and returns matches paired with the key index where each chord began.
 #[pyclass]
 #[pyo3(name = "ChordToSophSearcher")]
 pub struct PyChordToSophSearcher {
     transitions: Vec<HashMap<String, usize>>,
-    node_results: HashMap<usize, Vec<Py<PyAny>>>,
+    node_results: HashMap<usize, Vec<Py<PyChordToSophSearchResult>>>,
 }
 
 #[pymethods]
 impl PyChordToSophSearcher {
     #[new]
-    pub fn new(entries: Vec<(Vec<String>, Py<PyAny>)>) -> Self {
+    pub fn new(entries: Vec<(Vec<String>, Py<PyChordToSophSearchResult>)>) -> Self {
         let mut searcher = Self {
             transitions: vec![HashMap::new()],
             node_results: HashMap::new(),

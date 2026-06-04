@@ -1,11 +1,11 @@
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import json
 from typing import Any, Callable, Iterable, NamedTuple, Protocol, Sequence, final
 
 from plover.steno import Stroke
 
-from plover_hatchery_lib_rs import DefView, DefViewCursor, add_soph_trie_entry, ChordToSophSearchNode as RsChordToSophSearchNode, ChordToSophSearcher as RsChordToSophSearcher, TriePath, TransitionCostKey, TransitionKey, Soph, TransitionFlagManager
+from plover_hatchery_lib_rs import DefView, DefViewCursor, add_soph_trie_entry, ChordToSophSearchNode as RsChordToSophSearchNode, ChordToSophSearchResult, ChordToSophSearcher as RsChordToSophSearcher, SophsToTranslationSearchPath, TriePath, TransitionCostKey, TransitionKey, Soph, TransitionFlagManager
 from plover_hatchery.lib.pipes.Hook import Hook
 from plover_hatchery.lib.pipes.Plugin import GetPluginApi, Plugin, define_plugin
 from plover_hatchery.lib.pipes.floating_keys import floating_keys
@@ -32,18 +32,6 @@ class SophChordAssociationWithUnresolvedPhonemes(NamedTuple):
     chord: Stroke
     chord_starts_new_stroke: bool
     transitions: Sequence[TransitionKey]
-
-
-@dataclass(frozen=True)
-class SophsToTranslationSearchPath:
-    trie_path: TriePath = field(default_factory=TriePath.root)
-    sophs_and_chords_used: tuple[SophChordAssociationWithUnresolvedPhonemes, ...] = ()
-
-
-@dataclass(frozen=True)
-class ChordToSophSearchResult:
-    sophs: tuple[Soph, ...]
-    chord: Stroke
 
 
 class ChordToSophSearchResultWithSrcIndex(NamedTuple):
