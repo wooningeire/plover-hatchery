@@ -269,7 +269,7 @@ class _UnilexHatcheryConverter:
 
 
         if failures_out_path is not None and len(failures_str) > 0:
-            with open(failures_out_path, "r", encoding="utf-8") as failures_file:
+            with open(failures_out_path, "w+", encoding="utf-8") as failures_file:
                 _ = failures_file.write(failures_str)
             
 
