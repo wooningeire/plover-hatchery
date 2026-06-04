@@ -2,6 +2,8 @@ import argparse
 import os
 from pathlib import Path
 
+from _shared import DEFAULT_PLOVER_PATH_STR
+
 def _main(args: argparse.Namespace, rest: list[str]):
     os.chdir(args.plover_path)
 
@@ -34,7 +36,7 @@ def _main(args: argparse.Namespace, rest: list[str]):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    _ = parser.add_argument("--plover-path", help="Path to the directory that directly contains Plover's python_console binary", default=r"C:/Program Files/Open Steno Project/Plover 5.1.0")
+    _ = parser.add_argument("--plover-path", help="Path to the directory that directly contains Plover's python_console binary", default=DEFAULT_PLOVER_PATH_STR)
     args, rest = parser.parse_known_args()
     
     _main(args, rest)

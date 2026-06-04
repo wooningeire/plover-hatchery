@@ -60,3 +60,8 @@ members = [
 
 [tool.uv.sources]
 plover-hatchery-lib-rs = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "py-spy>=0.4.2",
+]
