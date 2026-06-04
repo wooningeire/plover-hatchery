@@ -6,13 +6,14 @@ import argparse
 from plover import system
 from plover.config import DEFAULT_SYSTEM_NAME
 from plover.registry import registry
+import plover.system.english_stenotype
 
 
 
 
 
 def _setup_plover():
-    registry.update()
+    registry.register_plugin("system", DEFAULT_SYSTEM_NAME, plover.system.english_stenotype)
     system.setup(DEFAULT_SYSTEM_NAME)
 
 
@@ -41,9 +42,9 @@ def _main(args: argparse.Namespace):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # parser.add_argument("-j", "--in-json-path", "--in-json", help="path to the input JSON dictionary", required=True)  
-    filepath = Path(__file__)
-    _ = parser.add_argument("-u", "--in-unilex-path", "--in-unilex", help="path to the input Unilex lexicon", default=str(filepath / "./data/unilex"))
-    _ = parser.add_argument("-o", "--out-path", "--out", help="path to output the Hatchery dictionary (to use in Plover, use the `hatchery` file extension)", default=str(filepath / "./out/debug.hatchery"))
+    script_dir = Path(__file__).parent
+    _ = parser.add_argument("-u", "--in-unilex-path", "--in-unilex", help="path to the input Unilex lexicon", default=str(script_dir / "./data/unilex"))
+    _ = parser.add_argument("-o", "--out-path", "--out", help="path to output the Hatchery dictionary (to use in Plover, use the `hatchery` file extension)", default=str(script_dir / "./out/debug.hatchery"))
     _ = parser.add_argument("-f", "--failures-out-path", "--failout", help="path to output the failed entries")
     args = parser.parse_args()
 

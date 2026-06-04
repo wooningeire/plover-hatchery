@@ -90,7 +90,7 @@ def _main(args: argparse.Namespace) -> None:
     if not report_path.exists():
         raise RuntimeError(f"py-spy did not produce report: {report_path}")
 
-    print(f"\x1b[32mReport done! \x1b[33m{report_path}")
+    print(f"\x1b[32mReport done! \x1b[33m{report_path}\x1b[0m")
 
 
 def _resolve_py_spy(py_spy_arg: str | None) -> Path:
