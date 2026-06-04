@@ -1,0 +1,54 @@
+from plover_hatchery.lib.pipes.Plugin import define_plugin
+from plover_hatchery.lib.pipes.compile_theory import compile_theory
+from plover_hatchery.lib.pipes.floating_keys import floating_keys
+from plover_hatchery.lib.pipes.soph_trie import soph_trie
+
+
+def _map_to_sophs(cursor):
+    try:
+        return {cursor.tip().keysymbol().symbol}
+    except TypeError:
+        return set()
+
+
+def _choose_first_translation():
+    @define_plugin(_choose_first_translation)
+    def plugin(get_plugin_api, **_):
+        soph_trie_api = get_plugin_api(soph_trie)
+
+        @soph_trie_api.select_translation.listen(_choose_first_translation)
+        def _(choices, translations, **__):
+            return translations[choices[0].lookup_result.translation_id]
+
+    return plugin
+
+
+def _build_lookup(entry_lines: dict[str, str], chords: dict[str, str]):
+    def plugins():
+        yield floating_keys("*")
+        yield soph_trie(
+            map_to_sophs=_map_to_sophs,
+            sophs_to_chords_dicts=[chords],
+        )
+        yield _choose_first_translation()
+
+    return compile_theory(plugins).build_lookup(entry_lines.items())
+
+
+def test__soph_trie__lookup_matches_entry_across_multiple_chords():
+    lookup = _build_lookup(
+        {"cat": "c.k a.a t.t"},
+        {"k": "K", "a": "A", "t": "-T"},
+    )
+
+    assert lookup.lookup(("KAT",)) == "cat"
+
+
+def test__soph_trie__chord_search_does_not_bleed_across_strokes():
+    lookup = _build_lookup(
+        {"act": "act.kt"},
+        {"kt": "K-T"},
+    )
+
+    assert lookup.lookup(("K-T",)) == "act"
+    assert lookup.lookup(("K", "T")) is None

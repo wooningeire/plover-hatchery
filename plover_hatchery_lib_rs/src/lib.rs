@@ -24,6 +24,9 @@ use pipes::{
     optionalize_keysymbols,
     add_diphthong_keysymbols,
     add_soph_trie_entry,
+    PyChordToSophSearchMatch,
+    PyChordToSophSearchNode,
+    PyChordToSophSearcher,
     Soph,
 };
 
@@ -32,13 +35,14 @@ use morphology::{
     AffixKey,
 };
 
-
 mod trie;
 use trie::{
     py::{
         PyNondeterministicTrie,
         PyReverseTrieIndex,
     },
+    PyReadonlyTrie,
+    PyTrie,
     TransitionKey,
     TransitionCostKey,
     TransitionCostInfo,
@@ -74,7 +78,12 @@ pub fn plover_hatchery_lib_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_parse_sopheme_seq, m)?)?;
     m.add_function(wrap_pyfunction!(py_parse_keysymbol_seq, m)?)?;
     m.add_function(wrap_pyfunction!(add_soph_trie_entry, m)?)?;
+    m.add_class::<PyChordToSophSearchNode>()?;
+    m.add_class::<PyChordToSophSearchMatch>()?;
+    m.add_class::<PyChordToSophSearcher>()?;
 
+    m.add_class::<PyTrie>()?;
+    m.add_class::<PyReadonlyTrie>()?;
     m.add_class::<PyNondeterministicTrie>()?;
     m.add_class::<TransitionKey>()?;
     m.add_class::<TransitionCostKey>()?;

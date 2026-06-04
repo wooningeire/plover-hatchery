@@ -1,3 +1,6 @@
+mod trie;
+pub use trie::{PyReadonlyTrie, PyTrie};
+
 mod nondeterministic_trie;
 pub use nondeterministic_trie::NondeterministicTrie;
 pub use nondeterministic_trie::TriePath;

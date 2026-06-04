@@ -5,12 +5,12 @@ from typing import Any, Callable, Iterable, NamedTuple, Protocol, Sequence, fina
 
 from plover.steno import Stroke
 
-from plover_hatchery_lib_rs import DefView, DefViewCursor, add_soph_trie_entry, TriePath, TransitionCostKey, TransitionKey, Soph, TransitionFlagManager
+from plover_hatchery_lib_rs import DefView, DefViewCursor, add_soph_trie_entry, ChordToSophSearchNode as RsChordToSophSearchNode, ChordToSophSearcher as RsChordToSophSearcher, TriePath, TransitionCostKey, TransitionKey, Soph, TransitionFlagManager
 from plover_hatchery.lib.pipes.Hook import Hook
 from plover_hatchery.lib.pipes.Plugin import GetPluginApi, Plugin, define_plugin
 from plover_hatchery.lib.pipes.floating_keys import floating_keys
 from plover_hatchery.lib.pipes.plugin_utils import iife, join_sophs_to_chords_dicts
-from plover_hatchery.lib.trie import KeyIdManager, LookupResult, NondeterministicTrie, TransitionSourceNode, Trie, JoinedTriePaths
+from plover_hatchery.lib.trie import KeyIdManager, LookupResult, NondeterministicTrie, TransitionSourceNode, JoinedTriePaths
 from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
 
 
@@ -213,21 +213,18 @@ def soph_trie(
 
 
         class ChordToSophSearcher:
+            """Builds the chord-key trie used to find possible sophs during lookup."""
+
             def __init__(self, sophs_to_chords_dicts: Iterable[dict[str, str]]):
-                self.__chords_to_sophs: Trie[str, list[ChordToSophSearchResult]] = Trie()
+                entries: list[tuple[tuple[str, ...], ChordToSophSearchResult]] = []
 
                 for sophs, chords in sophs_to_chords.items():
                     for chord in chords:
-                        chord_rest, chord_floaters = floating_keys_api.split(chord)
-                        result = ChordToSophSearchResult(sophs, chord)
+                        chord_rest, _ = floating_keys_api.split(chord)
+                        entries.append((chord_rest.keys(), ChordToSophSearchResult(sophs, chord)))
 
-
-                        dst_node = self.__chords_to_sophs.follow_chain(self.__chords_to_sophs.ROOT, chord_rest.keys())
-                        existing_soph_seqs = self.__chords_to_sophs.get_translation(dst_node)
-                        if existing_soph_seqs is None:
-                            self.__chords_to_sophs.set_translation(dst_node, [result])
-                        else:
-                            existing_soph_seqs.append(result)
+                # Rust owns the trie traversal; Python keeps the hook-facing result objects.
+                self.__chords_to_sophs = RsChordToSophSearcher(entries)
 
 
             def begin_search(self):
@@ -242,37 +239,27 @@ def soph_trie(
             class Session:
                 def __init__(self, chord_finder: "ChordToSophSearcher"):
                     self.__chord_finder = chord_finder
-                    self.__node_data_for_chords_to_sophs_lookup: list[ChordToSophSearchNode] = []
+                    self.__node_data_for_chords_to_sophs_lookup: list[RsChordToSophSearchNode] = []
                     self.__current_key_index = 0
                     self.__key_starts_new_stroke = True
 
 
                 def possible_sophs_after_consuming(self, key: str):
-                    # Add a root node to trigger a new traversal starting from the root
-                    self.__node_data_for_chords_to_sophs_lookup.append(ChordToSophSearchNode(chord_finder.chords_to_sophs.ROOT, self.__current_key_index ))
-
-
-                    # Continue the ongoing trie traversals
-                    new_node_indices: list[ChordToSophSearchNode] = []
-
-                    for trie_node in self.__node_data_for_chords_to_sophs_lookup:
-                        dst_node = self.__chord_finder.chords_to_sophs.traverse(trie_node.trie_node, key)
-                        if dst_node is None: continue
-
-                        new_node_indices.append(ChordToSophSearchNode(dst_node, trie_node.chord_starting_key_index))
-
-                        soph_results = self.__chord_finder.chords_to_sophs.get_translation(dst_node)
-
-                        if soph_results is None: continue
-
-
-                        for soph_result in soph_results:
-                            yield ChordToSophSearchResultWithSrcIndex(soph_result, trie_node.chord_starting_key_index)
-
-
-                    self.__node_data_for_chords_to_sophs_lookup = new_node_indices
+                    # The Rust searcher handles starting a fresh root traversal and
+                    # continuing active traversals for this key.
+                    self.__node_data_for_chords_to_sophs_lookup, soph_results = self.__chord_finder.chords_to_sophs.possible_sophs_after_consuming(
+                        self.__node_data_for_chords_to_sophs_lookup,
+                        self.__current_key_index,
+                        key,
+                    )
                     self.__current_key_index += 1
                     self.__key_starts_new_stroke = False
+
+                    for soph_match in soph_results:
+                        yield ChordToSophSearchResultWithSrcIndex(
+                            soph_match.soph_result,
+                            soph_match.chord_starting_key_index,
+                        )
 
                 
                 def finish_stroke(self):
@@ -288,12 +275,6 @@ def soph_trie(
         # We go key by key in the user's outline. For each key, check all possible configurations of sophs that the
         # outline could represent, traversing the nondeterministic soph trie as soon as sophs are found.
         # After consuming all the keys, find the translation with the lowest cost.
-
-        @dataclass(frozen=True)
-        class ChordToSophSearchNode:
-            trie_node: int
-            chord_starting_key_index: int
-
 
         class SophsToTranslationPathFinder:
             """Manages the key-by-key iteration phase of lookup."""
