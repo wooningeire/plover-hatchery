@@ -8,7 +8,7 @@ from plover.engine import StenoEngine
 from .Store import store
 
 
-allowed_origins = re.compile(r"https?://localhost:\d+|https://vaie\.art")
+allowed_origins = re.compile(r"^(?:https?://(?:localhost|127\.0\.0\.1):\d+|https://vaie\.art)$")
 
 class HatcheryWebServerExtension:
     def __init__(self, engine: StenoEngine):
@@ -23,14 +23,36 @@ class HatcheryWebServerExtension:
         def _(response: ResponseClass):
             origin = request.origin
             
-            if allowed_origins.match(origin):
+            if origin is not None and allowed_origins.match(origin):
                 response.headers.add("Access-Control-Allow-Origin", "*")
 
             response.headers.add("Access-Control-Allow-Methods", "GET,PATCH,PUT,POST,DELETE,OPTIONS")
             return response
+
+        @app.route("/api/compile", methods=["POST"])
+        def compile_route():
+            try:
+                request_body = request.get_json(silent=True) or {}
+                refresh_cache = bool(request_body.get("refreshCache", False))
+                return jsonify({
+                    "dictionaries": store.compile_hatchery_dictionaries(refresh_cache=refresh_cache),
+                })
+            except Exception as e:
+                return jsonify({
+                    "error": str(e),
+                }), 500
         
         @app.route("/api/breakdown_translation/<translation>")
         def breakdown_translation_route(translation: str):
+            compile_result = self.__compile_hatchery_dictionaries()
+            if compile_result is not None:
+                return compile_result
+
+            if store.breakdown_translation is None:
+                return jsonify({
+                    "error": "No compiled Hatchery lookup is available",
+                }), 503
+
             breakdown = store.breakdown_translation(translation)
             if breakdown is None:
                 return jsonify({})
@@ -39,11 +61,29 @@ class HatcheryWebServerExtension:
         
         @app.route("/api/breakdown_lookup/<outline>")
         def breakdown_lookup_route(outline: str):
+            compile_result = self.__compile_hatchery_dictionaries()
+            if compile_result is not None:
+                return compile_result
+
+            if store.breakdown_lookup is None or store.translations is None:
+                return jsonify({
+                    "error": "No compiled Hatchery lookup is available",
+                }), 503
+
             breakdown = store.breakdown_lookup(tuple(outline.split(" ")), store.translations)
             if breakdown is None:
                 return jsonify([])
 
             return breakdown
+
+    def __compile_hatchery_dictionaries(self):
+        try:
+            store.compile_hatchery_dictionaries()
+            return None
+        except Exception as e:
+            return jsonify({
+                "error": str(e),
+            }), 500
         
     def start(self):
         """Start the web server in a background thread"""

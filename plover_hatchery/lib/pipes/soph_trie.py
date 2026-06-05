@@ -151,6 +151,80 @@ def soph_trie(
         store.trie = trie
 
         api = SophTrieApi(trie, transition_phonemes, transition_flags, key_id_manager)
+        deferred_transition_flags_cache: tuple[str, Any] | None = None
+        transition_flags_loaded = True
+
+        def export_transition_flags_cache():
+            if not transition_flags_loaded and deferred_transition_flags_cache is not None:
+                cache_kind, cache_value = deferred_transition_flags_cache
+                if cache_kind == "bytes":
+                    return {"transition_flags_bytes": cache_value}
+
+                try:
+                    return {
+                        "transition_flags_bytes": TransitionFlagManager.from_state(
+                            *cache_value
+                        ).export_state_bytes()
+                    }
+                except AttributeError:
+                    return {"transition_flags": cache_value}
+
+            try:
+                return {"transition_flags_bytes": api.transition_flags.export_state_bytes()}
+            except AttributeError:
+                return {"transition_flags": api.transition_flags.export_state()}
+
+        def ensure_transition_flags_loaded():
+            nonlocal deferred_transition_flags_cache, transition_flags_loaded
+
+            if transition_flags_loaded or deferred_transition_flags_cache is None:
+                return
+
+            cache_kind, cache_value = deferred_transition_flags_cache
+            if cache_kind == "bytes":
+                api.transition_flags.load_state_bytes(cache_value)
+            else:
+                api.transition_flags.load_state(*cache_value)
+
+            deferred_transition_flags_cache = None
+            transition_flags_loaded = True
+
+        @base_hooks.export_build_cache.listen(soph_trie)
+        def _(**_):
+            try:
+                trie_cache = {"trie_bytes": api.trie.export_state_bytes()}
+            except AttributeError:
+                trie_cache = {"trie": api.trie.export_state()}
+
+            return "soph_trie", {
+                **trie_cache,
+                "key_ids": [
+                    soph.value
+                    for soph in api.key_id_manager.export_keys()
+                ],
+                **export_transition_flags_cache(),
+            }
+
+        @base_hooks.import_build_cache.listen(soph_trie)
+        def _(cache: dict[str, Any], **_):
+            nonlocal deferred_transition_flags_cache, transition_flags_loaded
+
+            data = cache["soph_trie"]
+            if "trie_bytes" in data:
+                api.trie.load_state_bytes(data["trie_bytes"])
+            else:
+                api.trie.load_state(data["trie"])
+
+            api.key_id_manager.load_keys(
+                Soph(soph_value)
+                for soph_value in data["key_ids"]
+            )
+            if "transition_flags_bytes" in data:
+                deferred_transition_flags_cache = ("bytes", data["transition_flags_bytes"])
+            else:
+                deferred_transition_flags_cache = ("state", data["transition_flags"])
+            transition_flags_loaded = False
+            api.transition_data.clear()
 
 
 
@@ -523,6 +597,8 @@ def soph_trie(
 
         @base_hooks.breakdown_translation.listen(soph_trie)
         def _(translation: str, entries: list[str], reverse_translations: dict[str, list[int]], **_):
+            ensure_transition_flags_loaded()
+
             if id(trie) in subtrie_builders:
                 subtrie_builder = subtrie_builders[id(trie)]
             else:

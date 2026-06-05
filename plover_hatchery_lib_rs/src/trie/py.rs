@@ -1,8 +1,13 @@
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
+use pyo3::types::PyBytes;
 
-use super::nondeterministic_trie::{LookupResult, NondeterministicTrie, TriePath, TransitionSourceNode, JoinedTriePaths};
+use super::nondeterministic_trie::{
+    ExportedNodeTranslations, ExportedTransitionCosts, ExportedTransitions, ExportedTrieState,
+    ExportedUsedNodes, JoinedTriePaths, LookupResult, NondeterministicTrie, TransitionSourceNode,
+    TriePath,
+};
 use super::transition::{TransitionCostInfo, TransitionKey};
-
 
 /// Python wrapper for NondeterministicTrie
 #[pyclass]
@@ -18,6 +23,44 @@ impl PyNondeterministicTrie {
         Self {
             trie: Box::new(NondeterministicTrie::new()),
         }
+    }
+
+    /// Export all mutable trie internals as primitive Python containers.
+    pub fn export_state(&self) -> ExportedTrieState {
+        self.trie.export_state()
+    }
+
+    /// Export all mutable trie internals as compact Rust-owned bytes.
+    pub fn export_state_bytes<'py>(&self, py: Python<'py>) -> Bound<'py, PyBytes> {
+        PyBytes::new(py, &self.trie.export_state_bytes())
+    }
+
+    /// Recreate a trie from a prior export_state() result.
+    #[staticmethod]
+    pub fn from_state(
+        transitions: ExportedTransitions,
+        node_translations: ExportedNodeTranslations,
+        transition_costs: ExportedTransitionCosts,
+        used_nodes_by_translation: ExportedUsedNodes,
+    ) -> Self {
+        Self {
+            trie: Box::new(NondeterministicTrie::from_state(
+                transitions,
+                node_translations,
+                transition_costs,
+                used_nodes_by_translation,
+            )),
+        }
+    }
+
+    /// Recreate a trie from a prior export_state_bytes() result.
+    #[staticmethod]
+    pub fn from_state_bytes(bytes: &[u8]) -> PyResult<Self> {
+        Ok(Self {
+            trie: Box::new(
+                NondeterministicTrie::from_state_bytes(bytes).map_err(PyValueError::new_err)?,
+            ),
+        })
     }
 
     /// Follow a transition from a source node, creating it if necessary.
@@ -70,7 +113,8 @@ impl PyNondeterministicTrie {
         translation_id: usize,
     ) -> Vec<TransitionKey> {
         let cost_info = TransitionCostInfo::new(cost, translation_id);
-        self.trie.link_chain(src_node_id, dst_node_id, &key_ids, &cost_info)
+        self.trie
+            .link_chain(src_node_id, dst_node_id, &key_ids, &cost_info)
     }
 
     /// Link multiple source nodes to a common destination node with a single key per source.
@@ -81,8 +125,10 @@ impl PyNondeterministicTrie {
         key_ids: Vec<Option<usize>>,
         translation_id: usize,
     ) -> JoinedTriePaths {
-        let rs_src_nodes: Vec<TransitionSourceNode> = src_nodes.iter().map(|s| (*s).clone()).collect();
-        self.trie.link_join(&rs_src_nodes, dst_node_id, &key_ids, translation_id)
+        let rs_src_nodes: Vec<TransitionSourceNode> =
+            src_nodes.iter().map(|s| (*s).clone()).collect();
+        self.trie
+            .link_join(&rs_src_nodes, dst_node_id, &key_ids, translation_id)
     }
 
     /// Link multiple source nodes to a common destination node with key chains per source.
@@ -93,8 +139,10 @@ impl PyNondeterministicTrie {
         key_id_chains: Vec<Vec<Option<usize>>>,
         translation_id: usize,
     ) -> JoinedTriePaths {
-        let rs_src_nodes: Vec<TransitionSourceNode> = src_nodes.iter().map(|s| (*s).clone()).collect();
-        self.trie.link_join_chain(&rs_src_nodes, dst_node_id, &key_id_chains, translation_id)
+        let rs_src_nodes: Vec<TransitionSourceNode> =
+            src_nodes.iter().map(|s| (*s).clone()).collect();
+        self.trie
+            .link_join_chain(&rs_src_nodes, dst_node_id, &key_id_chains, translation_id)
     }
 
     /// Set a translation at a node.
@@ -126,7 +174,8 @@ impl PyNondeterministicTrie {
         node_id: usize,
         transitions: Vec<TransitionKey>,
     ) -> Vec<(usize, f64)> {
-        self.trie.get_translations_and_costs_single(node_id, &transitions)
+        self.trie
+            .get_translations_and_costs_single(node_id, &transitions)
     }
 
     /// Get translations and costs for multiple paths.
@@ -152,7 +201,8 @@ impl PyNondeterministicTrie {
 
     /// Get translations with minimum costs for each translation_id.
     pub fn get_translations_and_min_costs(&self, node_paths: Vec<TriePath>) -> Vec<LookupResult> {
-        self.trie.get_translations_and_min_costs(node_paths.into_iter())
+        self.trie
+            .get_translations_and_min_costs(node_paths.into_iter())
     }
 
     /// Get all translation IDs that have been set.
@@ -173,7 +223,12 @@ impl PyNondeterministicTrie {
         transition_index: usize,
         translation_id: usize,
     ) -> bool {
-        self.trie.transition_has_cost_for_translation(src_node_id, key_id, transition_index, translation_id)
+        self.trie.transition_has_cost_for_translation(
+            src_node_id,
+            key_id,
+            transition_index,
+            translation_id,
+        )
     }
 
     /// The root node constant.
@@ -200,8 +255,16 @@ pub struct PyReverseTrieIndex {
 #[pymethods]
 impl PyReverseTrieIndex {
     #[pyo3(signature = (trie, translation_id))]
-    fn get_sequences(&self, trie: &PyNondeterministicTrie, translation_id: usize) -> Vec<LookupResult> {
-        trie.trie.get_reverse_lookup_results(&self.reverse_nodes, &self.reverse_translations, translation_id)
+    fn get_sequences(
+        &self,
+        trie: &PyNondeterministicTrie,
+        translation_id: usize,
+    ) -> Vec<LookupResult> {
+        trie.trie.get_reverse_lookup_results(
+            &self.reverse_nodes,
+            &self.reverse_translations,
+            translation_id,
+        )
     }
 
     #[pyo3(signature = (trie, translation_id))]
@@ -215,28 +278,30 @@ impl PyReverseTrieIndex {
         let subtrie_data = trie.trie.get_subtrie_data(
             &self.reverse_nodes,
             &self.reverse_translations,
-            translation_id
+            translation_id,
         )?;
 
         // Now convert to Python objects
         let result_dict = pyo3::types::PyDict::new(py);
-        
+
         // "nodes": tuple(nodes_toposort)
         result_dict.set_item("nodes", subtrie_data.nodes).ok()?;
-        
+
         // "translation_nodes": reverse_translations[translation_id]
-        result_dict.set_item("translation_nodes", subtrie_data.translation_nodes).ok()?;
-         
+        result_dict
+            .set_item("translation_nodes", subtrie_data.translation_nodes)
+            .ok()?;
+
         let transitions_list = pyo3::types::PyList::empty(py);
         for t in subtrie_data.transitions {
-             let t_dict = pyo3::types::PyDict::new(py);
-             t_dict.set_item("src_node_id", t.src_node_id).ok()?;
-             t_dict.set_item("dst_node_id", t.dst_node_id).ok()?;
-             t_dict.set_item("key_infos", t.key_infos).ok()?;
-             transitions_list.append(t_dict).ok()?;
+            let t_dict = pyo3::types::PyDict::new(py);
+            t_dict.set_item("src_node_id", t.src_node_id).ok()?;
+            t_dict.set_item("dst_node_id", t.dst_node_id).ok()?;
+            t_dict.set_item("key_infos", t.key_infos).ok()?;
+            transitions_list.append(t_dict).ok()?;
         }
         result_dict.set_item("transitions", transitions_list).ok()?;
-        
+
         Some(result_dict.into())
     }
 }

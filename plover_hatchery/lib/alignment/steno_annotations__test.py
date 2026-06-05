@@ -15,7 +15,7 @@ def test__asteriskable_key__is_hashable_value_object() -> None:
     assert AsteriskableKey("S-", True) == AsteriskableKey("S-", True)
     assert AsteriskableKey("S-", True) != AsteriskableKey("S-", False)
     assert {AsteriskableKey("S-", True)} == {AsteriskableKey("S-", True)}
-    assert str(AsteriskableKey("S-", True)) == "S*"
+    assert str(AsteriskableKey("S-", True)) == "S-(*)"
     assert repr(AsteriskableKey("-F", False)) == "-F"
 
 

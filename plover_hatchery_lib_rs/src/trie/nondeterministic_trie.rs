@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use pyo3::prelude::*;
 
+use super::binary::{BinaryReader, BinaryWriter};
 use super::transition::{TransitionCostInfo, TransitionCostKey, TransitionKey};
 
 /// A path through the trie, tracking the destination node and transitions taken.
@@ -59,6 +60,18 @@ impl LookupResult {
 
 pub type ReverseNodes = HashMap<usize, HashMap<Option<usize>, Vec<(usize, usize)>>>;
 pub type ReverseTranslations = HashMap<usize, Vec<usize>>;
+pub type ExportedTransitions = Vec<Vec<(Option<usize>, Vec<usize>)>>;
+pub type ExportedNodeTranslations = Vec<(usize, Vec<usize>)>;
+pub type ExportedTransitionCosts = Vec<((usize, Option<usize>, usize, usize), f64)>;
+pub type ExportedUsedNodes = Vec<(usize, Vec<usize>)>;
+pub type ExportedTrieState = (
+    ExportedTransitions,
+    ExportedNodeTranslations,
+    ExportedTransitionCosts,
+    ExportedUsedNodes,
+);
+
+const BINARY_STATE_MAGIC: &[u8] = b"PHNTRIE3";
 
 #[derive(Clone, Debug)]
 pub struct SubtrieTransition {
@@ -207,6 +220,169 @@ impl NondeterministicTrie {
             transition_costs: HashMap::new(),
             used_nodes_by_translation: HashMap::new(),
         }
+    }
+
+    pub fn export_state(&self) -> ExportedTrieState {
+        let transitions = self
+            .transitions
+            .iter()
+            .map(|node_transitions| {
+                node_transitions
+                    .iter()
+                    .map(|(key_id, dst_node_ids)| (*key_id, dst_node_ids.clone()))
+                    .collect()
+            })
+            .collect();
+
+        let node_translations = self
+            .node_translations
+            .iter()
+            .map(|(node_id, translation_ids)| (*node_id, translation_ids.clone()))
+            .collect();
+
+        let transition_costs = self
+            .transition_costs
+            .iter()
+            .map(|(cost_key, cost)| {
+                (
+                    (
+                        cost_key.transition_key.src_node_index,
+                        cost_key.transition_key.key_id,
+                        cost_key.transition_key.transition_index,
+                        cost_key.translation_id,
+                    ),
+                    *cost,
+                )
+            })
+            .collect();
+
+        let used_nodes_by_translation = self
+            .used_nodes_by_translation
+            .iter()
+            .map(|(translation_id, node_ids)| (*translation_id, node_ids.iter().copied().collect()))
+            .collect();
+
+        (
+            transitions,
+            node_translations,
+            transition_costs,
+            used_nodes_by_translation,
+        )
+    }
+
+    pub fn from_state(
+        transitions: ExportedTransitions,
+        node_translations: ExportedNodeTranslations,
+        transition_costs: ExportedTransitionCosts,
+        used_nodes_by_translation: ExportedUsedNodes,
+    ) -> Self {
+        Self {
+            transitions: transitions
+                .into_iter()
+                .map(|node_transitions| node_transitions.into_iter().collect())
+                .collect(),
+            node_translations: node_translations.into_iter().collect(),
+            transition_costs: transition_costs
+                .into_iter()
+                .map(
+                    |((src_node_index, key_id, transition_index, translation_id), cost)| {
+                        (
+                            TransitionCostKey::new(
+                                TransitionKey::new(src_node_index, key_id, transition_index),
+                                translation_id,
+                            ),
+                            cost,
+                        )
+                    },
+                )
+                .collect(),
+            used_nodes_by_translation: used_nodes_by_translation
+                .into_iter()
+                .map(|(translation_id, node_ids)| (translation_id, node_ids.into_iter().collect()))
+                .collect(),
+        }
+    }
+
+    pub fn export_state_bytes(&self) -> Vec<u8> {
+        let mut writer = BinaryWriter::new();
+        writer.write_magic(BINARY_STATE_MAGIC);
+
+        writer.write_usize(self.transitions.len());
+        for node_transitions in &self.transitions {
+            writer.write_usize(node_transitions.len());
+            for (key_id, dst_node_ids) in node_transitions {
+                writer.write_option_usize(*key_id);
+                writer.write_usize_slice(dst_node_ids);
+            }
+        }
+
+        writer.write_usize(self.node_translations.len());
+        for (node_id, translation_ids) in &self.node_translations {
+            writer.write_usize(*node_id);
+            writer.write_usize_slice(translation_ids);
+        }
+
+        writer.write_usize(self.transition_costs.len());
+        for (cost_key, cost) in &self.transition_costs {
+            writer.write_usize(cost_key.transition_key.src_node_index);
+            writer.write_option_usize(cost_key.transition_key.key_id);
+            writer.write_usize(cost_key.transition_key.transition_index);
+            writer.write_usize(cost_key.translation_id);
+            writer.write_f64(*cost);
+        }
+
+        writer.into_bytes()
+    }
+
+    pub fn from_state_bytes(bytes: &[u8]) -> Result<Self, String> {
+        let mut reader = BinaryReader::new(bytes);
+        reader.read_magic(BINARY_STATE_MAGIC)?;
+
+        let transitions_len = reader.read_usize()?;
+        let mut transitions = Vec::with_capacity(transitions_len);
+        for _ in 0..transitions_len {
+            let node_transitions_len = reader.read_usize()?;
+            let mut node_transitions = HashMap::with_capacity(node_transitions_len);
+            for _ in 0..node_transitions_len {
+                let key_id = reader.read_option_usize()?;
+                let dst_node_ids = reader.read_usize_vec()?;
+                node_transitions.insert(key_id, dst_node_ids);
+            }
+            transitions.push(node_transitions);
+        }
+
+        let node_translations_len = reader.read_usize()?;
+        let mut node_translations = HashMap::with_capacity(node_translations_len);
+        for _ in 0..node_translations_len {
+            let node_id = reader.read_usize()?;
+            let translation_ids = reader.read_usize_vec()?;
+            node_translations.insert(node_id, translation_ids);
+        }
+
+        let transition_costs_len = reader.read_usize()?;
+        let mut transition_costs = HashMap::with_capacity(transition_costs_len);
+        for _ in 0..transition_costs_len {
+            let src_node_index = reader.read_usize()?;
+            let key_id = reader.read_option_usize()?;
+            let transition_index = reader.read_usize()?;
+            let translation_id = reader.read_usize()?;
+            let cost = reader.read_f64()?;
+            transition_costs.insert(
+                TransitionCostKey::new(
+                    TransitionKey::new(src_node_index, key_id, transition_index),
+                    translation_id,
+                ),
+                cost,
+            );
+        }
+
+        reader.finish()?;
+        Ok(Self {
+            transitions,
+            node_translations,
+            transition_costs,
+            used_nodes_by_translation: HashMap::new(),
+        })
     }
 
     /// Creates a new node and returns its id.
@@ -1173,6 +1349,56 @@ mod test {
         assert_eq!(
             results,
             vec![(vec![Some(1), Some(2)], 2.0), (vec![Some(3), Some(4)], 5.0),]
+        );
+    }
+
+    #[test]
+    fn exported_state_restores_costed_forward_and_reverse_lookup() {
+        let mut trie = NondeterministicTrie::new();
+        let first_path = trie.follow_chain(
+            NondeterministicTrie::ROOT,
+            &[Some(1), Some(2)],
+            &TransitionCostInfo::new(2.0, 7),
+        );
+        let second_path = trie.follow_chain(
+            NondeterministicTrie::ROOT,
+            &[Some(3), Some(4)],
+            &TransitionCostInfo::new(5.0, 7),
+        );
+        trie.set_translation(first_path.dst_node_id, 7);
+        trie.set_translation(second_path.dst_node_id, 7);
+
+        let (transitions, node_translations, transition_costs, used_nodes_by_translation) =
+            trie.export_state();
+        let restored = NondeterministicTrie::from_state(
+            transitions,
+            node_translations,
+            transition_costs,
+            used_nodes_by_translation,
+        );
+
+        let forward_paths: Vec<_> = restored
+            .traverse_chain(std::iter::once(TriePath::root()), &[Some(1), Some(2)])
+            .collect();
+        let forward_results: Vec<_> = restored
+            .get_translations_and_costs(forward_paths.into_iter())
+            .map(|result| (result_key_ids(&result), result.translation_id, result.cost))
+            .collect();
+
+        assert_eq!(forward_results, vec![(vec![Some(1), Some(2)], 7, 2.0)]);
+
+        let reverse_nodes = restored.reversed_nodes();
+        let reverse_translations = restored.reversed_translations();
+        let mut reverse_results: Vec<_> = restored
+            .get_reverse_lookup_results(&reverse_nodes, &reverse_translations, 7)
+            .into_iter()
+            .map(|result| (result_key_ids(&result), result.cost))
+            .collect();
+        reverse_results.sort_by(|a, b| a.0.cmp(&b.0));
+
+        assert_eq!(
+            reverse_results,
+            vec![(vec![Some(1), Some(2)], 2.0), (vec![Some(3), Some(4)], 5.0)]
         );
     }
 

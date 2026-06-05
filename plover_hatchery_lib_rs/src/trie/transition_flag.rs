@@ -11,8 +11,6 @@ pub struct TransitionFlag {
 impl TransitionFlag {
     #[new]
     pub fn new(label: String) -> Self {
-        Self {
-            label,
-        }
+        Self { label }
     }
 }

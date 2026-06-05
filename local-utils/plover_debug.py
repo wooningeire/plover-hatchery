@@ -16,7 +16,7 @@ def _main(args: argparse.Namespace):
     time.sleep(2)
 
     if args.maturin_dev:
-        _maturin_dev_main(args, [])
+        _maturin_dev_main(args, ["--release"])
 
     if args.reinstall:
         exit_code = os.system(fr"""plover_console -s plover_plugins install -e {Path(__file__).parent.parent}""")

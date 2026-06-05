@@ -11,6 +11,7 @@ from plover_hatchery_lib_rs import Def, DefView, DefDict, Entity
 from .Hook import Hook
 from .Plugin import Plugin
 from .Theory import Theory, TheoryLookup
+from .compile_theory_io import CacheLoadResult, CompiledLookupCache
 
 
 T = TypeVar("T")
@@ -34,6 +35,10 @@ class TheoryHooks:
         def __call__(self, *, translation: str, entries: list[str], reverse_translations: dict[str, list[int]]) -> str | None: ...
     class BreakdownLookup(Protocol):
         def __call__(self, *, stroke_stenos: tuple[str, ...], translations: list[str]) -> str | None: ...
+    class ExportBuildCache(Protocol):
+        def __call__(self, *, state: Any) -> tuple[str, Any] | None: ...
+    class ImportBuildCache(Protocol):
+        def __call__(self, *, state: Any, cache: dict[str, Any]) -> None: ...
 
     begin_build_lookup = Hook(BeginBuildLookup)
     complete_build_lookup = Hook(CompleteBuildLookup)
@@ -43,6 +48,8 @@ class TheoryHooks:
     reverse_lookup = Hook(ReverseLookup)
     breakdown_translation = Hook(BreakdownTranslation)
     breakdown_lookup = Hook(BreakdownLookup)
+    export_build_cache = Hook(ExportBuildCache)
+    import_build_cache = Hook(ImportBuildCache)
 
 
 def compile_theory(
@@ -88,10 +95,19 @@ def compile_theory(
 
     store.translations = translations
 
-    def build_lookup(entry_lines: Iterable[tuple[str, str]], filename: str=""):
-        states: dict[int, Any] = {}
-        for plugin_id, handler in hooks.begin_build_lookup.ids_handlers():
-            states[plugin_id] = handler()
+    def build_lookup(
+        entry_lines: Iterable[tuple[str, str]] | Callable[[], Iterable[tuple[str, str]]],
+        filename: str="",
+        refresh_cache: bool=False,
+    ):
+        def create_states():
+            states: dict[int, Any] = {}
+            for plugin_id, handler in hooks.begin_build_lookup.ids_handlers():
+                states[plugin_id] = handler()
+            return states
+
+        def resolve_entry_lines():
+            return entry_lines() if callable(entry_lines) else entry_lines
 
 
         n_entries = 0
@@ -99,14 +115,59 @@ def compile_theory(
         n_passed_parses = 0
         n_passed_additions = 0
 
+        cache = CompiledLookupCache(filename=filename, translations=translations)
+        defs_list: list[str] = []
+
+        def try_load_cache(states: dict[int, Any]):
+            try:
+                return cache.load(
+                    hooks=hooks,
+                    states=states,
+                    translations=translations,
+                    reverse_translations=reverse_translations,
+                    defs_list=defs_list,
+                )
+            except Exception as e:
+                print(f"\x1b[33mIgnoring compiled trie cache {cache.path}: {e}\x1b[0m")
+                return CacheLoadResult(False)
+
+        def save_cache(label: str):
+            try:
+                cache.save(
+                    hooks=hooks,
+                    states=states,
+                    translations=translations,
+                    reverse_translations=reverse_translations,
+                    defs_list=defs_list,
+                )
+                if cache.path is not None:
+                    print(f"\x1b[32m{label} compiled trie cache {cache.path}\x1b[0m")
+            except Exception as e:
+                print(f"\x1b[33mCould not save compiled trie cache {cache.path}: {e}\x1b[0m")
+
+        print(f"\x1b[1;36mHatching {filename}...\x1b[0m")
+
+        states = create_states()
+        cache_load_result = CacheLoadResult(False)
+        loaded_from_cache = False
+        if cache.can_load_before_entries:
+            cache_load_result = try_load_cache(states)
+            loaded_from_cache = bool(cache_load_result)
+            if loaded_from_cache:
+                n_addable_entries = len(translations) - cache.base_entry_id
+                n_passed_additions = n_addable_entries
+                print(f"\x1b[32mLoaded compiled trie cache {cache.path}\x1b[0m")
+
         defs = DefDict()
 
         def populate_dict():
             nonlocal n_entries, n_passed_parses
 
-            for i, (varname, definition_str) in enumerate(entry_lines):
+            for i, (varname, definition_str) in enumerate(resolve_entry_lines()):
                 if i % 10000 == 0:
                     print(f"\x1b[FParsed {i} entries")
+
+                cache.update_source(varname, definition_str)
 
                 try:
                     defs.add(varname, list(parse_entry_definition(definition_str.strip())))
@@ -118,16 +179,22 @@ def compile_theory(
 
                 n_entries += 1
 
-        print(f"\x1b[1;36mHatching {filename}…\x1b[0m")
-        print("\x1b[35m")
-        duration = timeit.timeit(populate_dict, number=1)
-        n_failed_parses = n_entries - n_passed_parses
-        print(f""""\x1b[FParsed {n_entries} entries
+        if not loaded_from_cache:
+            print("\x1b[35m")
+            duration = timeit.timeit(populate_dict, number=1)
+            n_failed_parses = n_entries - n_passed_parses
+            print(f""""\x1b[FParsed {n_entries} entries
     \x1b[31m{n_failed_parses} ({n_failed_parses / n_entries * 100:.2f}%) failed
     \x1b[32mTook {duration} s""")
 
-
-        defs_list: list[str] = []
+            states = create_states()
+            if not cache.can_load_before_entries:
+                cache_load_result = try_load_cache(states)
+                loaded_from_cache = bool(cache_load_result)
+                if loaded_from_cache:
+                    n_addable_entries = len(translations) - cache.base_entry_id
+                    n_passed_additions = n_addable_entries
+                    print(f"\x1b[32mLoaded compiled trie cache {cache.path}\x1b[0m")
 
         def add_entries():
             nonlocal n_addable_entries, n_passed_additions
@@ -171,12 +238,17 @@ def compile_theory(
                     pass
 
 
-        print("\x1b[35m")
-        duration = timeit.timeit(add_entries, number=1)
-        n_failed_additions = n_addable_entries - n_passed_additions
-        print(f""""\x1b[FAdded {n_addable_entries} entries
+        if not loaded_from_cache:
+            print("\x1b[35m")
+            duration = timeit.timeit(add_entries, number=1)
+            n_failed_additions = n_addable_entries - n_passed_additions
+            print(f""""\x1b[FAdded {n_addable_entries} entries
     \x1b[31m{n_failed_additions} ({f"{n_failed_additions / n_addable_entries * 100:.2f}" if n_addable_entries > 0 else "nan"}%) failed
     \x1b[32mTook {duration} s""")
+
+            save_cache("Saved")
+        elif refresh_cache and cache_load_result.needs_refresh:
+            save_cache("Refreshed")
 
         print("\x1b[0m")
 
@@ -253,4 +325,3 @@ def compile_theory(
         # lookup=lookup,
         # reverse_lookup=reverse_lookup,
     )
-

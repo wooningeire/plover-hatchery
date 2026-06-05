@@ -31,3 +31,12 @@ class KeyIdManager[K]:
 
     def get_key_ids_else_create(self, keys: Iterable[K]):
         return tuple(self.get_key_id_else_create(key) for key in keys)
+
+    def export_keys(self):
+        return list(self.__keys_list)
+
+    def load_keys(self, keys: Iterable[K]):
+        self.__keys_to_ids.clear()
+        self.__keys_list.clear()
+        for key in keys:
+            self.get_key_id_else_create(key)

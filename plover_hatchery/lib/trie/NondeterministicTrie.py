@@ -39,6 +39,18 @@ class NondeterministicTrie:
         self.rs = RsNondeterministicTrie()
         self.__on_try_traverse: list[OnTraverse] = []
 
+    def export_state(self):
+        return self.rs.export_state()
+
+    def load_state(self, state):
+        self.rs = RsNondeterministicTrie.from_state(*state)
+
+    def export_state_bytes(self):
+        return self.rs.export_state_bytes()
+
+    def load_state_bytes(self, state: bytes):
+        self.rs = RsNondeterministicTrie.from_state_bytes(state)
+
 
     def follow(self, src_node_id: int, key_id: int | None, cost_info: TransitionCostInfo):
         """

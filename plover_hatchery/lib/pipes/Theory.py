@@ -19,6 +19,12 @@ class TheoryLookup:
 @dataclass(frozen=True)
 class Theory:
     class BuildLookup(Protocol):
-        def __call__(self, *, entry_lines: Iterable[tuple[str, str]], filename: str="") -> TheoryLookup: ...
+        def __call__(
+            self,
+            *,
+            entry_lines: Iterable[tuple[str, str]] | Callable[[], Iterable[tuple[str, str]]],
+            filename: str="",
+            refresh_cache: bool=False,
+        ) -> TheoryLookup: ...
         
     build_lookup: BuildLookup
