@@ -1,14 +1,40 @@
-import re
 from flask import Flask, jsonify, request
 from threading import Thread
 from flask.typing import ResponseClass
+from urllib.parse import urlsplit
 from werkzeug.serving import make_server
 from plover.engine import StenoEngine
 
 from .Store import store
 
 
-allowed_origins = re.compile(r"^(?:https?://(?:localhost|127\.0\.0\.1):\d+|https://vaie\.art)$")
+LOCAL_WEB_HOSTS = {"localhost", "127.0.0.1", "::1"}
+HATCHERY_WEB_HOSTS = {"hatchery.vaie.art"}
+
+
+def is_allowed_origin(origin: str):
+    try:
+        parsed_origin = urlsplit(origin)
+        parsed_origin.port
+    except ValueError:
+        return False
+
+    if parsed_origin.path != "" or parsed_origin.query != "" or parsed_origin.fragment != "":
+        return False
+
+    hostname = parsed_origin.hostname
+    if hostname is None:
+        return False
+
+    hostname = hostname.lower()
+
+    if hostname in LOCAL_WEB_HOSTS:
+        return parsed_origin.scheme in {"http", "https"}
+
+    if hostname in HATCHERY_WEB_HOSTS:
+        return parsed_origin.scheme == "https"
+
+    return False
 
 class HatcheryWebServerExtension:
     def __init__(self, engine: StenoEngine):
@@ -23,10 +49,11 @@ class HatcheryWebServerExtension:
         def _(response: ResponseClass):
             origin = request.origin
             
-            if origin is not None and allowed_origins.match(origin):
+            if origin is not None and is_allowed_origin(origin):
                 response.headers.add("Access-Control-Allow-Origin", "*")
 
             response.headers.add("Access-Control-Allow-Methods", "GET,PATCH,PUT,POST,DELETE,OPTIONS")
+            response.headers.add("Access-Control-Allow-Headers", "Content-Type")
             return response
 
         @app.route("/api/compile", methods=["POST"])
