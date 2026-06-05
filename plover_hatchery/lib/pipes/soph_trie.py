@@ -153,6 +153,7 @@ def soph_trie(
         api = SophTrieApi(trie, transition_phonemes, transition_flags, key_id_manager)
         deferred_transition_flags_cache: tuple[str, Any] | None = None
         transition_flags_loaded = True
+        subtrie_builders: dict[int, Callable[[int], dict[str, Any] | None]] = {}
 
         def export_transition_flags_cache():
             if not transition_flags_loaded and deferred_transition_flags_cache is not None:
@@ -188,6 +189,20 @@ def soph_trie(
 
             deferred_transition_flags_cache = None
             transition_flags_loaded = True
+
+        @base_hooks.begin_build_lookup.listen(soph_trie)
+        def _():
+            nonlocal deferred_transition_flags_cache, transition_flags_loaded
+
+            api.trie.load_state(NondeterministicTrie().export_state())
+            api.key_id_manager.load_keys([])
+            api.transition_data.clear()
+
+            labels, _ = api.transition_flags.export_state()
+            api.transition_flags.load_state(labels, [])
+            deferred_transition_flags_cache = None
+            transition_flags_loaded = True
+            subtrie_builders.clear()
 
         @base_hooks.export_build_cache.listen(soph_trie)
         def _(**_):
@@ -225,6 +240,7 @@ def soph_trie(
                 deferred_transition_flags_cache = ("state", data["transition_flags"])
             transition_flags_loaded = False
             api.transition_data.clear()
+            subtrie_builders.clear()
 
 
 
@@ -257,6 +273,7 @@ def soph_trie(
                 api.begin_add_entry.emit_and_store_outputs,
                 api.add_soph_transition.emit_with_states
             )
+            subtrie_builders.clear()
 
 
 
@@ -593,8 +610,6 @@ def soph_trie(
 
         ### Reverse lookup ##############################################################
 
-        subtrie_builders: dict[int, Callable[[int], dict[str, Any] | None]] = {}
-
         @base_hooks.breakdown_translation.listen(soph_trie)
         def _(translation: str, entries: list[str], reverse_translations: dict[str, list[int]], **_):
             ensure_transition_flags_loaded()
@@ -605,13 +620,21 @@ def soph_trie(
                 subtrie_builder = trie.build_subtrie_builder(transition_flags, key_id_manager.get_key_str)
                 subtrie_builders[id(trie)] = subtrie_builder
 
-            return json.dumps([
-                {
+            breakdowns = []
+            for entry_id in reverse_translations.get(translation, []):
+                if entry_id >= len(entries):
+                    continue
+
+                subtrie = subtrie_builder(entry_id)
+                if subtrie is None:
+                    continue
+
+                breakdowns.append({
                     "entry": entries[entry_id],
-                    "subtrie": subtrie_builder(entry_id),
-                }
-                for entry_id in reverse_translations[translation]
-            ])
+                    "subtrie": subtrie,
+                })
+
+            return json.dumps(breakdowns)
 
         # reverse_lookups: dict[int, Callable[[int], Iterable[LookupResult[int]]]] = {}
 

@@ -24,6 +24,29 @@ class CacheLoadResult:
         return self.loaded
 
 
+def _defs_list_in_entry_id_space(
+    payload_defs_list: list[str],
+    *,
+    base_entry_id: int,
+    n_translations: int,
+):
+    loaded_defs_list = list(payload_defs_list)
+
+    if len(loaded_defs_list) == n_translations:
+        return loaded_defs_list, False
+
+    if (
+        base_entry_id > 0
+        and len(loaded_defs_list) == n_translations - base_entry_id
+    ):
+        return [""] * base_entry_id + loaded_defs_list, True
+
+    if len(loaded_defs_list) < n_translations:
+        return loaded_defs_list + [""] * (n_translations - len(loaded_defs_list)), True
+
+    return loaded_defs_list, True
+
+
 def compiled_lookup_cache_path(filename: str):
     if filename == "":
         return None
@@ -84,8 +107,15 @@ def load_compiled_lookup_cache(
     for plugin_id, handler in hooks.import_build_cache.ids_handlers():
         handler(state=states.get(plugin_id), cache=plugin_cache)
 
-    translations[:] = payload["translations"]
-    defs_list[:] = payload["defs_list"]
+    payload_translations = list(payload["translations"])
+    payload_defs_list, defs_list_needs_refresh = _defs_list_in_entry_id_space(
+        payload["defs_list"],
+        base_entry_id=base_entry_id,
+        n_translations=len(payload_translations),
+    )
+
+    translations[:] = payload_translations
+    defs_list[:] = payload_defs_list
     reverse_translations.clear()
     reverse_translations.update({
         translation: list(entry_ids)
@@ -94,7 +124,8 @@ def load_compiled_lookup_cache(
 
     return CacheLoadResult(
         True,
-        payload.get("payload_format") != _COMPILED_LOOKUP_CACHE_PAYLOAD_FORMAT
+        defs_list_needs_refresh
+        or payload.get("payload_format") != _COMPILED_LOOKUP_CACHE_PAYLOAD_FORMAT
         or _plugin_cache_uses_legacy_shape(plugin_cache),
     )
 

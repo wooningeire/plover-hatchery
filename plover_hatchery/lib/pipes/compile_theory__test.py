@@ -1,3 +1,4 @@
+import json
 import pickle
 from pathlib import Path
 
@@ -29,19 +30,23 @@ def _choose_first_translation():
     return plugin
 
 
-def _build_lookup(filename: Path, entry_lines=None, *, refresh_cache=False):
+def _test_theory():
     def plugins():
         yield floating_keys("*")
         yield soph_trie(
             map_to_sophs=_map_to_sophs,
-            sophs_to_chords_dicts=[{"k": "K", "a": "A", "t": "-T"}],
+            sophs_to_chords_dicts=[{"k": "K", "a": "A", "kt": "K-T", "t": "-T"}],
         )
         yield _choose_first_translation()
 
+    return compile_theory(plugins)
+
+
+def _build_lookup(filename: Path, entry_lines=None, *, refresh_cache=False):
     if entry_lines is None:
         entry_lines = {"cat": "c.k a.a t.t"}.items()
 
-    return compile_theory(plugins).build_lookup(
+    return _test_theory().build_lookup(
         entry_lines=entry_lines,
         filename=str(filename),
         refresh_cache=refresh_cache,
@@ -96,6 +101,32 @@ def test__compile_theory__loads_compiled_trie_cache(tmp_path: Path, capsys):
 
     assert "Loaded compiled trie cache" in output
     assert second_lookup.lookup(("KAT",)) == "cat"
+
+
+def test__compile_theory__breakdown_translation_uses_entry_id_space_after_rebuild(tmp_path: Path):
+    dictionary_path = tmp_path / "sample.hatchery"
+    theory = _test_theory()
+    entry_lines = {"cat": "c.k a.a t.t"}.items()
+
+    first_lookup = theory.build_lookup(
+        entry_lines=entry_lines,
+        filename=str(dictionary_path),
+    )
+    assert first_lookup.lookup(("KAT",)) == "cat"
+    assert json.loads(first_lookup.breakdown_translation("cat"))[0]["entry"] == "cat = c.k a.a t.t"
+
+    second_lookup = theory.build_lookup(
+        entry_lines={"act": "act.kt"}.items(),
+        filename=str(dictionary_path),
+        refresh_cache=True,
+    )
+
+    assert second_lookup.lookup(("KAT",)) is None
+    assert second_lookup.lookup(("K-T",)) == "act"
+    assert [
+        item["entry"]
+        for item in json.loads(second_lookup.breakdown_translation("act"))
+    ] == ["act = act.kt"]
 
 
 def test__compile_theory__saves_compiled_trie_cache_as_rust_bytes(tmp_path: Path):

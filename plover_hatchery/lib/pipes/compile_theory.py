@@ -91,6 +91,7 @@ def compile_theory(
 
 
     translations: list[str] = []
+    defs_list: list[str] = []
     reverse_translations: dict[str, list[int]] = defaultdict(lambda: [])
 
     store.translations = translations
@@ -116,7 +117,6 @@ def compile_theory(
         n_passed_additions = 0
 
         cache = CompiledLookupCache(filename=filename, translations=translations)
-        defs_list: list[str] = []
 
         def try_load_cache(states: dict[int, Any]):
             try:
