@@ -6,6 +6,7 @@ from plover_hatchery.lib.trie.NondeterministicTrie import NondeterministicTrie
 
 class CompilableHatcheryDictionary(Protocol):
     def compile(self, *, refresh_cache: bool=False) -> dict[str, Any]: ...
+    def invalidate_lookup_cache(self) -> None: ...
 
 
 @final

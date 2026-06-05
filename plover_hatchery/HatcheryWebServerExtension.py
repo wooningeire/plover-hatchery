@@ -6,6 +6,12 @@ from werkzeug.serving import make_server
 from plover.engine import StenoEngine
 
 from .Store import store
+from .lib.dictionary.write_entries import (
+    AddEntryValidationError,
+    UnknownHatcheryDictionaryError,
+    add_entry_to_hatchery_dictionary,
+    hatchery_dictionary_summaries,
+)
 
 
 LOCAL_WEB_HOSTS = {"localhost", "127.0.0.1", "::1"}
@@ -64,6 +70,37 @@ class HatcheryWebServerExtension:
                 return jsonify({
                     "dictionaries": store.compile_hatchery_dictionaries(refresh_cache=refresh_cache),
                 })
+            except Exception as e:
+                return jsonify({
+                    "error": str(e),
+                }), 500
+
+        @app.route("/api/dictionaries")
+        def dictionaries_route():
+            return jsonify({
+                "dictionaries": hatchery_dictionary_summaries(),
+            })
+
+        @app.route("/api/entries", methods=["POST"])
+        def add_entry_route():
+            try:
+                request_body = request.get_json(silent=True) or {}
+                if not isinstance(request_body, dict):
+                    raise AddEntryValidationError("Expected a JSON object")
+
+                return jsonify(add_entry_to_hatchery_dictionary(
+                    dictionary_path=request_body.get("dictionaryPath"),
+                    translation=request_body.get("translation"),
+                    definition=request_body.get("definition"),
+                ))
+            except UnknownHatcheryDictionaryError as e:
+                return jsonify({
+                    "error": str(e),
+                }), 404
+            except AddEntryValidationError as e:
+                return jsonify({
+                    "error": str(e),
+                }), 400
             except Exception as e:
                 return jsonify({
                     "error": str(e),

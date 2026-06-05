@@ -65,6 +65,11 @@ class HatcheryDictionary(StenoDictionary):
                 "path": self.__filepath,
                 "status": "refreshed_cache" if refresh_cache else "compiled",
             }
+
+    def invalidate_lookup_cache(self):
+        with self.__compile_lock:
+            self.__maybe_lookup = None
+            self.__maybe_reverse_lookup = None
             
 
     def __getitem__(self, stroke_stenos: tuple[str, ...]) -> str:

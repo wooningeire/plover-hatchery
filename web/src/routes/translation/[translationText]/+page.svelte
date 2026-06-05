@@ -2,25 +2,65 @@
 import { onMount } from "svelte";
 import Graph from "$lib/components/Graph.svelte";
 
+type PageData = {
+    translationText: string;
+};
+
+type TranslationBreakdown = {
+    entry: string;
+    subtrie: any;
+};
+
 let {
     data,
+}: {
+    data: PageData,
 } = $props();
 
-let translationBreakdownData = $state(null);
-
-const translationBreakdownPromise = fetch(`http://localhost:5325/api/breakdown_translation/${encodeURIComponent(data.translationText)}`);
-onMount(async () => {
-    const translationBreakdownResponse = await translationBreakdownPromise;
-    translationBreakdownData = await translationBreakdownResponse.json();
-});
-
+let translationBreakdownData = $state<TranslationBreakdown[]>([]);
+let translationBreakdownError = $state<string | null>(null);
+let translationBreakdownIsLoading = $state(true);
 let breakdownIndex = $state(0);
 
-let breakdown = $derived(translationBreakdownData?.[breakdownIndex] ?? null);
+let breakdown = $derived(translationBreakdownData[breakdownIndex] ?? null);
+let breakdownCount = $derived(translationBreakdownData.length);
 
 let testOutline = $state("");
-let lookupBreakdownData = $state(null);
+let lookupBreakdownData = $state<any[] | null>(null);
 let timeoutId = 0;
+
+onMount(async () => {
+    translationBreakdownIsLoading = true;
+    translationBreakdownError = null;
+
+    try {
+        const response = await fetch(`http://localhost:5325/api/breakdown_translation/${encodeURIComponent(data.translationText)}`);
+        const responseData = await response.json();
+        translationBreakdownData = Array.isArray(responseData) ? responseData : [];
+        breakdownIndex = 0;
+    } catch (error) {
+        translationBreakdownError = error instanceof Error ? error.message : String(error);
+    } finally {
+        translationBreakdownIsLoading = false;
+    }
+});
+
+function previousBreakdown() {
+    if (breakdownCount === 0) {
+        return;
+    }
+
+    breakdownIndex = breakdownIndex === 0 ? breakdownCount - 1 : breakdownIndex - 1;
+}
+
+function nextBreakdown() {
+    if (breakdownCount === 0) {
+        return;
+    }
+
+    breakdownIndex = breakdownIndex === breakdownCount - 1 ? 0 : breakdownIndex + 1;
+}
+
 $effect(() => {
     if (testOutline === "") {
         lookupBreakdownData = null;
@@ -32,7 +72,6 @@ $effect(() => {
     timeoutId = setTimeout(async () => {
         const lookupBreakdownResponse = await fetch(`http://localhost:5325/api/breakdown_lookup/${encodeURIComponent(testOutline.replaceAll("/", " "))}`);
         lookupBreakdownData = await lookupBreakdownResponse.json();
-        console.log(lookupBreakdownData);
     }, 50);
 });
 </script>
@@ -40,30 +79,28 @@ $effect(() => {
 
 <div class="page">
     <div class="entry-controls">
-        <button onclick={() => breakdownIndex = breakdownIndex === 0 ? translationBreakdownData.length - 1 : breakdownIndex - 1}>Previous</button>
-        <button onclick={() => breakdownIndex = breakdownIndex === translationBreakdownData.length - 1 ? 0 : breakdownIndex + 1}>Next</button>
+        <button disabled={breakdownCount === 0} onclick={previousBreakdown}>Previous</button>
+        <button disabled={breakdownCount === 0} onclick={nextBreakdown}>Next</button>
 
         <div class="entry-number">
-            Entry <sup>{breakdownIndex + 1}</sup>&#x2044;<sub>{translationBreakdownData?.length ?? 0}</sub>
+            Entry <sup>{breakdownIndex + 1}</sup>&#x2044;<sub>{breakdownCount}</sub>
         </div>
         
         {breakdown?.entry}
     </div>
 
-    {#await translationBreakdownPromise}
+    {#if translationBreakdownIsLoading}
         <div>Loading...</div>
-    {:then _}
-        {#if breakdown !== null}
-            <Graph
-                data={breakdown.subtrie}
-                highlightData={lookupBreakdownData}
-            />
-        {:else}
-            <div>No breakdown found for "{data.translationText}"</div>
-        {/if}
-    {:catch error}
-        <div>Failed to load breakdown for "{data.translationText}": {error}</div>
-    {/await}
+    {:else if translationBreakdownError !== null}
+        <div>Failed to load breakdown for "{data.translationText}": {translationBreakdownError}</div>
+    {:else if breakdown !== null}
+        <Graph
+            data={breakdown.subtrie}
+            highlightData={lookupBreakdownData}
+        />
+    {:else}
+        <div>No breakdown found for "{data.translationText}"</div>
+    {/if}
 
     <div class="test-outline-container">
         Test outline

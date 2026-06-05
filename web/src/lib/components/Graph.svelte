@@ -23,6 +23,7 @@
 
     interface GraphData {
         nodes: number[];
+        translation_nodes?: number[];
         transitions: {
             src_node_id: number;
             dst_node_id: number;
@@ -52,7 +53,7 @@
         highlightData?: BreakdownPath[] | null,
     } = $props();
 
-    const translationNodesSet = $derived(new Set(data.translation_nodes));
+    const translationNodesSet = $derived(new Set(data.translation_nodes ?? []));
 
     let svg: SVGSVGElement;
     let width = $state(800);

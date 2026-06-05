@@ -90,15 +90,18 @@
     // clear previous
     d3.select(svgElement).selectAll("*").remove();
 
-    const svg = d3.select(svgElement)
+    const svg = d3.select<SVGSVGElement, unknown>(svgElement)
         .attr("viewBox", [-width / 2, -height / 2, width, height])
         .style("max-width", "100%")
-        .style("height", "auto")
-        .call(d3.zoom().on("zoom", (event) => {
-            g.attr("transform", event.transform);
-        }));
+        .style("height", "auto");
 
     const g = svg.append("g");
+
+    const zoom = d3.zoom<SVGSVGElement, unknown>().on("zoom", (event) => {
+        g.attr("transform", event.transform);
+    });
+
+    svg.call(zoom);
    
     // Arrow marker
     svg.append("defs").selectAll("marker")
@@ -115,7 +118,7 @@
       .attr("fill", "#999")
       .attr("d", "M0,-5L10,0L0,5");
 
-    simulation = d3.forceSimulation(nodes)
+    simulation = d3.forceSimulation(nodes as any)
       .force("link", d3.forceLink(links).id((d: any) => d.id).distance(125))
       .force("charge", d3.forceManyBody().strength(-2400))
       .force("x", d3.forceX())
@@ -163,7 +166,7 @@
           const hasTranslation = data.node_translations[d.id] && data.node_translations[d.id].length > 0;
           return hasTranslation ? "#ff4444" : "#69b3a2";
       })
-      .call(drag(simulation));
+      .call(drag(simulation) as any);
 
     node.append("title")
       .text((d) => {
