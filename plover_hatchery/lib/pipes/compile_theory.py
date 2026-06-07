@@ -55,6 +55,23 @@ class TheoryHooks:
 def compile_theory(
     plugin_generator: Callable[[], Generator[Plugin[Any], Any, None]],
 ):
+    def build_lookup(
+        entry_lines: Iterable[tuple[str, str]] | Callable[[], Iterable[tuple[str, str]]],
+        filename: str="",
+        refresh_cache: bool=False,
+    ):
+        return _compile_theory_lookup_builder(plugin_generator).build_lookup(
+            entry_lines=entry_lines,
+            filename=filename,
+            refresh_cache=refresh_cache,
+        )
+
+    return Theory(build_lookup=build_lookup)
+
+
+def _compile_theory_lookup_builder(
+    plugin_generator: Callable[[], Generator[Plugin[Any], Any, None]],
+):
     from plover_hatchery.Store import store
 
 

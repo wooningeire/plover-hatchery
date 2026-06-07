@@ -129,6 +129,25 @@ def test__compile_theory__breakdown_translation_uses_entry_id_space_after_rebuil
     ] == ["act = act.kt"]
 
 
+def test__compile_theory__keeps_lookup_state_independent_after_later_build():
+    theory = _test_theory()
+
+    first_lookup = theory.build_lookup(
+        entry_lines={"cat": "c.k a.a t.t"}.items(),
+        filename="",
+    )
+    assert first_lookup.lookup(("KAT",)) == "cat"
+
+    second_lookup = theory.build_lookup(
+        entry_lines={"act": "act.kt"}.items(),
+        filename="",
+    )
+
+    assert second_lookup.lookup(("K-T",)) == "act"
+    assert first_lookup.lookup(("KAT",)) == "cat"
+    assert first_lookup.lookup(("K-T",)) is None
+
+
 def test__compile_theory__saves_compiled_trie_cache_as_rust_bytes(tmp_path: Path):
     dictionary_path = tmp_path / "sample.hatchery"
 
