@@ -285,7 +285,13 @@ def _compile_theory_lookup_builder(
         def true_breakdown_lookup(stroke_stenos: tuple[str, ...], translations: list[str]):
             return breakdown_lookup(states, stroke_stenos, translations)
 
-        return TheoryLookup(true_lookup, true_reverse_lookup, true_breakdown_translation, true_breakdown_lookup)
+        return TheoryLookup(
+            true_lookup,
+            true_reverse_lookup,
+            true_breakdown_translation,
+            true_breakdown_lookup,
+            translations,
+        )
         
 
     def process_def(view: DefView):

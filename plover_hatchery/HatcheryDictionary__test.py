@@ -9,12 +9,14 @@ from plover_hatchery.Store import store
 @pytest.fixture(autouse=True)
 def _reset_store():
     old_dictionaries = dict(store.hatchery_dictionaries)
+    old_lookups = dict(store.hatchery_lookups)
     old_breakdown_translation = store.breakdown_translation
     old_breakdown_lookup = store.breakdown_lookup
     old_translations = store.translations
     old_trie = store.trie
 
     store.hatchery_dictionaries.clear()
+    store.hatchery_lookups.clear()
     store.breakdown_translation = None
     store.breakdown_lookup = None
     store.translations = None
@@ -24,6 +26,8 @@ def _reset_store():
 
     store.hatchery_dictionaries.clear()
     store.hatchery_dictionaries.update(old_dictionaries)
+    store.hatchery_lookups.clear()
+    store.hatchery_lookups.update(old_lookups)
     store.breakdown_translation = old_breakdown_translation
     store.breakdown_lookup = old_breakdown_lookup
     store.translations = old_translations

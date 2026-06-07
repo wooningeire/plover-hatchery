@@ -13,6 +13,7 @@ class TheoryLookup:
     reverse_lookup: Callable[[str], list[tuple[str, ...]]]
     breakdown_translation: Callable[[str], str | None]
     breakdown_lookup: Callable[[tuple[str, ...], list[str]], str | None]
+    translations: list[str]
 
 
 @final

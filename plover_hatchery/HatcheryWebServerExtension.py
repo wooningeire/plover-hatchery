@@ -120,12 +120,16 @@ class HatcheryWebServerExtension:
             if compile_result is not None:
                 return compile_result
 
-            if store.breakdown_translation is None:
+            breakdown = store.breakdown_hatchery_translation(translation)
+
+            if breakdown is None and store.breakdown_translation is None:
                 return jsonify({
                     "error": "No compiled Hatchery lookup is available",
                 }), 503
 
-            breakdown = store.breakdown_translation(translation)
+            if breakdown is None:
+                breakdown = store.breakdown_translation(translation)
+
             if breakdown is None:
                 return jsonify({})
 
@@ -137,12 +141,16 @@ class HatcheryWebServerExtension:
             if compile_result is not None:
                 return compile_result
 
-            if store.breakdown_lookup is None or store.translations is None:
+            breakdown = store.breakdown_hatchery_lookup(tuple(outline.split(" ")))
+
+            if breakdown is None and (store.breakdown_lookup is None or store.translations is None):
                 return jsonify({
                     "error": "No compiled Hatchery lookup is available",
                 }), 503
 
-            breakdown = store.breakdown_lookup(tuple(outline.split(" ")), store.translations)
+            if breakdown is None:
+                breakdown = store.breakdown_lookup(tuple(outline.split(" ")), store.translations)
+
             if breakdown is None:
                 return jsonify([])
 

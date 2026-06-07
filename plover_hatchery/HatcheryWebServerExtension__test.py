@@ -31,15 +31,48 @@ class FakeHatcheryDictionary:
         return {"status": "compiled"}
 
 
+class FakeRegisteredLookupDictionary:
+    def __init__(
+        self,
+        *,
+        path: str,
+        translation_breakdowns: dict[str, list[dict[str, Any]]],
+        lookup_breakdowns: dict[tuple[str, ...], list[dict[str, Any]]],
+    ):
+        self.path = path
+        self.translation_breakdowns = translation_breakdowns
+        self.lookup_breakdowns = lookup_breakdowns
+        self.compile_calls = 0
+
+    def invalidate_lookup_cache(self) -> None:
+        pass
+
+    def compile(self, *, refresh_cache: bool=False) -> dict[str, Any]:
+        self.compile_calls += 1
+        store.register_hatchery_lookup(
+            self.path,
+            translations=[self.path],
+            breakdown_translation=lambda translation: json.dumps(
+                self.translation_breakdowns.get(translation, [])
+            ),
+            breakdown_lookup=lambda outline, translations: json.dumps(
+                self.lookup_breakdowns.get(outline, [])
+            ),
+        )
+        return {"status": "compiled"}
+
+
 @pytest.fixture(autouse=True)
 def _reset_store():
     old_dictionaries = dict(store.hatchery_dictionaries)
+    old_lookups = dict(store.hatchery_lookups)
     old_breakdown_translation = store.breakdown_translation
     old_breakdown_lookup = store.breakdown_lookup
     old_translations = store.translations
     old_trie = store.trie
 
     store.hatchery_dictionaries.clear()
+    store.hatchery_lookups.clear()
     store.breakdown_translation = None
     store.breakdown_lookup = None
     store.translations = None
@@ -49,6 +82,8 @@ def _reset_store():
 
     store.hatchery_dictionaries.clear()
     store.hatchery_dictionaries.update(old_dictionaries)
+    store.hatchery_lookups.clear()
+    store.hatchery_lookups.update(old_lookups)
     store.breakdown_translation = old_breakdown_translation
     store.breakdown_lookup = old_breakdown_lookup
     store.translations = old_translations
@@ -182,6 +217,82 @@ def test__breakdown_translation_route__compiles_before_serving_breakdown():
     assert dictionary.compile_calls == 1
     assert dictionary.refresh_cache_calls == [False]
     assert json.loads(response.get_data(as_text=True)) == [{"entry": "cat"}]
+
+
+def test__breakdown_translation_route__checks_all_compiled_hatchery_dictionaries():
+    dragon_dictionary = FakeRegisteredLookupDictionary(
+        path="dragon.hatchery",
+        translation_breakdowns={
+            "amphithere": [
+                {
+                    "entry": "amphithere = a.a!1 m.m ph.f i.i th.th e.eir!2 r.r e.",
+                    "subtrie": {"nodes": [0, 1]},
+                },
+            ],
+        },
+        lookup_breakdowns={},
+    )
+    unilex_dictionary = FakeRegisteredLookupDictionary(
+        path="unilex.hatchery",
+        translation_breakdowns={"amphithere": []},
+        lookup_breakdowns={},
+    )
+    store.register_hatchery_dictionary("dragon.hatchery", dragon_dictionary)
+    store.register_hatchery_dictionary("unilex.hatchery", unilex_dictionary)
+
+    response = _client().get("/api/breakdown_translation/amphithere")
+
+    assert response.status_code == 200
+    assert dragon_dictionary.compile_calls == 1
+    assert unilex_dictionary.compile_calls == 1
+    assert json.loads(response.get_data(as_text=True)) == [
+        {
+            "entry": "amphithere = a.a!1 m.m ph.f i.i th.th e.eir!2 r.r e.",
+            "subtrie": {"nodes": [0, 1]},
+        },
+    ]
+
+
+def test__breakdown_lookup_route__checks_all_compiled_hatchery_dictionaries():
+    dragon_dictionary = FakeRegisteredLookupDictionary(
+        path="dragon.hatchery",
+        translation_breakdowns={},
+        lookup_breakdowns={
+            ("AFPL", "^THER"): [
+                {
+                    "path": [
+                        {
+                            "sophs": ["A"],
+                            "chord": "A",
+                            "nodes": [0, 1],
+                        },
+                    ],
+                },
+            ],
+        },
+    )
+    unilex_dictionary = FakeRegisteredLookupDictionary(
+        path="unilex.hatchery",
+        translation_breakdowns={},
+        lookup_breakdowns={("AFPL", "^THER"): []},
+    )
+    store.register_hatchery_dictionary("dragon.hatchery", dragon_dictionary)
+    store.register_hatchery_dictionary("unilex.hatchery", unilex_dictionary)
+
+    response = _client().get("/api/breakdown_lookup/AFPL%20%5ETHER")
+
+    assert response.status_code == 200
+    assert json.loads(response.get_data(as_text=True)) == [
+        {
+            "path": [
+                {
+                    "sophs": ["A"],
+                    "chord": "A",
+                    "nodes": [0, 1],
+                },
+            ],
+        },
+    ]
 
 
 def test__dictionaries_route__lists_registered_hatchery_dictionaries(tmp_path: Path):

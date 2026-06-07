@@ -17,6 +17,9 @@ class HatcheryDictionary(StenoDictionary):
 
         self.__maybe_lookup: Callable[[tuple[str, ...]], str | None] | None = None
         self.__maybe_reverse_lookup: Callable[[str], list[tuple[str, ...]]] | None = None
+        self.__maybe_breakdown_translation: Callable[[str], str | None] | None = None
+        self.__maybe_breakdown_lookup: Callable[[tuple[str, ...], list[str]], str | None] | None = None
+        self.__maybe_translations: list[str] | None = None
         self.__filepath: str | None = None
         self.__compile_lock = RLock()
 
@@ -24,6 +27,10 @@ class HatcheryDictionary(StenoDictionary):
         self.__filepath = filepath
         self.__maybe_lookup = None
         self.__maybe_reverse_lookup = None
+        self.__maybe_breakdown_translation = None
+        self.__maybe_breakdown_lookup = None
+        self.__maybe_translations = None
+        store.invalidate_hatchery_lookup(filepath)
         store.register_hatchery_dictionary(filepath, self)
         self.compile()
 
@@ -36,7 +43,11 @@ class HatcheryDictionary(StenoDictionary):
                 not refresh_cache
                 and self.__maybe_lookup is not None
                 and self.__maybe_reverse_lookup is not None
+                and self.__maybe_breakdown_translation is not None
+                and self.__maybe_breakdown_lookup is not None
+                and self.__maybe_translations is not None
             ):
+                self.__register_hatchery_lookup()
                 return {
                     "path": self.__filepath,
                     "status": "already_compiled",
@@ -57,9 +68,15 @@ class HatcheryDictionary(StenoDictionary):
 
             self.__maybe_lookup = lookup.lookup
             self.__maybe_reverse_lookup = lookup.reverse_lookup
+            self.__maybe_breakdown_translation = lookup.breakdown_translation
+            self.__maybe_breakdown_lookup = lookup.breakdown_lookup
+            self.__maybe_translations = lookup.translations
+
+            self.__register_hatchery_lookup()
 
             store.breakdown_translation = lookup.breakdown_translation
             store.breakdown_lookup = lookup.breakdown_lookup
+            store.translations = lookup.translations
 
             return {
                 "path": self.__filepath,
@@ -70,6 +87,11 @@ class HatcheryDictionary(StenoDictionary):
         with self.__compile_lock:
             self.__maybe_lookup = None
             self.__maybe_reverse_lookup = None
+            self.__maybe_breakdown_translation = None
+            self.__maybe_breakdown_lookup = None
+            self.__maybe_translations = None
+            if self.__filepath is not None:
+                store.invalidate_hatchery_lookup(self.__filepath)
             
 
     def __getitem__(self, stroke_stenos: tuple[str, ...]) -> str:
@@ -99,4 +121,20 @@ class HatcheryDictionary(StenoDictionary):
     def __ensure_compiled(self):
         if self.__maybe_lookup is None or self.__maybe_reverse_lookup is None:
             self.compile()
+
+    def __register_hatchery_lookup(self):
+        if (
+            self.__filepath is None
+            or self.__maybe_breakdown_translation is None
+            or self.__maybe_breakdown_lookup is None
+            or self.__maybe_translations is None
+        ):
+            return
+
+        store.register_hatchery_lookup(
+            self.__filepath,
+            translations=self.__maybe_translations,
+            breakdown_translation=self.__maybe_breakdown_translation,
+            breakdown_lookup=self.__maybe_breakdown_lookup,
+        )
 
