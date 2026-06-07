@@ -1,41 +1,23 @@
 <script lang="ts">
 import { onMount } from "svelte";
-
-type CompileDictionaryResult = {
-    path?: string;
-    status?: string;
-    [key: string]: unknown;
-};
-
-type CompileResponse = {
-    dictionaries: CompileDictionaryResult[];
-    error?: string;
-};
-
-type DictionarySummary = {
-    path: string;
-    label: string;
-};
-
-type DictionariesResponse = {
-    dictionaries: DictionarySummary[];
-    error?: string;
-};
-
-type SaveEntryResponse = {
-    entry: {
-        key: string;
-        translation: string;
-        definition: string;
-    };
-    compile: CompileDictionaryResult;
-    error?: string;
-};
+import {
+    compilePloverTheory,
+    loadPloverDictionaries,
+    savePloverEntry,
+    type CompileDictionaryResult,
+    type CompileResponse,
+    type DictionarySummary,
+    type SaveEntryResponse,
+} from "$lib/ploverApi";
 
 type CompileState = "idle" | "compiling" | "compiled" | "error";
 type CompileAction = "compile" | "refresh";
+type PloverConnectionState = "checking" | "connected" | "error";
 type DictionaryLoadState = "loading" | "loaded" | "error";
 type SaveState = "idle" | "saving" | "saved" | "error";
+
+let ploverConnectionState = $state<PloverConnectionState>("checking");
+let ploverConnectionError = $state<string | null>(null);
 
 let compileState = $state<CompileState>("idle");
 let compileAction = $state<CompileAction>("compile");
@@ -71,26 +53,6 @@ onMount(() => {
     void loadDictionaries();
 });
 
-function apiBaseUrl() {
-    if (typeof window === "undefined") {
-        return "http://localhost:5325";
-    }
-
-    const host = window.location.hostname === "127.0.0.1"
-        ? "127.0.0.1"
-        : "localhost";
-
-    return `http://${host}:5325`;
-}
-
-async function parseJsonResponse(response: Response) {
-    try {
-        return await response.json();
-    } catch {
-        return null;
-    }
-}
-
 function dictionaryLabel(dictionary: CompileDictionaryResult | DictionarySummary) {
     if ("label" in dictionary && typeof dictionary.label === "string" && dictionary.label !== "") {
         return dictionary.label;
@@ -116,27 +78,27 @@ function breakdownHref(translation: string) {
 }
 
 async function loadDictionaries() {
+    ploverConnectionState = "checking";
+    ploverConnectionError = null;
     dictionaryLoadState = "loading";
     dictionaryLoadError = null;
 
     try {
-        const response = await fetch(`${apiBaseUrl()}/api/dictionaries`);
-        const responseBody = await parseJsonResponse(response) as DictionariesResponse | null;
-
-        if (!response.ok) {
-            throw new Error(responseBody?.error ?? `Dictionary load failed with HTTP ${response.status}`);
-        }
-
-        dictionaries = responseBody?.dictionaries ?? [];
+        const responseBody = await loadPloverDictionaries();
+        dictionaries = responseBody.dictionaries;
         if (!dictionaries.some((dictionary) => dictionary.path === selectedDictionaryPath)) {
             selectedDictionaryPath = dictionaries[0]?.path ?? "";
         }
+        ploverConnectionState = "connected";
         dictionaryLoadState = "loaded";
     } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
         dictionaries = [];
         selectedDictionaryPath = "";
+        ploverConnectionState = "error";
+        ploverConnectionError = message;
         dictionaryLoadState = "error";
-        dictionaryLoadError = error instanceof Error ? error.message : String(error);
+        dictionaryLoadError = message;
     }
 }
 
@@ -147,24 +109,17 @@ async function compileTheory(refreshCache = false) {
     compileError = null;
 
     try {
-        const response = await fetch(`${apiBaseUrl()}/api/compile`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ refreshCache }),
-        });
-        const responseBody = await parseJsonResponse(response) as CompileResponse | null;
-
-        if (!response.ok) {
-            throw new Error(responseBody?.error ?? `Compile failed with HTTP ${response.status}`);
-        }
-
-        compileResult = responseBody ?? { dictionaries: [] };
+        const responseBody = await compilePloverTheory(refreshCache);
+        compileResult = responseBody;
+        ploverConnectionState = "connected";
+        ploverConnectionError = null;
         compileState = "compiled";
     } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        ploverConnectionState = "error";
+        ploverConnectionError = message;
         compileState = "error";
-        compileError = error instanceof Error ? error.message : String(error);
+        compileError = message;
     }
 }
 
@@ -178,33 +133,23 @@ async function saveEntry() {
     saveError = null;
 
     try {
-        const response = await fetch(`${apiBaseUrl()}/api/entries`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                dictionaryPath: selectedDictionaryPath,
-                translation: entryTranslation,
-                definition: entryDefinition,
-            }),
-        });
-        const responseBody = await parseJsonResponse(response) as SaveEntryResponse | null;
-
-        if (!response.ok) {
-            throw new Error(responseBody?.error ?? `Save failed with HTTP ${response.status}`);
-        }
-        if (responseBody === null) {
-            throw new Error("Save response was empty");
-        }
-
+        const responseBody = await savePloverEntry(
+            selectedDictionaryPath,
+            entryTranslation,
+            entryDefinition,
+        );
         saveResult = responseBody;
         saveState = "saved";
         compileResult = { dictionaries: [responseBody.compile] };
+        ploverConnectionState = "connected";
+        ploverConnectionError = null;
         compileState = "compiled";
     } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        ploverConnectionState = "error";
+        ploverConnectionError = message;
         saveState = "error";
-        saveError = error instanceof Error ? error.message : String(error);
+        saveError = message;
     }
 }
 </script>
@@ -236,6 +181,24 @@ async function saveEntry() {
             </button>
         </div>
     </header>
+
+    <section
+        class="plover-status"
+        class:is-success={ploverConnectionState === "connected"}
+        class:is-error={ploverConnectionState === "error"}
+        aria-live="polite"
+    >
+        {#if ploverConnectionState === "checking"}
+            <span class="spinner"></span>
+            <span>Checking Plover connection</span>
+        {:else if ploverConnectionState === "connected"}
+            <span class="status-dot"></span>
+            <span>Plover connection ready</span>
+        {:else}
+            <span class="status-dot"></span>
+            <span>{ploverConnectionError ?? "Could not connect to Plover"}</span>
+        {/if}
+    </section>
 
     <section
         class="status-strip"
@@ -442,6 +405,7 @@ h2 {
     opacity: 0.74;
 }
 
+.plover-status,
 .status-strip,
 .entry-message {
     display: flex;
@@ -456,12 +420,14 @@ h2 {
     font-size: 0.95rem;
 }
 
+.plover-status.is-success,
 .status-strip.is-success,
 .entry-message.is-success {
     background: #e7f5ec;
     color: #195e3d;
 }
 
+.plover-status.is-error,
 .status-strip.is-error,
 .entry-message.is-error {
     background: #fff0ed;

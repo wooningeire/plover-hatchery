@@ -16,6 +16,7 @@ from .lib.dictionary.write_entries import (
 
 LOCAL_WEB_HOSTS = {"localhost", "127.0.0.1", "::1"}
 HATCHERY_WEB_HOSTS = {"vaie.art"}
+HATCHERY_SERVICE_ID = "plover-hatchery"
 
 
 def is_allowed_origin(origin: str):
@@ -61,6 +62,13 @@ class HatcheryWebServerExtension:
             response.headers.add("Access-Control-Allow-Methods", "GET,PATCH,PUT,POST,DELETE,OPTIONS")
             response.headers.add("Access-Control-Allow-Headers", "Content-Type")
             return response
+
+        @app.route("/api/status")
+        def status_route():
+            return jsonify({
+                "service": HATCHERY_SERVICE_ID,
+                "ok": True,
+            })
 
         @app.route("/api/compile", methods=["POST"])
         def compile_route():

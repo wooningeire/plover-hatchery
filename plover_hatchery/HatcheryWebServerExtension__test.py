@@ -80,6 +80,16 @@ value = "untouched"
 """.strip()
 
 
+def test__status_route__identifies_hatchery_api():
+    response = _client().get("/api/status")
+
+    assert response.status_code == 200
+    assert response.get_json() == {
+        "service": "plover-hatchery",
+        "ok": True,
+    }
+
+
 def test__compile_route__compiles_registered_hatchery_dictionaries():
     dictionary = FakeHatcheryDictionary()
     store.register_hatchery_dictionary("fake.hatchery", dictionary)

@@ -1,0 +1,273 @@
+const PLOVER_API_PORT = 5325;
+const HATCHERY_SERVICE_ID = "plover-hatchery";
+
+
+export type CompileDictionaryResult = {
+    path?: string,
+    status?: string,
+    [key: string]: unknown,
+};
+
+export type CompileResponse = {
+    dictionaries: CompileDictionaryResult[],
+    error?: string,
+};
+
+export type DictionarySummary = {
+    path: string,
+    label: string,
+};
+
+export type DictionariesResponse = {
+    dictionaries: DictionarySummary[],
+    error?: string,
+};
+
+export type SaveEntryResponse = {
+    entry: {
+        key: string,
+        translation: string,
+        definition: string,
+    },
+    compile: CompileDictionaryResult,
+    error?: string,
+};
+
+export type TranslationBreakdown = {
+    entry: string,
+    subtrie: any,
+};
+
+export type PloverApiErrorKind = "connection" | "wrong-server" | "http";
+
+type PloverApiErrorOptions = {
+    kind: PloverApiErrorKind,
+    message: string,
+    status?: number | null,
+};
+
+type PloverStatusResponse = {
+    service: string,
+    ok: boolean,
+};
+
+
+export class PloverApiError extends Error {
+    readonly kind: PloverApiErrorKind;
+    readonly status: number | null;
+
+    constructor(options: PloverApiErrorOptions) {
+        super(options.message);
+        this.name = "PloverApiError";
+        this.kind = options.kind;
+        this.status = options.status ?? null;
+    }
+}
+
+
+export const ploverApiBaseUrl = () => {
+    if (typeof window === "undefined") {
+        return `http://localhost:${PLOVER_API_PORT}`;
+    }
+
+    const host = window.location.hostname === "127.0.0.1"
+        ? "127.0.0.1"
+        : "localhost";
+
+    return `http://${host}:${PLOVER_API_PORT}`;
+};
+
+export const checkPloverApi = async () => {
+    const baseUrl = ploverApiBaseUrl();
+
+    try {
+        const responseBody = await fetchPloverJson<unknown>("/api/status");
+
+        if (!isPloverStatusResponse(responseBody)) {
+            throw createWrongServerError(baseUrl);
+        }
+    } catch (error) {
+        if (error instanceof PloverApiError && error.kind === "http") {
+            throw createWrongServerError(baseUrl);
+        }
+
+        throw error;
+    }
+};
+
+export const loadPloverDictionaries = async () => {
+    await checkPloverApi();
+
+    const responseBody = await fetchPloverJson<unknown>("/api/dictionaries");
+    if (!isDictionariesResponse(responseBody)) {
+        throw createWrongServerError(ploverApiBaseUrl());
+    }
+
+    return responseBody;
+};
+
+export const compilePloverTheory = async (refreshCache: boolean) => {
+    const responseBody = await fetchPloverJson<unknown>("/api/compile", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ refreshCache }),
+    });
+
+    if (!isCompileResponse(responseBody)) {
+        throw createWrongServerError(ploverApiBaseUrl());
+    }
+
+    return responseBody;
+};
+
+export const savePloverEntry = async (
+    dictionaryPath: string,
+    translation: string,
+    definition: string,
+) => {
+    const responseBody = await fetchPloverJson<unknown>("/api/entries", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            dictionaryPath,
+            translation,
+            definition,
+        }),
+    });
+
+    if (!isSaveEntryResponse(responseBody)) {
+        throw createWrongServerError(ploverApiBaseUrl());
+    }
+
+    return responseBody;
+};
+
+export const loadTranslationBreakdown = async (translationText: string) => {
+    await checkPloverApi();
+
+    const responseBody = await fetchPloverJson<unknown>(
+        `/api/breakdown_translation/${encodeURIComponent(translationText)}`,
+    );
+
+    return Array.isArray(responseBody)
+        ? responseBody.filter(isTranslationBreakdown)
+        : [];
+};
+
+export const loadLookupBreakdown = async (outline: string) => {
+    const responseBody = await fetchPloverJson<unknown>(
+        `/api/breakdown_lookup/${encodeURIComponent(outline.replaceAll("/", " "))}`,
+    );
+
+    return Array.isArray(responseBody) ? responseBody as any[] : [];
+};
+
+const fetchPloverJson = async <T>(path: string, init?: RequestInit): Promise<T> => {
+    const baseUrl = ploverApiBaseUrl();
+    const response = await fetchPloverResponse(path, init, baseUrl);
+    const responseBody = await parseJsonResponse(response, baseUrl);
+
+    if (!response.ok) {
+        throw new PloverApiError({
+            kind: "http",
+            message: getResponseError(responseBody)
+                ?? `Hatchery request failed with HTTP ${response.status}`,
+            status: response.status,
+        });
+    }
+
+    return responseBody as T;
+};
+
+const fetchPloverResponse = async (
+    path: string,
+    init: RequestInit | undefined,
+    baseUrl: string,
+) => {
+    try {
+        return await fetch(`${baseUrl}${path}`, init);
+    } catch {
+        throw new PloverApiError({
+            kind: "connection",
+            message: `Could not reach the Hatchery API at ${baseUrl}. Start Plover with the Hatchery web server extension enabled. If Plover is running, another app may be using port ${PLOVER_API_PORT}.`,
+        });
+    }
+};
+
+const parseJsonResponse = async (response: Response, baseUrl: string) => {
+    const responseText = await response.text();
+    if (responseText.trim() === "") {
+        return null;
+    }
+
+    try {
+        return JSON.parse(responseText) as unknown;
+    } catch {
+        throw createWrongServerError(baseUrl);
+    }
+};
+
+const createWrongServerError = (baseUrl: string) => new PloverApiError({
+    kind: "wrong-server",
+    message: `Something responded at ${baseUrl}, but it is not the Hatchery API. Close the other app using port ${PLOVER_API_PORT}, then restart Plover's Hatchery web server extension.`,
+});
+
+const getResponseError = (responseBody: unknown) => {
+    if (!isRecord(responseBody) || typeof responseBody.error !== "string") {
+        return null;
+    }
+
+    return responseBody.error;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    typeof value === "object"
+    && value !== null
+);
+
+const isPloverStatusResponse = (value: unknown): value is PloverStatusResponse => (
+    isRecord(value)
+    && value.service === HATCHERY_SERVICE_ID
+    && value.ok === true
+);
+
+const isCompileDictionaryResult = (value: unknown): value is CompileDictionaryResult => (
+    isRecord(value)
+);
+
+const isCompileResponse = (value: unknown): value is CompileResponse => (
+    isRecord(value)
+    && Array.isArray(value.dictionaries)
+    && value.dictionaries.every(isCompileDictionaryResult)
+);
+
+const isDictionarySummary = (value: unknown): value is DictionarySummary => (
+    isRecord(value)
+    && typeof value.path === "string"
+    && typeof value.label === "string"
+);
+
+const isDictionariesResponse = (value: unknown): value is DictionariesResponse => (
+    isRecord(value)
+    && Array.isArray(value.dictionaries)
+    && value.dictionaries.every(isDictionarySummary)
+);
+
+const isSaveEntryResponse = (value: unknown): value is SaveEntryResponse => (
+    isRecord(value)
+    && isRecord(value.entry)
+    && typeof value.entry.key === "string"
+    && typeof value.entry.translation === "string"
+    && typeof value.entry.definition === "string"
+    && isCompileDictionaryResult(value.compile)
+);
+
+const isTranslationBreakdown = (value: unknown): value is TranslationBreakdown => (
+    isRecord(value)
+    && typeof value.entry === "string"
+    && "subtrie" in value
+);

@@ -1,14 +1,14 @@
 <script lang="ts">
 import { onMount } from "svelte";
 import Graph from "$lib/components/Graph.svelte";
+import {
+    loadLookupBreakdown,
+    loadTranslationBreakdown,
+    type TranslationBreakdown,
+} from "$lib/ploverApi";
 
 type PageData = {
     translationText: string;
-};
-
-type TranslationBreakdown = {
-    entry: string;
-    subtrie: any;
 };
 
 let {
@@ -27,16 +27,14 @@ let breakdownCount = $derived(translationBreakdownData.length);
 
 let testOutline = $state("");
 let lookupBreakdownData = $state<any[] | null>(null);
-let timeoutId = 0;
+let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
 onMount(async () => {
     translationBreakdownIsLoading = true;
     translationBreakdownError = null;
 
     try {
-        const response = await fetch(`http://localhost:5325/api/breakdown_translation/${encodeURIComponent(data.translationText)}`);
-        const responseData = await response.json();
-        translationBreakdownData = Array.isArray(responseData) ? responseData : [];
+        translationBreakdownData = await loadTranslationBreakdown(data.translationText);
         breakdownIndex = 0;
     } catch (error) {
         translationBreakdownError = error instanceof Error ? error.message : String(error);
@@ -67,12 +65,24 @@ $effect(() => {
         return;
     }
 
-    clearTimeout(timeoutId);
+    if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+    }
 
     timeoutId = setTimeout(async () => {
-        const lookupBreakdownResponse = await fetch(`http://localhost:5325/api/breakdown_lookup/${encodeURIComponent(testOutline.replaceAll("/", " "))}`);
-        lookupBreakdownData = await lookupBreakdownResponse.json();
+        try {
+            lookupBreakdownData = await loadLookupBreakdown(testOutline);
+        } catch (error) {
+            lookupBreakdownData = null;
+            translationBreakdownError = error instanceof Error ? error.message : String(error);
+        }
     }, 50);
+
+    return () => {
+        if (timeoutId !== null) {
+            clearTimeout(timeoutId);
+        }
+    };
 });
 </script>
 
