@@ -117,7 +117,7 @@ def test__compile_route__refreshes_cache_when_requested():
     "http://127.0.0.1:5177",
     "http://[::1]",
     "http://[::1]:5178",
-    "https://hatchery.vaie.art",
+    "https://vaie.art",
 ])
 def test__is_allowed_origin__allows_localhost_and_hatchery(origin: str):
     assert is_allowed_origin(origin)
@@ -129,9 +129,8 @@ def test__is_allowed_origin__allows_localhost_and_hatchery(origin: str):
     "http://localhost:65536",
     "http://localhost:5173/path",
     "http://localhost.evil.test:5173",
-    "http://hatchery.vaie.art",
-    "https://vaie.art",
-    "https://evil.hatchery.vaie.art",
+    "http://vaie.art",
+    "https://evil.vaie.art",
 ])
 def test__is_allowed_origin__rejects_other_origins(origin: str):
     assert not is_allowed_origin(origin)
@@ -140,7 +139,7 @@ def test__is_allowed_origin__rejects_other_origins(origin: str):
 @pytest.mark.parametrize("origin", [
     "http://localhost:5173",
     "http://127.0.0.1:5177",
-    "https://hatchery.vaie.art",
+    "https://vaie.art",
 ])
 def test__web_server__allows_web_ui_origins(origin: str):
     response = _client().post("/api/compile", headers={"Origin": origin})

@@ -15,7 +15,7 @@ from .lib.dictionary.write_entries import (
 
 
 LOCAL_WEB_HOSTS = {"localhost", "127.0.0.1", "::1"}
-HATCHERY_WEB_HOSTS = {"hatchery.vaie.art"}
+HATCHERY_WEB_HOSTS = {"vaie.art"}
 
 
 def is_allowed_origin(origin: str):
