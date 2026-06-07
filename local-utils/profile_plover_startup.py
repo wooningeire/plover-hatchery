@@ -1,5 +1,4 @@
 import argparse
-import json
 import re
 import shutil
 import subprocess
@@ -9,9 +8,20 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from _shared import DEFAULT_PLOVER_PATH_STR
+from _shared import (
+    DEFAULT_PLOVER_EXIT_TIMEOUT,
+    DEFAULT_PLOVER_INSTALL_SETTLE_TIME,
+    DEFAULT_PLOVER_INSTALL_TIMEOUT,
+    DEFAULT_PLOVER_PATH,
+    DEFAULT_PLOVER_QUIT_TIMEOUT,
+    DEFAULT_POLL_INTERVAL,
+    list_candidate_processes,
+    quit_plover,
+    stop_process,
+    wait_for_process_exit,
+)
 
-ROOT_PATH = Path(__file__).parent.parent
+ROOT_PATH = Path(__file__).parent.parent.resolve()
 LOADED_RE = re.compile(r"loaded \d+ dictionaries in")
 
 
@@ -29,7 +39,6 @@ def _main(args: argparse.Namespace) -> None:
     py_spy_stderr_path = base_path.with_suffix(".py-spy.stderr.log")
 
     py_spy_path = _resolve_py_spy(args.py_spy)
-    plover_console_path = args.plover_path / "plover_console.exe"
     if args.maturin_dev:
         _run_maturin_dev(args, base_path)
 
@@ -41,6 +50,10 @@ def _main(args: argparse.Namespace) -> None:
             str(ROOT_PATH / "local-utils" / "plover_debug.py"),
             "--plover-path",
             str(args.plover_path),
+            "--plover-install-timeout",
+            str(args.plover_install_timeout),
+            "--plover-install-settle-time",
+            str(args.plover_install_settle_time),
         ]
         if args.reinstall:
             launcher_cmd.append("--reinstall")
@@ -79,12 +92,22 @@ def _main(args: argparse.Namespace) -> None:
                 else:
                     print("WARNING: did not observe dictionary-loaded marker before timeout")
 
-                _wait_or_stop(py_spy, args.py_spy_wait_timeout, "py-spy")
+                if args.keep_plover and args.duration is None:
+                    raise RuntimeError(
+                        "--keep-plover requires --duration because py-spy otherwise records until Plover exits."
+                    )
+
+                if not args.keep_plover:
+                    _quit_plover(args.plover_path, base_path, args)
+                    if not wait_for_process_exit(target_pid, args.plover_exit_timeout, args.poll_interval):
+                        print(f"WARNING: stopping Plover PID {target_pid} after exit timeout")
+                        stop_process(target_pid)
+
+                _wait_or_stop(py_spy, args.py_spy_exit_timeout, "py-spy")
         finally:
             if not args.keep_plover:
-                _quit_plover(plover_console_path, args.plover_path, base_path)
                 if target_pid is not None:
-                    _stop_process(target_pid)
+                    stop_process(target_pid)
             _wait_or_stop(launcher, args.launcher_wait_timeout, "plover_debug.py")
 
     if not report_path.exists():
@@ -110,40 +133,7 @@ def _resolve_py_spy(py_spy_arg: str | None) -> Path:
 
 
 def _list_candidate_processes() -> list[dict[str, Any]]:
-    if sys.platform != "win32":
-        raise RuntimeError("This profiler currently uses Windows process inspection.")
-
-    command = """
-$ErrorActionPreference = 'Stop'
-Get-CimInstance Win32_Process |
-  Where-Object { $_.Name -in @('python.exe', 'pythonw.exe', 'plover.exe', 'plover_console.exe') } |
-  Select-Object ProcessId, Name, CommandLine |
-  ConvertTo-Json -Compress
-"""
-    result = subprocess.run(
-        ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", command],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    if not result.stdout.strip():
-        return []
-
-    raw_processes = json.loads(result.stdout)
-    if isinstance(raw_processes, dict):
-        raw_processes = [raw_processes]
-
-    processes: list[dict[str, Any]] = []
-    for process in raw_processes:
-        command_line = process.get("CommandLine") or ""
-        processes.append(
-            {
-                "pid": int(process["ProcessId"]),
-                "name": process.get("Name") or "",
-                "command_line": command_line,
-            }
-        )
-    return processes
+    return list_candidate_processes()
 
 
 def _wait_for_plover_process(existing_pids: set[int], timeout: float, poll_interval: float) -> dict[str, Any]:
@@ -183,9 +173,9 @@ def _build_py_spy_command(py_spy_path: Path, target_pid: int, report_path: Path,
         args.format,
         "--rate",
         str(args.rate),
-        "--duration",
-        str(args.duration),
     ]
+    if args.duration is not None:
+        command.extend(["--duration", str(args.duration)])
     if args.threads:
         command.append("--threads")
     if args.native:
@@ -205,6 +195,10 @@ def _run_maturin_dev(args: argparse.Namespace, base_path: Path) -> None:
         str(ROOT_PATH / "local-utils" / "maturin_dev.py"),
         "--plover-path",
         str(args.plover_path),
+        "--plover-install-timeout",
+        str(args.plover_install_timeout),
+        "--plover-install-settle-time",
+        str(args.plover_install_settle_time),
     ]
     print("Running maturin_dev.py before profiling")
     with stdout_path.open("wb") as stdout_file, stderr_path.open("wb") as stderr_file:
@@ -236,73 +230,63 @@ def _latest_loaded_line(log_path: Path) -> str | None:
     return None
 
 
-def _quit_plover(plover_console_path: Path, plover_path: Path, base_path: Path) -> None:
-    if not plover_console_path.exists():
-        print(f"WARNING: cannot quit Plover; missing {plover_console_path}")
-        return
-
-    stdout_path = base_path.with_suffix(".quit.stdout.log")
-    stderr_path = base_path.with_suffix(".quit.stderr.log")
-    with stdout_path.open("wb") as stdout_file, stderr_path.open("wb") as stderr_file:
-        try:
-            subprocess.run(
-                [str(plover_console_path), "-s", "plover_send_command", "quit"],
-                cwd=plover_path,
-                stdout=stdout_file,
-                stderr=stderr_file,
-                timeout=20,
-                check=False,
-            )
-        except subprocess.TimeoutExpired:
-            print("WARNING: timed out while sending Plover quit command")
-
-
 def _wait_or_stop(process: subprocess.Popen[bytes], timeout: float, label: str) -> None:
     try:
         process.wait(timeout=timeout)
+        return
     except subprocess.TimeoutExpired:
         print(f"WARNING: stopping {label} after timeout")
+
+    process.terminate()
+    try:
+        process.wait(timeout=10)
+        return
+    except subprocess.TimeoutExpired:
         process.kill()
         process.wait(timeout=10)
 
 
-def _stop_process(pid: int) -> None:
-    if sys.platform == "win32":
-        subprocess.run(
-            [
-                "powershell.exe",
-                "-NoProfile",
-                "-NonInteractive",
-                "-Command",
-                f"Stop-Process -Id {pid} -Force -ErrorAction SilentlyContinue",
-            ],
-            check=False,
-            capture_output=True,
-        )
-        return
-
-    try:
-        import os
-        import signal
-
-        os.kill(pid, signal.SIGTERM)
-    except OSError:
-        pass
+def _quit_plover(plover_path: Path, base_path: Path, args: argparse.Namespace) -> None:
+    stdout_path = base_path.with_suffix(".quit.stdout.log")
+    stderr_path = base_path.with_suffix(".quit.stderr.log")
+    with stdout_path.open("wb") as stdout_file, stderr_path.open("wb") as stderr_file:
+        try:
+            quit_plover(
+                plover_path,
+                stdout=stdout_file,
+                stderr=stderr_file,
+                command_timeout=args.plover_quit_timeout,
+                exit_timeout=args.plover_exit_timeout,
+                poll_interval=args.poll_interval,
+            )
+        except subprocess.TimeoutExpired:
+            print("WARNING: timed out while sending Plover quit command")
+        except TimeoutError as error:
+            print(f"WARNING: {error}")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Profile Plover startup through plover_debug.py with py-spy.")
-    _ = parser.add_argument("--plover-path", type=Path, default=Path(DEFAULT_PLOVER_PATH_STR))
+    _ = parser.add_argument("--plover-path", type=Path, default=DEFAULT_PLOVER_PATH)
     _ = parser.add_argument("--out-path", type=Path, default=ROOT_PATH / "local-utils/py-spy-out")
     _ = parser.add_argument("--prefix", default="plover-startup")
     _ = parser.add_argument("--py-spy")
     _ = parser.add_argument("--rate", type=int, default=5)
-    _ = parser.add_argument("--duration", type=int, default=260)
+    _ = parser.add_argument(
+        "--duration",
+        type=float,
+        default=None,
+        help="Optional py-spy duration. By default, recording ends when the Plover process exits.",
+    )
     _ = parser.add_argument("--loaded-timeout", type=float, default=330)
     _ = parser.add_argument("--attach-timeout", type=float, default=30)
-    _ = parser.add_argument("--py-spy-wait-timeout", type=float, default=330)
+    _ = parser.add_argument("--py-spy-exit-timeout", type=float, default=30)
+    _ = parser.add_argument("--plover-quit-timeout", type=float, default=DEFAULT_PLOVER_QUIT_TIMEOUT)
+    _ = parser.add_argument("--plover-exit-timeout", type=float, default=DEFAULT_PLOVER_EXIT_TIMEOUT)
+    _ = parser.add_argument("--plover-install-timeout", type=float, default=DEFAULT_PLOVER_INSTALL_TIMEOUT)
+    _ = parser.add_argument("--plover-install-settle-time", type=float, default=DEFAULT_PLOVER_INSTALL_SETTLE_TIME)
     _ = parser.add_argument("--launcher-wait-timeout", type=float, default=20)
-    _ = parser.add_argument("--poll-interval", type=float, default=0.1)
+    _ = parser.add_argument("--poll-interval", type=float, default=DEFAULT_POLL_INTERVAL)
     _ = parser.add_argument("--format", choices=["flamegraph", "raw", "speedscope", "chrometrace"], default="flamegraph")
     _ = parser.add_argument("--format-extension", default="svg")
     _ = parser.add_argument("--no-threads", dest="threads", action="store_false")

@@ -1,40 +1,48 @@
 import argparse
-import os
 from pathlib import Path
-import time
 
-from _shared import DEFAULT_PLOVER_PATH_STR
+from _shared import (
+    DEFAULT_PLOVER_EXIT_TIMEOUT,
+    DEFAULT_PLOVER_INSTALL_SETTLE_TIME,
+    DEFAULT_PLOVER_INSTALL_TIMEOUT,
+    DEFAULT_PLOVER_PATH,
+    quit_plover,
+    run_plover_plugin_install,
+    run_plover_console,
+)
 from maturin_dev import _main as _maturin_dev_main
 
-def _main(args: argparse.Namespace):
-    os.chdir(args.plover_path)
 
-    exit_code = os.system(fr"plover_console -s plover_send_command quit")
-    if exit_code != 0:
-        raise Exception
-    
-    time.sleep(2)
+def _main(args: argparse.Namespace) -> None:
+    quit_plover(args.plover_path, exit_timeout=args.plover_exit_timeout)
 
     if args.maturin_dev:
         _maturin_dev_main(args, ["--release"])
 
     if args.reinstall:
-        exit_code = os.system(fr"""plover_console -s plover_plugins install -e {Path(__file__).parent.parent}""")
-        if exit_code != 0:
-            raise Exception
+        run_plover_plugin_install(
+            args.plover_path,
+            ["-e", Path(__file__).parent.parent.resolve()],
+            install_timeout=args.plover_install_timeout,
+            install_settle_time=args.plover_install_settle_time,
+        )
 
-        time.sleep(30)
-
-    exit_code = os.system(fr"""plover_console -l debug""")
-    if exit_code != 0:
-        raise Exception
+    run_plover_console(args.plover_path, ["-l", "debug"])
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    _ = parser.add_argument("--plover-path", help="Path to the directory that directly contains Plover's python_console binary", default=DEFAULT_PLOVER_PATH_STR)
+    _ = parser.add_argument(
+        "--plover-path",
+        type=Path,
+        help="Path to the directory that directly contains Plover's python_console binary",
+        default=DEFAULT_PLOVER_PATH,
+    )
+    _ = parser.add_argument("--plover-exit-timeout", type=float, default=DEFAULT_PLOVER_EXIT_TIMEOUT)
+    _ = parser.add_argument("--plover-install-timeout", type=float, default=DEFAULT_PLOVER_INSTALL_TIMEOUT)
+    _ = parser.add_argument("--plover-install-settle-time", type=float, default=DEFAULT_PLOVER_INSTALL_SETTLE_TIME)
     _ = parser.add_argument("--maturin-dev", "-m", action="store_true", help="Run maturin_dev.py before reinstalling the plugin")
     _ = parser.add_argument("--reinstall", "-r", action="store_true", help="Reinstall the plugin")
     args = parser.parse_args()
-    
+
     _main(args)
