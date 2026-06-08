@@ -1,4 +1,6 @@
-﻿from plover.steno import Stroke
+import json
+
+from plover.steno import Stroke
 from plover_hatchery_lib_rs import TheorySymbol, TriePath
 from plover_hatchery.lib.pipes.Plugin import define_plugin
 from plover_hatchery.lib.pipes.compile_theory import compile_theory
@@ -54,6 +56,42 @@ def test__theory_symbol_trie__chord_search_does_not_bleed_across_strokes():
 
     assert lookup.lookup(("K-T",)) == "act"
     assert lookup.lookup(("K", "T")) is None
+
+
+def test__theory_symbol_trie__breakdown_lookup_returns_debug_choice_data():
+    lookup = _build_lookup(
+        {"cat": "c.k a.a t.t"},
+        {"k": "K", "a": "A", "t": "-T"},
+    )
+
+    breakdowns = json.loads(lookup.breakdown_lookup(("KAT",), lookup.translations))
+
+    assert len(breakdowns) == 1
+    assert breakdowns[0]["translation"] == "cat"
+    assert breakdowns[0]["entry_id"] == 0
+    assert breakdowns[0]["translation_id"] == 0
+    assert breakdowns[0]["cost"] == 0
+
+    steps = breakdowns[0]["path"]
+    assert [
+        (step["chord"], step["theory_symbols"], step["starts_new_stroke"])
+        for step in steps
+    ] == [
+        ("K", ["k"], True),
+        ("A", ["a"], False),
+        ("-T", ["t"], False),
+    ]
+    assert all(len(step["nodes"]) == len(step["transitions"]) + 1 for step in steps)
+    assert [
+        transition["key"]
+        for step in steps
+        for transition in step["transitions"]
+    ] == ["k", "a", "t"]
+    assert [
+        transition["cost"]
+        for step in steps
+        for transition in step["transitions"]
+    ] == [0, 0, 0]
 
 
 def test__chord_to_theory_symbol_search_result__stores_theory_symbols_and_stroke():

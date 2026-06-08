@@ -24,8 +24,13 @@
         },
         {
             href: `${base}/translation`,
-            label: "Lookup",
+            label: "Lookup by translation",
             matches: ["/translation"],
+        },
+        {
+            href: `${base}/outline`,
+            label: "Lookup by outline",
+            matches: ["/outline"],
         },
         {
             href: `${base}/theory`,
@@ -134,6 +139,7 @@
         border-radius: 0.375rem;
         color: oklch(0.34 0.032 165);
         font-weight: 740;
+        line-height: 1.15;
         text-decoration: none;
     }
 
@@ -175,13 +181,13 @@
 
         .nav-tabs {
             display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
+            grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 0.4rem;
         }
 
         .nav-tabs a {
             justify-content: center;
-            min-height: 2.25rem;
+            min-height: 2.5rem;
             padding-inline: 0.4rem;
             text-align: center;
         }

@@ -2,6 +2,7 @@
     import { onMount, untrack } from "svelte";
     import * as d3 from "d3";
     import FlagControls, { type FlagSettings } from "$lib/components/FlagControls.svelte";
+    import type { LookupBreakdown } from "$lib/ploverApi";
     import { linkPathSegment, linkPathYMax } from "./graph";
 
     type NodeData = {
@@ -35,22 +36,12 @@
         }[],
     };
 
-    type BreakdownPathStep = {
-        theory_symbols: string[],
-        chord: string,
-        nodes: number[],
-    };
-
-    type BreakdownPath = {
-        path: BreakdownPathStep[],
-    };
-
     let {
         data,
         highlightData = null,
     }: {
         data: GraphData,
-        highlightData?: BreakdownPath[] | null,
+        highlightData?: LookupBreakdown[] | null,
     } = $props();
 
     const NODE_RADIUS = 25;
@@ -371,7 +362,7 @@
     }
 
     function buildHighlights(
-        paths: BreakdownPath[] | null,
+        paths: LookupBreakdown[] | null,
         nodeMap: Map<number, NodeData>,
     ) {
         const nodes = new Set<number>();

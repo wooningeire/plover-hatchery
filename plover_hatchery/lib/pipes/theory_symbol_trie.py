@@ -440,7 +440,7 @@ def theory_symbol_trie(
 
 
         @iife
-        def get_processed_lookup_results():
+        def get_processed_lookup_results_with_paths():
             """Manages lookup results after they have been found by a lookup session."""
 
 
@@ -455,7 +455,7 @@ def theory_symbol_trie(
                 return tuple(phonemes)
 
 
-            def get_processed_lookup_results(outline: tuple[Stroke, ...], states: dict[int, Any]):
+            def get_processed_lookup_results_with_paths(outline: tuple[Stroke, ...], states: dict[int, Any]):
                 for final_path in TheorySymbolsToTranslationPathFinder.get_paths_from_outline(outline, states):
                     for lookup_result in trie.get_translations_and_costs((final_path.trie_path,)):
                         new_associations = tuple(
@@ -469,10 +469,15 @@ def theory_symbol_trie(
                             for association in final_path.theory_symbols_and_chords_used
                         )
 
-                        yield lookup_result, new_associations
+                        yield final_path, lookup_result, new_associations
 
 
-            return get_processed_lookup_results
+            return get_processed_lookup_results_with_paths
+
+
+        def get_processed_lookup_results(outline: tuple[Stroke, ...], states: dict[int, Any]):
+            for _final_path, lookup_result, associations in get_processed_lookup_results_with_paths(outline, states):
+                yield lookup_result, associations
 
 
 
@@ -582,8 +587,26 @@ def theory_symbol_trie(
                     return None
             
             
-            summaries: list[dict[str, Any]] = []
-            for final_path in TheorySymbolsToTranslationPathFinder.get_paths_from_outline(outline, states):
+            def transition_cost_or_none(transition: TransitionKey, translation_id: int):
+                try:
+                    return trie.get_transition_cost(transition, translation_id)
+                except KeyError:
+                    return None
+
+            def summarize_transition(
+                transition: TransitionKey,
+                *,
+                translation_id: int,
+                dst_node_id: int,
+            ):
+                return {
+                    "key": api.key_id_manager.get_key_str(transition.key_id),
+                    "cost": transition_cost_or_none(transition, translation_id),
+                    "src_node_id": transition.src_node_index,
+                    "dst_node_id": dst_node_id,
+                }
+
+            def nodes_by_association_for_final_path(final_path: TheorySymbolsToTranslationSearchPath):
                 nodes_by_association: list[Sequence[int]] = []
 
                 for i, association in enumerate(final_path.theory_symbols_and_chords_used):
@@ -597,18 +620,79 @@ def theory_symbol_trie(
                         next_node,
                     ))
 
+                return nodes_by_association
 
-                summaries.append({
+            def summarize_association(
+                association: TheorySymbolChordAssociation,
+                *,
+                nodes: Sequence[int],
+                translation_id: int,
+            ):
+                return {
+                    "theory_symbols": [
+                        theory_symbol.value
+                        for theory_symbol in association.theory_symbols
+                    ],
+                    "chord": association.chord.rtfcre,
+                    "starts_new_stroke": association.chord_starts_new_stroke,
+                    "nodes": nodes,
+                    "transitions": [
+                        summarize_transition(
+                            transition,
+                            translation_id=translation_id,
+                            dst_node_id=nodes[i + 1],
+                        )
+                        for i, transition in enumerate(association.transitions)
+                    ],
+                }
+
+            def summarize_lookup_result(
+                final_path: TheorySymbolsToTranslationSearchPath,
+                result: LookupResultWithAssociations,
+            ):
+                translation_id = result.lookup_result.translation_id
+                nodes_by_association = nodes_by_association_for_final_path(final_path)
+
+                return {
+                    "translation": translations[translation_id],
+                    "entry_id": translation_id,
+                    "translation_id": translation_id,
+                    "cost": result.lookup_result.cost,
                     "path": [
-                        {
-                            "theory_symbols": [theory_symbol.value for theory_symbol in association.theory_symbols],
-                            "chord": association.chord.rtfcre,
-                            "nodes": nodes_by_association[i],
-                        }
+                        summarize_association(
+                            association,
+                            nodes=nodes_by_association[i],
+                            translation_id=translation_id,
+                        )
                         for i, association in enumerate(final_path.theory_symbols_and_chords_used)
                     ],
-                })
-                
+                }
+
+            min_costs_by_translation_id: dict[int, float] = defaultdict(lambda: float("inf"))
+            summaries_by_translation_id: dict[int, dict[str, Any]] = {}
+
+            for final_path, lookup_result, associations in get_processed_lookup_results_with_paths(outline, states):
+                translation_id = lookup_result.translation_id
+                if lookup_result.cost >= min_costs_by_translation_id[translation_id]:
+                    continue
+
+                result = LookupResultWithAssociations(lookup_result, tuple(associations))
+                if not api.validate_lookup_result.emit_and_validate_with_states(
+                    states,
+                    result=result,
+                    trie=trie,
+                    outline=outline,
+                    original_outline=original_outline,
+                ):
+                    continue
+
+                min_costs_by_translation_id[translation_id] = lookup_result.cost
+                summaries_by_translation_id[translation_id] = summarize_lookup_result(final_path, result)
+
+            summaries = sorted(
+                summaries_by_translation_id.values(),
+                key=lambda summary: summary["cost"],
+            )
 
             return json.dumps(summaries)
 

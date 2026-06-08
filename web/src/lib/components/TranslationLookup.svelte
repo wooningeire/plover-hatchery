@@ -4,6 +4,7 @@
     import {
         loadLookupBreakdown,
         loadTranslationBreakdown,
+        type LookupBreakdown,
         type TranslationBreakdown,
     } from "$lib/ploverApi";
 
@@ -25,7 +26,7 @@
     let breakdownIndex = $state(0);
 
     let testOutline = $state("");
-    let lookupBreakdownData = $state<any[] | null>(null);
+    let lookupBreakdownData = $state<LookupBreakdown[] | null>(null);
     let lookupBreakdownError = $state<string | null>(null);
     let lookupRequestId = 0;
     let lookupTimeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -132,8 +133,8 @@
 <section class="lookup-page" aria-labelledby="lookup-title">
     <header class="lookup-header">
         <div>
-            <p class="eyebrow">Lookup</p>
-            <h1 id="lookup-title">Translation lookup</h1>
+            <p class="eyebrow">Lookup by translation</p>
+            <h1 id="lookup-title">Lookup by translation</h1>
         </div>
 
         <form
@@ -211,7 +212,7 @@
 
         <div class="outline-panel">
             <label class="test-outline">
-                <span>Test outline</span>
+                <span>Outline highlight</span>
                 <input
                     type="text"
                     bind:value={testOutline}

@@ -78,6 +78,29 @@ export type TranslationBreakdown = {
     subtrie: any,
 };
 
+export type LookupBreakdownTransition = {
+    key: string,
+    cost: number | null,
+    src_node_id: number,
+    dst_node_id: number,
+};
+
+export type LookupBreakdownStep = {
+    theory_symbols: string[],
+    chord: string,
+    starts_new_stroke?: boolean,
+    nodes: number[],
+    transitions?: LookupBreakdownTransition[],
+};
+
+export type LookupBreakdown = {
+    path: LookupBreakdownStep[],
+    translation?: string,
+    entry_id?: number,
+    translation_id?: number,
+    cost?: number,
+};
+
 export type PloverApiErrorKind = "connection" | "wrong-server" | "http";
 
 type PloverApiErrorOptions = {
@@ -261,7 +284,9 @@ export const loadLookupBreakdown = async (outline: string) => {
         `/api/breakdown_lookup/${encodeURIComponent(outline.replaceAll("/", " "))}`,
     );
 
-    return Array.isArray(responseBody) ? responseBody as any[] : [];
+    return Array.isArray(responseBody)
+        ? responseBody.filter(isLookupBreakdown)
+        : [];
 };
 
 const fetchPloverJson = async <T>(path: string, init?: RequestInit): Promise<T> => {
@@ -425,4 +450,65 @@ const isTranslationBreakdown = (value: unknown): value is TranslationBreakdown =
     isRecord(value)
     && typeof value.entry === "string"
     && "subtrie" in value
+);
+
+const isStringArray = (value: unknown): value is string[] => (
+    Array.isArray(value)
+    && value.every((item) => typeof item === "string")
+);
+
+const isNumberArray = (value: unknown): value is number[] => (
+    Array.isArray(value)
+    && value.every((item) => typeof item === "number")
+);
+
+const isLookupBreakdownTransition = (value: unknown): value is LookupBreakdownTransition => (
+    isRecord(value)
+    && typeof value.key === "string"
+    && (
+        typeof value.cost === "number"
+        || value.cost === null
+    )
+    && typeof value.src_node_id === "number"
+    && typeof value.dst_node_id === "number"
+);
+
+const isLookupBreakdownStep = (value: unknown): value is LookupBreakdownStep => (
+    isRecord(value)
+    && isStringArray(value.theory_symbols)
+    && typeof value.chord === "string"
+    && (
+        value.starts_new_stroke === undefined
+        || typeof value.starts_new_stroke === "boolean"
+    )
+    && isNumberArray(value.nodes)
+    && (
+        value.transitions === undefined
+        || (
+            Array.isArray(value.transitions)
+            && value.transitions.every(isLookupBreakdownTransition)
+        )
+    )
+);
+
+const isLookupBreakdown = (value: unknown): value is LookupBreakdown => (
+    isRecord(value)
+    && Array.isArray(value.path)
+    && value.path.every(isLookupBreakdownStep)
+    && (
+        value.translation === undefined
+        || typeof value.translation === "string"
+    )
+    && (
+        value.entry_id === undefined
+        || typeof value.entry_id === "number"
+    )
+    && (
+        value.translation_id === undefined
+        || typeof value.translation_id === "number"
+    )
+    && (
+        value.cost === undefined
+        || typeof value.cost === "number"
+    )
 );
