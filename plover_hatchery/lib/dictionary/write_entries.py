@@ -1,18 +1,24 @@
 import json
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 import toml
 
 from plover_hatchery.Store import store
 from plover_hatchery.lib.dictionary.HatcheryDictionaryContents import HatcheryDictionaryContents
-from plover_hatchery.lib.dictionary.read import read_hatchery_dictionary
+from plover_hatchery.lib.dictionary.read import (
+    HatcheryEntry,
+    SUPPORTED_HATCHERY_FORMAT_VERSIONS,
+    all_entries,
+    entry_items,
+    normalize_entry,
+    read_hatchery_dictionary,
+)
 from plover_hatchery.lib.sopheme import parse_entry_definition
 from plover_hatchery_lib_rs import DefDict, DefView
 
 
-HATCHERY_FORMAT_VERSION = "0.0.0"
 DEFAULT_ENTRY_PAGE_LIMIT = 100
 MAX_ENTRY_PAGE_LIMIT = 200
 
@@ -53,7 +59,7 @@ def list_hatchery_dictionary_entries(
     morphemes = _required_dict_section(contents, "morphemes")
     entries = _optional_dict_section(contents, "entries")
     page_entries, total_count = _entry_page(
-        entries=entries,
+        entries=entry_items(contents),
         offset=offset,
         limit=limit,
         query=query,
@@ -72,11 +78,10 @@ def list_hatchery_dictionary_entries(
         "entries": [
             _entry_summary(
                 contents,
-                key,
-                str(definition).strip(),
+                entry,
                 resolve_translation=resolve_translations,
             )
-            for key, definition in page_entries
+            for entry in page_entries
         ],
         "pagination": {
             "offset": offset,
@@ -143,8 +148,8 @@ def delete_entry_from_hatchery_dictionary(
     if entry_key not in entries:
         raise AddEntryValidationError("Entry is not present")
 
-    definition = str(entries[entry_key]).strip()
-    translation = _resolve_entry_translation(contents, entry_key, definition)
+    entry = normalize_entry(entry_key, entries[entry_key])
+    translation = _resolve_entry_translation(contents, entry)
 
     _delete_entry_line(Path(dictionary_path), entry_key)
 
@@ -152,7 +157,7 @@ def delete_entry_from_hatchery_dictionary(
         "entry": {
             "key": entry_key,
             "translation": translation,
-            "definition": definition,
+            "definition": entry.definition,
         },
         "compile": _compile_changed_dictionary(dictionary_path, dictionary),
     }
@@ -281,8 +286,9 @@ def _read_dictionary_contents(dictionary_path: str):
     try:
         contents = read_hatchery_dictionary(dictionary_path)
     except AssertionError:
+        supported_versions = ", ".join(sorted(SUPPORTED_HATCHERY_FORMAT_VERSIONS))
         raise AddEntryValidationError(
-            f"Hatchery format version must be {HATCHERY_FORMAT_VERSION}"
+            f"Hatchery format version must be one of {supported_versions}"
         )
     except Exception as error:
         raise AddEntryValidationError(f"Could not read Hatchery dictionary: {error}")
@@ -307,11 +313,7 @@ def _optional_dict_section(contents: HatcheryDictionaryContents, section_name: s
 
 
 def _definition_items(contents: HatcheryDictionaryContents):
-    morphemes = _required_dict_section(contents, "morphemes")
-    entries = _optional_dict_section(contents, "entries")
-
-    yield from morphemes.items()
-    yield from entries.items()
+    yield from all_entries(contents)
 
 
 def _parse_definition(definition: str):
@@ -323,60 +325,66 @@ def _parse_definition(definition: str):
 
 def _entry_page(
     *,
-    entries: dict[str, Any],
+    entries: Iterable[HatcheryEntry],
     offset: int,
     limit: int,
     query: str,
 ):
     normalized_query = query.lower()
-    page_entries: list[tuple[str, Any]] = []
+    page_entries: list[HatcheryEntry] = []
     total_count = 0
 
-    for key, definition in entries.items():
-        if not _entry_matches_query(key, definition, normalized_query):
+    for entry in entries:
+        if not _entry_matches_query(entry, normalized_query):
             continue
 
         if offset <= total_count < offset + limit:
-            page_entries.append((key, definition))
+            page_entries.append(entry)
 
         total_count += 1
 
     return page_entries, total_count
 
 
-def _entry_matches_query(key: str, definition: Any, normalized_query: str):
+def _entry_matches_query(entry: HatcheryEntry, normalized_query: str):
     if normalized_query == "":
         return True
 
     return (
-        normalized_query in key.lower()
-        or normalized_query in str(definition).lower()
+        normalized_query in entry.key.lower()
+        or normalized_query in entry.definition.lower()
+        or (
+            entry.translation is not None
+            and normalized_query in entry.translation.lower()
+        )
     )
 
 
 def _entry_summary(
     contents: HatcheryDictionaryContents,
-    entry_key: str,
-    definition: str,
+    entry: HatcheryEntry,
     *,
     resolve_translation: bool,
 ):
     return {
-        "key": entry_key,
-        "translation": _resolve_entry_translation(contents, entry_key, definition)
+        "key": entry.key,
+        "translation": _resolve_entry_translation(contents, entry)
             if resolve_translation
             else None,
-        "definition": definition,
+        "definition": entry.definition,
     }
 
 
 def _resolve_entry_translation(
     contents: HatcheryDictionaryContents,
-    entry_key: str,
-    definition: str,
+    entry: HatcheryEntry,
 ):
     try:
-        return _resolve_definition_translation(contents, entry_key, _parse_definition(definition))
+        return _resolve_definition_translation(
+            contents,
+            entry.key,
+            _parse_definition(entry.definition),
+        )
     except AddEntryValidationError:
         return None
 
@@ -479,18 +487,31 @@ def _remove_entry_line(text: str, entry_key: str):
             entries_header_index = index
             break
 
-    if entries_header_index is None:
-        return text, False
+    if entries_header_index is not None:
+        for index in range(entries_header_index + 1, len(lines)):
+            if _TABLE_HEADER_RE.match(lines[index].rstrip("\r\n")) is not None:
+                break
 
-    for index in range(entries_header_index + 1, len(lines)):
-        if _TABLE_HEADER_RE.match(lines[index].rstrip("\r\n")) is not None:
-            break
+            if _entry_line_key(lines[index]) == entry_key:
+                return "".join([
+                    *lines[:index],
+                    *lines[index + 1:],
+                ]), True
 
-        if _entry_line_key(lines[index]) == entry_key:
-            return "".join([
-                *lines[:index],
-                *lines[index + 1:],
-            ]), True
+    for index, line in enumerate(lines):
+        if _entry_subtable_key(line) != entry_key:
+            continue
+
+        remove_end_index = len(lines)
+        for next_index in range(index + 1, len(lines)):
+            if _TABLE_HEADER_RE.match(lines[next_index].rstrip("\r\n")) is not None:
+                remove_end_index = next_index
+                break
+
+        return "".join([
+            *lines[:index],
+            *lines[remove_end_index:],
+        ]), True
 
     return text, False
 
@@ -506,3 +527,34 @@ def _entry_line_key(line: str):
         return None
 
     return next(iter(entries.keys()))
+
+
+def _entry_subtable_key(line: str):
+    header_match = _TABLE_HEADER_RE.match(line.rstrip("\r\n"))
+    if header_match is None:
+        return None
+
+    header_name = header_match.group(1).strip()
+    if not header_name.startswith("entries."):
+        return None
+
+    raw_entry_key = header_name.removeprefix("entries.").strip()
+    if raw_entry_key == "":
+        return None
+
+    if not raw_entry_key.startswith(("\"", "'")):
+        if "." in raw_entry_key:
+            return None
+
+        return raw_entry_key
+
+    try:
+        parsed_key = toml.loads(f"key = {raw_entry_key}")
+    except toml.TomlDecodeError:
+        return None
+
+    key = parsed_key.get("key")
+    if not isinstance(key, str):
+        return None
+
+    return key

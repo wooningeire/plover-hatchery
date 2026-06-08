@@ -1,4 +1,4 @@
-from typing import final, TypedDict
+from typing import Any, final, TypedDict
 
 
 HatcheryDictionaryMetaContents = TypedDict("HatcheryDictionaryMetaContents", {
@@ -9,4 +9,4 @@ HatcheryDictionaryMetaContents = TypedDict("HatcheryDictionaryMetaContents", {
 class HatcheryDictionaryContents(TypedDict):
     meta: HatcheryDictionaryMetaContents
     morphemes: dict[str, str]
-    entries: dict[str, str]
+    entries: dict[str, str | dict[str, Any]]

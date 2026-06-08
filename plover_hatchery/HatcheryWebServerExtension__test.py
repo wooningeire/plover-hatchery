@@ -116,6 +116,23 @@ value = "untouched"
 """.strip()
 
 
+def _sample_object_dictionary_text():
+    return """
+[meta]
+hatchery-format-version = "0.1.0"
+
+[morphemes]
+"@h" = "h.[h]"
+
+[entries."hang:1"]
+format = "sophemes"
+sequence = "{@h} a.ae ng./ng/"
+
+[other]
+value = "untouched"
+""".strip()
+
+
 def test__status_route__identifies_hatchery_api():
     response = _client().get("/api/status")
 
@@ -371,6 +388,46 @@ def test__entries_route__lists_selected_dictionary_entries_and_stats(tmp_path: P
     }
 
 
+def test__entries_route__lists_sopheme_entry_objects(tmp_path: Path):
+    dictionary_path = tmp_path / "sample.hatchery"
+    dictionary_path.write_text(_sample_object_dictionary_text(), encoding="utf-8")
+    store.register_hatchery_dictionary(str(dictionary_path), FakeHatcheryDictionary())
+
+    response = _client().get("/api/entries", query_string={
+        "dictionaryPath": str(dictionary_path),
+        "resolveTranslations": "true",
+    })
+
+    assert response.status_code == 200
+    assert response.get_json() == {
+        "dictionary": {
+            "path": str(dictionary_path),
+            "label": "sample.hatchery",
+        },
+        "stats": {
+            "morphemeCount": 1,
+            "entryCount": 1,
+            "definitionCount": 2,
+        },
+        "entries": [
+            {
+                "key": "hang:1",
+                "translation": "hang",
+                "definition": "{@h} a.ae ng./ng/",
+            },
+        ],
+        "pagination": {
+            "offset": 0,
+            "limit": 100,
+            "totalCount": 1,
+            "returnedCount": 1,
+            "hasPrevious": False,
+            "hasNext": False,
+            "query": "",
+        },
+    }
+
+
 def test__entries_route__paginates_entries_without_resolving_translations_by_default(tmp_path: Path):
     dictionary_path = tmp_path / "sample.hatchery"
     dictionary_path.write_text(_sample_dictionary_text(
@@ -559,6 +616,39 @@ def test__delete_entry_route__removes_entry_and_compiles_changed_dictionary(tmp_
     new_dictionary_text = dictionary_path.read_text(encoding="utf-8")
     assert "cat = \"{@k} a.a t.t\"" not in new_dictionary_text
     assert "[entries]" in new_dictionary_text
+    assert "[other]" in new_dictionary_text
+
+
+def test__delete_entry_route__removes_entry_object_table(tmp_path: Path):
+    dictionary_path = tmp_path / "sample.hatchery"
+    dictionary_path.write_text(_sample_object_dictionary_text(), encoding="utf-8")
+    dictionary = FakeHatcheryDictionary()
+    store.register_hatchery_dictionary(str(dictionary_path), dictionary)
+
+    response = _client().delete("/api/entries", json={
+        "dictionaryPath": str(dictionary_path),
+        "entryKey": "hang:1",
+    })
+
+    assert response.status_code == 200
+    assert response.get_json() == {
+        "entry": {
+            "key": "hang:1",
+            "translation": "hang",
+            "definition": "{@h} a.ae ng./ng/",
+        },
+        "compile": {
+            "path": str(dictionary_path),
+            "status": "compiled",
+        },
+    }
+    assert dictionary.invalidate_calls == 1
+    assert dictionary.compile_calls == 1
+    assert dictionary.refresh_cache_calls == [False]
+
+    new_dictionary_text = dictionary_path.read_text(encoding="utf-8")
+    assert '[entries."hang:1"]' not in new_dictionary_text
+    assert 'sequence = "{@h} a.ae ng./ng/"' not in new_dictionary_text
     assert "[other]" in new_dictionary_text
 
 
