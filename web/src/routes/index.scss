@@ -1,10 +1,25 @@
-* {
+*,
+*::before,
+*::after {
     box-sizing: border-box;
     font: inherit;
 }
 
+html,
+body {
+    min-height: 100%;
+}
+
 body {
     margin: 0;
+    background: oklch(0.96 0.011 150);
+    color: oklch(0.2 0.028 160);
+    font-family: "Atkinson Hyperlegible Next", system-ui, sans-serif;
+}
 
-    font-family: "Atkinson Hyperlegible Next", sans-serif;
+button,
+input,
+select,
+textarea {
+    font: inherit;
 }

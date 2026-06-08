@@ -4,6 +4,8 @@
 
 import {
     PloverApiError,
+    deletePloverEntry,
+    loadPloverDictionaryEntries,
     loadPloverDictionaries,
 } from "./ploverApi.js";
 
@@ -126,6 +128,90 @@ await test("loadPloverDictionaries accepts Hatchery status before reading dictio
             assert(requestedPaths.join(",") === "/api/status,/api/dictionaries", "Expected status check before dictionaries request");
             assert(response.dictionaries.length === 1, "Expected one dictionary");
             assert(response.dictionaries[0]?.path === "user.hatchery", "Expected dictionary path");
+        },
+    );
+});
+
+await test("loadPloverDictionaryEntries reads selected dictionary entries", async () => {
+    await withFetch(
+        (input) => {
+            const url = new URL(String(input));
+
+            assert(url.pathname === "/api/entries", "Expected entries path");
+            assert(url.searchParams.get("dictionaryPath") === "user.hatchery", "Expected dictionary path query");
+            assert(url.searchParams.get("offset") === "25", "Expected offset query");
+            assert(url.searchParams.get("limit") === "50", "Expected limit query");
+            assert(url.searchParams.get("query") === "cat", "Expected filter query");
+
+            return Promise.resolve(jsonResponse({
+                dictionary: {
+                    path: "user.hatchery",
+                    label: "user.hatchery",
+                },
+                stats: {
+                    morphemeCount: 1,
+                    entryCount: 1,
+                    definitionCount: 2,
+                },
+                entries: [
+                    {
+                        key: "cat",
+                        translation: "cat",
+                        definition: "{@k} a.a t.t",
+                    },
+                ],
+                pagination: {
+                    offset: 25,
+                    limit: 50,
+                    totalCount: 90,
+                    returnedCount: 1,
+                    hasPrevious: true,
+                    hasNext: true,
+                    query: "cat",
+                },
+            }));
+        },
+        async () => {
+            const response = await loadPloverDictionaryEntries("user.hatchery", {
+                offset: 25,
+                limit: 50,
+                query: "cat",
+            });
+
+            assert(response.stats.entryCount === 1, "Expected one entry");
+            assert(response.entries[0]?.key === "cat", "Expected entry key");
+            assert(response.pagination.totalCount === 90, "Expected pagination count");
+        },
+    );
+});
+
+await test("deletePloverEntry deletes selected dictionary entry", async () => {
+    await withFetch(
+        (_input, init) => {
+            assert(init?.method === "DELETE", "Expected DELETE request");
+            assert(typeof init.body === "string", "Expected JSON body");
+
+            const requestBody = JSON.parse(init.body);
+            assert(requestBody.dictionaryPath === "user.hatchery", "Expected dictionary path body");
+            assert(requestBody.entryKey === "cat", "Expected entry key body");
+
+            return Promise.resolve(jsonResponse({
+                entry: {
+                    key: "cat",
+                    translation: "cat",
+                    definition: "{@k} a.a t.t",
+                },
+                compile: {
+                    path: "user.hatchery",
+                    status: "compiled",
+                },
+            }));
+        },
+        async () => {
+            const response = await deletePloverEntry("user.hatchery", "cat");
+
+            assert(response.entry.key === "cat", "Expected deleted entry key");
+            assert(response.compile.status === "compiled", "Expected compile result");
         },
     );
 });

@@ -18,6 +18,28 @@ export type DictionarySummary = {
     label: string,
 };
 
+export type DictionaryStats = {
+    morphemeCount: number,
+    entryCount: number,
+    definitionCount: number,
+};
+
+export type DictionaryEntrySummary = {
+    key: string,
+    translation: string | null,
+    definition: string,
+};
+
+export type DictionaryEntriesPagination = {
+    offset: number,
+    limit: number,
+    totalCount: number,
+    returnedCount: number,
+    hasPrevious: boolean,
+    hasNext: boolean,
+    query: string,
+};
+
 export type DictionariesResponse = {
     dictionaries: DictionarySummary[],
     error?: string,
@@ -27,6 +49,24 @@ export type SaveEntryResponse = {
     entry: {
         key: string,
         translation: string,
+        definition: string,
+    },
+    compile: CompileDictionaryResult,
+    error?: string,
+};
+
+export type DictionaryEntriesResponse = {
+    dictionary: DictionarySummary,
+    stats: DictionaryStats,
+    entries: DictionaryEntrySummary[],
+    pagination: DictionaryEntriesPagination,
+    error?: string,
+};
+
+export type DeleteEntryResponse = {
+    entry: {
+        key: string,
+        translation: string | null,
         definition: string,
     },
     compile: CompileDictionaryResult,
@@ -106,6 +146,40 @@ export const loadPloverDictionaries = async () => {
     return responseBody;
 };
 
+export type LoadDictionaryEntriesOptions = {
+    offset?: number,
+    limit?: number,
+    query?: string,
+    resolveTranslations?: boolean,
+};
+
+export const loadPloverDictionaryEntries = async (
+    dictionaryPath: string,
+    options: LoadDictionaryEntriesOptions = {},
+) => {
+    const searchParams = new URLSearchParams({
+        dictionaryPath,
+    });
+    searchParams.set("offset", String(options.offset ?? 0));
+    searchParams.set("limit", String(options.limit ?? 100));
+
+    if (options.query !== undefined && options.query !== "") {
+        searchParams.set("query", options.query);
+    }
+
+    if (options.resolveTranslations === true) {
+        searchParams.set("resolveTranslations", "true");
+    }
+
+    const responseBody = await fetchPloverJson<unknown>(`/api/entries?${searchParams}`);
+
+    if (!isDictionaryEntriesResponse(responseBody)) {
+        throw createWrongServerError(ploverApiBaseUrl());
+    }
+
+    return responseBody;
+};
+
 export const compilePloverTheory = async (refreshCache: boolean) => {
     const responseBody = await fetchPloverJson<unknown>("/api/compile", {
         method: "POST",
@@ -140,6 +214,28 @@ export const savePloverEntry = async (
     });
 
     if (!isSaveEntryResponse(responseBody)) {
+        throw createWrongServerError(ploverApiBaseUrl());
+    }
+
+    return responseBody;
+};
+
+export const deletePloverEntry = async (
+    dictionaryPath: string,
+    entryKey: string,
+) => {
+    const responseBody = await fetchPloverJson<unknown>("/api/entries", {
+        method: "DELETE",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            dictionaryPath,
+            entryKey,
+        }),
+    });
+
+    if (!isDeleteEntryResponse(responseBody)) {
         throw createWrongServerError(ploverApiBaseUrl());
     }
 
@@ -257,11 +353,60 @@ const isDictionariesResponse = (value: unknown): value is DictionariesResponse =
     && value.dictionaries.every(isDictionarySummary)
 );
 
+const isDictionaryStats = (value: unknown): value is DictionaryStats => (
+    isRecord(value)
+    && typeof value.morphemeCount === "number"
+    && typeof value.entryCount === "number"
+    && typeof value.definitionCount === "number"
+);
+
+const isDictionaryEntrySummary = (value: unknown): value is DictionaryEntrySummary => (
+    isRecord(value)
+    && typeof value.key === "string"
+    && (
+        typeof value.translation === "string"
+        || value.translation === null
+    )
+    && typeof value.definition === "string"
+);
+
+const isDictionaryEntriesPagination = (value: unknown): value is DictionaryEntriesPagination => (
+    isRecord(value)
+    && typeof value.offset === "number"
+    && typeof value.limit === "number"
+    && typeof value.totalCount === "number"
+    && typeof value.returnedCount === "number"
+    && typeof value.hasPrevious === "boolean"
+    && typeof value.hasNext === "boolean"
+    && typeof value.query === "string"
+);
+
+const isDictionaryEntriesResponse = (value: unknown): value is DictionaryEntriesResponse => (
+    isRecord(value)
+    && isDictionarySummary(value.dictionary)
+    && isDictionaryStats(value.stats)
+    && Array.isArray(value.entries)
+    && value.entries.every(isDictionaryEntrySummary)
+    && isDictionaryEntriesPagination(value.pagination)
+);
+
 const isSaveEntryResponse = (value: unknown): value is SaveEntryResponse => (
     isRecord(value)
     && isRecord(value.entry)
     && typeof value.entry.key === "string"
     && typeof value.entry.translation === "string"
+    && typeof value.entry.definition === "string"
+    && isCompileDictionaryResult(value.compile)
+);
+
+const isDeleteEntryResponse = (value: unknown): value is DeleteEntryResponse => (
+    isRecord(value)
+    && isRecord(value.entry)
+    && typeof value.entry.key === "string"
+    && (
+        typeof value.entry.translation === "string"
+        || value.entry.translation === null
+    )
     && typeof value.entry.definition === "string"
     && isCompileDictionaryResult(value.compile)
 );

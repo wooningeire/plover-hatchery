@@ -10,7 +10,9 @@ from .lib.dictionary.write_entries import (
     AddEntryValidationError,
     UnknownHatcheryDictionaryError,
     add_entry_to_hatchery_dictionary,
+    delete_entry_from_hatchery_dictionary,
     hatchery_dictionary_summaries,
+    list_hatchery_dictionary_entries,
 )
 
 
@@ -89,6 +91,29 @@ class HatcheryWebServerExtension:
                 "dictionaries": hatchery_dictionary_summaries(),
             })
 
+        @app.route("/api/entries", methods=["GET"])
+        def entries_route():
+            try:
+                return jsonify(list_hatchery_dictionary_entries(
+                    dictionary_path=request.args.get("dictionaryPath"),
+                    offset=request.args.get("offset"),
+                    limit=request.args.get("limit"),
+                    query=request.args.get("query"),
+                    resolve_translations=request.args.get("resolveTranslations"),
+                ))
+            except UnknownHatcheryDictionaryError as e:
+                return jsonify({
+                    "error": str(e),
+                }), 404
+            except AddEntryValidationError as e:
+                return jsonify({
+                    "error": str(e),
+                }), 400
+            except Exception as e:
+                return jsonify({
+                    "error": str(e),
+                }), 500
+
         @app.route("/api/entries", methods=["POST"])
         def add_entry_route():
             try:
@@ -100,6 +125,30 @@ class HatcheryWebServerExtension:
                     dictionary_path=request_body.get("dictionaryPath"),
                     translation=request_body.get("translation"),
                     definition=request_body.get("definition"),
+                ))
+            except UnknownHatcheryDictionaryError as e:
+                return jsonify({
+                    "error": str(e),
+                }), 404
+            except AddEntryValidationError as e:
+                return jsonify({
+                    "error": str(e),
+                }), 400
+            except Exception as e:
+                return jsonify({
+                    "error": str(e),
+                }), 500
+
+        @app.route("/api/entries", methods=["DELETE"])
+        def delete_entry_route():
+            try:
+                request_body = request.get_json(silent=True) or {}
+                if not isinstance(request_body, dict):
+                    raise AddEntryValidationError("Expected a JSON object")
+
+                return jsonify(delete_entry_from_hatchery_dictionary(
+                    dictionary_path=request_body.get("dictionaryPath"),
+                    entry_key=request_body.get("entryKey"),
                 ))
             except UnknownHatcheryDictionaryError as e:
                 return jsonify({
