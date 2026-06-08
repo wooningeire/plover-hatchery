@@ -19,11 +19,11 @@ A **sopheme** is a unit of a word that represents an atomic grapheme-phoneme cor
 * The letter `m` can make the `/m/` sound. The sopheme would be the pairing of that spelling and pronunciation together, which I denote with a dot: `m.m`.
 * The letter `c` can make the `/k/` (`c.k`) or `/s/` (`c.s`) sounds.
 * Multiple letters can make a single sound: `ph` makes the `/f/` sound (`ph.f`).
-* A single letter can make multiple sounds: `x` makes the `/ks/` sounds (`x.ks`).
+* A single letter can make multiple sounds: `x` makes the `/ks/` sounds (`x.ks`). 
 * Multiple letters can make multiple sounds: `wh` makes the `/hw/` sounds in some accents (`wh.hw`).
 * Letters can be silent: in `rate`, `e` makes no sound (`e.`).
-* Pronounciations can diverge from their spellings: in `comfortable`, `orta` makes the `/tər/` sounds (`orta.tər`).
-* *I called it that because "lexeme" was already taken :)*
+* Pronounciations can arbitrarily diverge from their spellings but still be associated with clusters of letters: in `comfortable`, `orta` makes the `/tər/` sounds (`orta.tər`).
+* *I called it that because "lexeme" and "morpheme" were already taken :)*
 
 A **soph** is a unit of a word that is treated uniquely by a steno theory. These are defined by the theory.
 * In a lot of cases, these map one-to-one with specific phonemes, so e.g. any `/p/` sound is treated the same by a theory and thus can be represented with a single soph, which might be called `P`. (The soph names don't really matter; we just want a way to refer to them consistently.)
@@ -34,24 +34,71 @@ This plugin exposes the following tools and interfaces:
 
 ### Dictionaries
 
-#### `.theory`
+#### `.theory` :: Hatchery theory
 > [!IMPORTANT]
 > This is upcoming!
 
 A collection of rules and settings to use when converting Hatchery entries to strokable outlines.
 
-#### `.hatchery`
-A Hatchery word list.
+#### `.hatchery` :: Hatchery dictionary
+A Hatchery entry list. Hatchery dictionary files inherit from the TOML file format.
 
-Each entry in a Hatchery word list is a sequence of orthographic–phonetic correspondences, referred to as **<ins>sophemes</ins>**. Upon loading a dictionary, Hatchery will apply your given theory rules and mappings to each entry, alongside rules such as vowel elision. The end result is that **any valid writeout** for an entry, with any combination of valid chords, elisions, and syllabic splits, will map to that entry (or some conflicting entry).
+We can define entries using multiple formats. Firstly, we can directly define a mapping between a steno outline and a translation, as with a typical Plover JSON dictionary:
+```toml
+[entries."hang:1"]
+format = "steno"
+translation = "hang"
+steno = "HAPBG"
+```
+
+Often we won't be doing this for things other than briefs, since the number of valid steno outlines for a word can be prohibitively large. Within a given theory, we can instead define it in terms of the *sophs* which that theory defines, letting the theory do all the heavylifting of figuring out all possible valid outlines when you stroke:
+```toml
+[entries."hang:1"]
+format = "sophs" 
+translation = "hang"
+sophs = "H A NG" 
+```
+Of course, sophs are theory-defined, so they are hard to transfer to another theory.
+
+A lot of the entries defined in the default dictionary instead opt to use *sophemes* directly:
+```toml
+[entries."hang:1"]
+format = "sophemes" 
+translation = "hang"  # optional, overrides the translation that can be built from the sopheme sequence
+sophemes = "h.[h] a.ae!1 ng./ŋ/"
+```
+
+As seen here, the sophemes themselves have three levels of specificity to use for sounds as needed:
+1. `/.../` represents a **broad IPA** transcription. *(These are easier to author, but they provide the least information and are the least portable.)*
+1. `[...]` represents a **narrow IPA** transcription.
+1. Non-IPA sound symbols are **abstract**. These are meant to be accent-aware; various accent rules can be applied to convert abstract symbols into narrow IPA, which the theories can then operate on. *(These are harder to author because these aren't as standard as IPA and new ones will need custom accent rules written for them, but they are the most portable across different accents.)*
+
+Phonetics have these options due to the huge variety of accents and pronunciations compared to, say, regional spellings.
+
+These entry and sopheme sound symbol formats represent a spectrum of authoring ease versus portability tradeoffs:
+1. **Steno** :: most convenient, least portable
+1. **Sophs**
+1. **Sophemes with broad IPA**
+1. **Sophemes with narrow IPA**
+1. **Sophemes with abstract sounds** :: least convenient, more portable
+
+---
+
+Upon loading a dictionary, Hatchery will apply your given theory rules and mappings to each entry, alongside rules such as vowel elision. The end result is that **any valid writeout** for an entry, with any combination of valid chords, elisions, and syllabic splits, will map to that entry (or some conflicting entry).
 
 Sometimes, an outline will map to multiple possible translations, known as **<ins>conflicts</ins>**. Conflicts are ordered using a cost mechanism, determined by counting the number of abbreviation methods used in the outline, such as elisions (sorted into different types, such as stressed vowel vs unstressed vowel vs consonant) and clusters. The theory can specify these cost amounts as well as a variation cycler stroke that allows you to switch between the different conflicts in increasing order of cost.
 
-##### File format
-> [!IMPORTANT]
-> This is upcoming!
 
+##### Other sections
+Apart from entry definitions, Hatchery dictionaries also may have the following sections:
 
+```toml
+[meta]
+hatchery-format-version = "0.0.0"  # Hatchery dictionary file format version, for future migrations and backward compatibility
+
+[macros.sophemes]  # Optional. An arbitrary list of macros that can replace sophemes
+m = "m.m"  # Can be invoked as `{m}`
+```
 
 ##### Generating a Hatchery dictionary from JSON
 `./local-utils/json_to_hatchery.py` takes a standard JSON dictionary (such as `lapwing-base.json`) and the [Unisyn v1.3](https://www.cstr.ed.ac.uk/projects/unisyn/) Unilex lexicon as input and produces a Hatchery dictionary as an output by automatically matching letters with phonemes/keysymbols.
