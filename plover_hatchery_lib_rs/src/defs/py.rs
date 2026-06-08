@@ -9,6 +9,7 @@ pub use super::{
     parse::py::{
         py_parse_entry_definition,
         py_parse_sopheme_seq,
+        py_parse_sound_symbol_seq,
         py_parse_keysymbol_seq,
     },
 };

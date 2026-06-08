@@ -298,7 +298,7 @@ impl<'a> DefViewItemRef<'a> {
 
     pub fn n_children(&self) -> usize {
         match self {
-            DefViewItemRef::Sopheme(sopheme) => sopheme.keysymbols.len(),
+            DefViewItemRef::Sopheme(sopheme) => sopheme.sound_symbols.len(),
 
             DefViewItemRef::Def(def) => def.entities.len(),
 

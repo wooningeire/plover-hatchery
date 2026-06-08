@@ -1,5 +1,9 @@
 mod keysymbol;
-pub use keysymbol::Keysymbol;
+pub use keysymbol::{
+    Keysymbol,
+    SoundSymbol,
+    SoundSymbolKind,
+};
 
 mod sopheme;
 pub use sopheme::{

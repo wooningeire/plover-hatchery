@@ -8,7 +8,7 @@ from plover_hatchery.lib.pipes.soph_trie import ChordToSophSearchResult, SophsTo
 
 def _map_to_sophs(cursor):
     try:
-        return {cursor.tip().keysymbol().symbol}
+        return {cursor.tip().keysymbol().value}
     except TypeError:
         return set()
 

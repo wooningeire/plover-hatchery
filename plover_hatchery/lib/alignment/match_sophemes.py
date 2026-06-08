@@ -304,7 +304,7 @@ class match_keysymbols_to_chars(
     
     @staticmethod
     def generate_candidate_x_key(candidate_subseq_x: tuple[Keysymbol, ...]) -> tuple[str, ...]:
-        return tuple(keysymbol.base_symbol for keysymbol in candidate_subseq_x)
+        return tuple(keysymbol.value for keysymbol in candidate_subseq_x)
     
     @staticmethod
     def has_mapping(candidate_x_key: tuple[str, ...]):

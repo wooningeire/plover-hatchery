@@ -1,7 +1,7 @@
 from collections.abc import Generator
 from typing import Any, Generator
 
-from plover_hatchery_lib_rs import DefViewCursor, DefViewItem, Keysymbol, parse_keysymbol_seq
+from plover_hatchery_lib_rs import DefViewCursor, DefViewItem, SoundSymbol, parse_sound_symbol_seq
 from plover_hatchery.lib.pipes import *
 
 @compile_theory
@@ -50,7 +50,7 @@ def theory():
                 sopheme = cursor.nth(cursor.stack_len - 1).sopheme()
 
 
-                if keysymbol.symbol == "s":
+                if keysymbol.value == "s":
                     if "sc" in sopheme.chars:
                         yield "SC"
                         return
@@ -60,7 +60,7 @@ def theory():
                     elif "z" in sopheme.chars:
                         yield "Z"
                 
-                if keysymbol.symbol == "z":
+                if keysymbol.value == "z":
                     if "s" in sopheme.chars:
                         yield "S"
                 
@@ -175,7 +175,7 @@ def theory():
                     "i@": as_spelled,
                 }
 
-                sophones = mapping.get(keysymbol.symbol, keysymbol.symbol).split()
+                sophones = mapping.get(keysymbol.value, keysymbol.value).split()
 
                 if any(sophone in sophones for sophone in ("O", "AU")) and "a" in sopheme.chars:
                     yield "A"
@@ -335,12 +335,12 @@ def theory():
 
     def map_keysymbols_to_keysymbols_by_sophs(mappings: dict[str, str]):
         chords = {
-            Soph(key): parse_keysymbol_seq(keysymbols_str)
+            Soph(key): parse_sound_symbol_seq(keysymbols_str)
             for key, keysymbols_str in mappings.items()
         }
 
         def generate(cursor: DefViewCursor):
-            new_keysymbols = set[Keysymbol]()
+            new_keysymbols = set[SoundSymbol]()
 
             for soph in map_keysymbol_to_sophs(cursor):
                 if soph not in chords: continue

@@ -8,10 +8,10 @@ use steno_annotations::AsteriskableKey;
 mod defs;
 use defs::{
     py::{
-        py_parse_entry_definition, py_parse_keysymbol_seq, py_parse_sopheme_seq, PyDefDict,
-        PyDefView, PyDefViewCursor, PyDefViewItem,
+        py_parse_entry_definition, py_parse_keysymbol_seq, py_parse_sopheme_seq,
+        py_parse_sound_symbol_seq, PyDefDict, PyDefView, PyDefViewCursor, PyDefViewItem,
     },
-    Def, Entity, Keysymbol, Sopheme, SophemeSeq, Transclusion,
+    Def, Entity, Sopheme, SophemeSeq, SoundSymbol, SoundSymbolKind, Transclusion,
 };
 
 mod pipes;
@@ -44,7 +44,10 @@ pub fn plover_hatchery_lib_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<SophemeSeq>()?;
     m.add_class::<Entity>()?;
     m.add_class::<Sopheme>()?;
-    m.add_class::<Keysymbol>()?;
+    m.add_class::<SoundSymbolKind>()?;
+    m.add_class::<SoundSymbol>()?;
+    let sound_symbol_class = m.getattr("SoundSymbol")?;
+    m.add("Keysymbol", sound_symbol_class)?;
     m.add_class::<Transclusion>()?;
 
     m.add_function(wrap_pyfunction!(optionalize_keysymbols, m)?)?;
@@ -54,6 +57,7 @@ pub fn plover_hatchery_lib_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     m.add_function(wrap_pyfunction!(py_parse_entry_definition, m)?)?;
     m.add_function(wrap_pyfunction!(py_parse_sopheme_seq, m)?)?;
+    m.add_function(wrap_pyfunction!(py_parse_sound_symbol_seq, m)?)?;
     m.add_function(wrap_pyfunction!(py_parse_keysymbol_seq, m)?)?;
     m.add_function(wrap_pyfunction!(add_soph_trie_entry, m)?)?;
     m.add_class::<PyChordToSophSearchNode>()?;

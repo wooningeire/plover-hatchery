@@ -2,7 +2,7 @@ from typing import Callable
 from collections.abc import Iterable
 
 from plover_hatchery.lib.pipes.compile_theory import TheoryHooks
-from plover_hatchery_lib_rs import Def, DefView, DefViewCursor, Keysymbol, add_diphthong_keysymbols
+from plover_hatchery_lib_rs import Def, DefView, DefViewCursor, SoundSymbol, add_diphthong_keysymbols
 
 from ..sopheme import Sopheme
 from .Plugin import GetPluginApi, Plugin, define_plugin
@@ -59,7 +59,7 @@ from .Plugin import GetPluginApi, Plugin, define_plugin
 
 def diphthong_transition_consonants(
     *,
-    keysymbols_by_first_vowel: Callable[[DefViewCursor], Iterable[Keysymbol]],
+    keysymbols_by_first_vowel: Callable[[DefViewCursor], Iterable[SoundSymbol]],
 ) -> Plugin[None]:
     @define_plugin(diphthong_transition_consonants)
     def plugin(base_hooks: TheoryHooks, **_):

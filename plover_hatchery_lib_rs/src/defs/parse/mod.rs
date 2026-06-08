@@ -9,6 +9,7 @@ mod parse;
 pub use parse::{
     parse_entry_definition,
     parse_sopheme_seq,
+    parse_sound_symbol_seq,
     parse_keysymbol_seq,
     ParseErr,
 };

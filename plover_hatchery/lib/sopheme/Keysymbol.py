@@ -1,7 +1,7 @@
 from collections.abc import Iterable, Generator
 import re
 
-from plover_hatchery_lib_rs import Keysymbol
+from plover_hatchery_lib_rs import SoundSymbol as Keysymbol
 
 
 
@@ -65,7 +65,7 @@ def adjust_keysymbol_stress(keysymbols: "tuple[Keysymbol, ...]", max_stress: int
         if stress == 0:
             yield keysymbol
         else:
-            yield Keysymbol(keysymbol.symbol, stress, keysymbol.optional)
+            yield Keysymbol(keysymbol.value, stress, keysymbol.optional)
 
 
 def normalize_stress(keysymbols: "tuple[Keysymbol, ...]") -> "tuple[tuple[Keysymbol, ...], int]":

@@ -1,7 +1,7 @@
 use pyo3::prelude::*;
 use pyo3::exceptions::PyValueError;
 use super::{
-    parse::{parse_entry_definition, parse_sopheme_seq, parse_keysymbol_seq},
+    parse::{parse_entry_definition, parse_sopheme_seq, parse_sound_symbol_seq, parse_keysymbol_seq},
 };
 
 #[pyfunction]
@@ -15,6 +15,13 @@ pub fn py_parse_entry_definition(seq: &str) -> PyResult<Vec<crate::defs::Entity>
 #[pyo3(name = "parse_sopheme_seq")]
 pub fn py_parse_sopheme_seq(seq: &str) -> PyResult<Vec<crate::defs::Sopheme>> {
     parse_sopheme_seq(seq)
+        .map_err(|e| PyValueError::new_err(format!("{}", e)))
+}
+
+#[pyfunction]
+#[pyo3(name = "parse_sound_symbol_seq")]
+pub fn py_parse_sound_symbol_seq(seq: &str) -> PyResult<Vec<crate::defs::SoundSymbol>> {
+    parse_sound_symbol_seq(seq)
         .map_err(|e| PyValueError::new_err(format!("{}", e)))
 }
 

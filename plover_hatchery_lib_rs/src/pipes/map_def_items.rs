@@ -51,7 +51,7 @@ pub fn map_sopheme<'a>(
         }
 
         match child {
-            DefViewItemRef::Keysymbol(keysymbol) => handle_keysymbol(&mut new_sopheme.keysymbols, keysymbol, cur)?,
+            DefViewItemRef::Keysymbol(keysymbol) => handle_keysymbol(&mut new_sopheme.sound_symbols, keysymbol, cur)?,
 
             _ => return Err(PyException::new_err(DefViewErr::UnexpectedChildItemType.as_pyerr())),
         };

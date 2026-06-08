@@ -202,7 +202,7 @@ impl PyDefViewItem {
         match self {
             PyDefViewItem::Keysymbol(_) => 0,
 
-            PyDefViewItem::Sopheme(sopheme) => sopheme.keysymbols.len(),
+            PyDefViewItem::Sopheme(sopheme) => sopheme.sound_symbols.len(),
 
             PyDefViewItem::Def(def) => def.entities.len(),
         }

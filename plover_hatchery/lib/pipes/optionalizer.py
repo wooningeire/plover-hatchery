@@ -31,7 +31,7 @@ def create_optionalizer_with_user_condition(
 
                 #     for phoneme in phonemes:
                 #         if should_optionalize(make_optional_if, phoneme):
-                #             keysymbols.append(Keysymbol(phoneme.keysymbol.symbol, phoneme.keysymbol.stress, True))
+                #             keysymbols.append(Keysymbol(phoneme.keysymbol.value, phoneme.keysymbol.stress, True))
                 #         else:
                 #             keysymbols.append(phoneme.keysymbol)
 
@@ -63,7 +63,7 @@ def create_optionalizer(
 
                 #     for phoneme in phonemes:
                 #         if should_optionalize(phoneme):
-                #             keysymbols.append(Keysymbol(phoneme.keysymbol.symbol, phoneme.keysymbol.stress, True))
+                #             keysymbols.append(Keysymbol(phoneme.keysymbol.value, phoneme.keysymbol.stress, True))
                 #         else:
                 #             keysymbols.append(phoneme.keysymbol)
 

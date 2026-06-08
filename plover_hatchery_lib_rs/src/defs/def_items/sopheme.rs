@@ -1,30 +1,40 @@
 use pyo3::prelude::*;
 
-use super::keysymbol::Keysymbol;
+use super::keysymbol::SoundSymbol;
 
 
 #[pyclass]
 #[derive(Clone, Debug)]
 pub struct Sopheme {
     #[pyo3(get)] pub chars: String,
-    #[pyo3(get)] pub keysymbols: Vec<Keysymbol>,
+    pub sound_symbols: Vec<SoundSymbol>,
 }
 
 
 #[pymethods]
 impl Sopheme {
     #[new]
-    pub fn new(chars: String, keysymbols: Vec<Keysymbol>) -> Self {
+    pub fn new(chars: String, sound_symbols: Vec<SoundSymbol>) -> Self {
         Sopheme {
             chars,
-            keysymbols,
+            sound_symbols,
         }
     }
 
     #[getter]
+    pub fn sound_symbols(&self) -> Vec<SoundSymbol> {
+        self.sound_symbols.clone()
+    }
+
+    #[getter]
+    pub fn keysymbols(&self) -> Vec<SoundSymbol> {
+        self.sound_symbols.clone()
+    }
+
+    #[getter]
     pub fn can_be_silent(&self) -> bool {
-        self.keysymbols.iter()
-            .all(|keysymbol| keysymbol.optional())
+        self.sound_symbols.iter()
+            .all(|sound_symbol| sound_symbol.optional())
     }
 
     pub fn __str__(&self) -> String {
@@ -38,21 +48,21 @@ impl Sopheme {
 
 
 impl Sopheme {
-    pub fn get_child<'a>(&'a self, index: usize) -> Option<&'a Keysymbol> {
-        self.keysymbols.get(index)
+    pub fn get_child<'a>(&'a self, index: usize) -> Option<&'a SoundSymbol> {
+        self.sound_symbols.get(index)
     }
 
     pub fn to_string(&self) -> String {
-        let mut keysymbols_string = self.keysymbols.iter()
-            .map(|keysymbol| keysymbol.to_string())
+        let mut sound_symbols_string = self.sound_symbols.iter()
+            .map(|sound_symbol| sound_symbol.to_string())
             .collect::<Vec<_>>()
             .join(" ");
 
-        if self.keysymbols.len() > 1 {
-            keysymbols_string = format!("({keysymbols_string})");
+        if self.sound_symbols.len() > 1 {
+            sound_symbols_string = format!("({sound_symbols_string})");
         }
 
-        format!("{chars}.{keysymbols_string}", chars=self.chars)
+        format!("{chars}.{sound_symbols_string}", chars=self.chars)
     }
 }
 
@@ -75,21 +85,21 @@ impl SophemeSeq {
 #[cfg(test)]
 mod test {
     use super::*;
-    use super::super::keysymbol::Keysymbol;
+    use super::super::keysymbol::SoundSymbol;
 
     #[test]
-    fn to_string_reports_chars_and_keysymbols() {
+    fn to_string_reports_chars_and_sound_symbols() {
         let sopheme = Sopheme::new("ph".to_string(), vec![
-            Keysymbol::new("f".to_string(), 0, false),
+            SoundSymbol::new("f".to_string(), 0, false),
         ]);
         assert_eq!(sopheme.to_string(), "ph.f");
     }
 
     #[test]
-    fn to_string_reports_multikeysymbol_sophemes_in_parentheses() {
+    fn to_string_reports_multi_sound_symbol_sophemes_in_parentheses() {
         let sopheme = Sopheme::new("u".to_string(), vec![
-            Keysymbol::new("y".to_string(), 0, false), 
-            Keysymbol::new("uu".to_string(), 1, false), 
+            SoundSymbol::new("y".to_string(), 0, false), 
+            SoundSymbol::new("uu".to_string(), 1, false), 
         ]);
         assert_eq!(sopheme.to_string(), "u.(y uu!1)");
     }

@@ -5,14 +5,82 @@ use std::{
 };
 
 use pyo3::{prelude::*};
-use regex::Regex;
 
 
 #[pyclass]
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
-pub struct Keysymbol {
-    symbol: String,
-    base_symbol: String,
+pub enum SoundSymbolKind {
+    Abstract(String),
+    BroadIpa(String),
+    NarrowIpa(String),
+}
+
+impl SoundSymbolKind {
+    pub fn value_ref(&self) -> &str {
+        match self {
+            SoundSymbolKind::Abstract(value) => value,
+            SoundSymbolKind::BroadIpa(value) => value,
+            SoundSymbolKind::NarrowIpa(value) => value,
+        }
+    }
+
+    pub fn kind_name_ref(&self) -> &str {
+        match self {
+            SoundSymbolKind::Abstract(_) => "abstract",
+            SoundSymbolKind::BroadIpa(_) => "broad-ipa",
+            SoundSymbolKind::NarrowIpa(_) => "narrow-ipa",
+        }
+    }
+
+    pub fn to_string(&self) -> String {
+        match self {
+            SoundSymbolKind::Abstract(value) => value.clone(),
+            SoundSymbolKind::BroadIpa(value) => format!("/{value}/"),
+            SoundSymbolKind::NarrowIpa(value) => format!("[{value}]"),
+        }
+    }
+}
+
+#[pymethods]
+impl SoundSymbolKind {
+    #[staticmethod]
+    pub fn abstract_symbol(value: String) -> Self {
+        SoundSymbolKind::Abstract(value)
+    }
+
+    #[staticmethod]
+    pub fn broad_ipa(value: String) -> Self {
+        SoundSymbolKind::BroadIpa(value)
+    }
+
+    #[staticmethod]
+    pub fn narrow_ipa(value: String) -> Self {
+        SoundSymbolKind::NarrowIpa(value)
+    }
+
+    #[getter]
+    pub fn value(&self) -> &str {
+        self.value_ref()
+    }
+
+    #[getter]
+    pub fn kind_name(&self) -> &str {
+        self.kind_name_ref()
+    }
+
+    pub fn __str__(&self) -> String {
+        self.to_string()
+    }
+
+    pub fn __repr__(&self) -> String {
+        self.to_string()
+    }
+}
+
+#[pyclass]
+#[derive(Clone, Debug, Hash, Eq, PartialEq)]
+pub struct SoundSymbol {
+    kind: SoundSymbolKind,
     stress: u8,
     optional: bool,
 }
@@ -26,9 +94,29 @@ pub fn stress_marker(stress: u8) -> String {
 }
 
 
-impl Keysymbol {
+impl SoundSymbol {
+    pub fn of(kind: SoundSymbolKind, stress: u8, optional: bool) -> Self {
+        SoundSymbol {
+            kind,
+            stress,
+            optional,
+        }
+    }
+
+    pub fn abstract_symbol(value: String, stress: u8, optional: bool) -> Self {
+        SoundSymbol::of(SoundSymbolKind::Abstract(value), stress, optional)
+    }
+
+    pub fn broad_ipa(value: String, stress: u8, optional: bool) -> Self {
+        SoundSymbol::of(SoundSymbolKind::BroadIpa(value), stress, optional)
+    }
+
+    pub fn narrow_ipa(value: String, stress: u8, optional: bool) -> Self {
+        SoundSymbol::of(SoundSymbolKind::NarrowIpa(value), stress, optional)
+    }
+
     pub fn to_string(&self) -> String {
-        let mut out = String::from(&self.symbol);
+        let mut out = self.kind.to_string();
 
         out += &stress_marker(self.stress);
 
@@ -41,28 +129,30 @@ impl Keysymbol {
 }
 
 #[pymethods]
-impl Keysymbol {
+impl SoundSymbol {
     #[new]
-    pub fn new(symbol: String, stress: u8, optional: bool) -> Self {
-        static KEYSYMBOL_SUB: OnceLock<Regex> = OnceLock::new();
-        let keysymbol_sub = KEYSYMBOL_SUB.get_or_init(|| Regex::new(r"[\[\]\d]").unwrap());
-
-        Keysymbol {
-            base_symbol: keysymbol_sub.replace_all(symbol.as_str(), "").to_string(),
-            symbol,
-            stress,
-            optional,
-        }
+    pub fn new(value: String, stress: u8, optional: bool) -> Self {
+        SoundSymbol::abstract_symbol(value, stress, optional)
     }
 
     #[staticmethod]
-    pub fn new_with_known_base_symbol(symbol: String, base_symbol: String, stress: u8, optional: bool) -> Self {
-        Keysymbol {
-            symbol,
-            base_symbol,
-            stress,
-            optional,
-        }
+    pub fn new_abstract(value: String, stress: u8, optional: bool) -> Self {
+        SoundSymbol::abstract_symbol(value, stress, optional)
+    }
+
+    #[staticmethod]
+    pub fn new_broad_ipa(value: String, stress: u8, optional: bool) -> Self {
+        SoundSymbol::broad_ipa(value, stress, optional)
+    }
+
+    #[staticmethod]
+    pub fn new_narrow_ipa(value: String, stress: u8, optional: bool) -> Self {
+        SoundSymbol::narrow_ipa(value, stress, optional)
+    }
+
+    #[staticmethod]
+    pub fn new_with_known_base_symbol(symbol: String, _base_symbol: String, stress: u8, optional: bool) -> Self {
+        SoundSymbol::abstract_symbol(symbol, stress, optional)
     }
 
     
@@ -80,7 +170,7 @@ impl Keysymbol {
         hasher.finish()
     }
 
-    pub fn __eq__(&self, other: &Keysymbol) -> bool {
+    pub fn __eq__(&self, other: &SoundSymbol) -> bool {
         self == other
     }
 
@@ -134,8 +224,33 @@ impl Keysymbol {
             ]
                 .into_iter()
         ));
+        static IPA_VOWELS: OnceLock<HashSet<&str>> = OnceLock::new();
+        let ipa_vowels = IPA_VOWELS.get_or_init(|| HashSet::<&str>::from_iter(
+            [
+                "a",
+                "æ",
+                "ɑ",
+                "ɒ",
+                "ɔ",
+                "e",
+                "ə",
+                "ɛ",
+                "ɜ",
+                "i",
+                "ɪ",
+                "o",
+                "ʊ",
+                "u",
+                "ʌ",
+            ]
+                .into_iter()
+        ));
 
-        vowels.contains(self.base_symbol.as_str())
+        match &self.kind {
+            SoundSymbolKind::Abstract(value) => vowels.contains(value.as_str()),
+            SoundSymbolKind::BroadIpa(value) => ipa_vowels.contains(value.as_str()),
+            SoundSymbolKind::NarrowIpa(value) => ipa_vowels.contains(value.as_str()),
+        }
     }
 
     #[getter]
@@ -144,13 +259,23 @@ impl Keysymbol {
     }
     
     #[getter]
+    pub fn kind(&self) -> SoundSymbolKind {
+        self.kind.clone()
+    }
+
+    #[getter]
+    pub fn value(&self) -> &str {
+        self.kind.value_ref()
+    }
+
+    #[getter]
     pub fn symbol(&self) -> &str {
-        &self.symbol
+        self.value()
     }
 
     #[getter]
     pub fn base_symbol(&self) -> &str {
-        &self.base_symbol
+        self.value()
     }
 
     #[getter]
@@ -166,23 +291,23 @@ impl Keysymbol {
 
 #[pyclass]
 #[derive(Clone, Debug)]
-pub enum KeysymbolOptions {
-    Leaf(Keysymbol),
-    Leaves(Vec<Keysymbol>),
-    Options(Vec<KeysymbolOptions>),
+pub enum SoundSymbolOptions {
+    Leaf(SoundSymbol),
+    Leaves(Vec<SoundSymbol>),
+    Options(Vec<SoundSymbolOptions>),
 }
 
-impl KeysymbolOptions {
+impl SoundSymbolOptions {
     pub fn to_string(&self) -> String {
         let out = match self {
-            KeysymbolOptions::Leaf(keysymbol) => keysymbol.to_string(),
+            SoundSymbolOptions::Leaf(sound_symbol) => sound_symbol.to_string(),
 
-            KeysymbolOptions::Leaves(keysymbols) => keysymbols.iter()
-                .map(|keysymbol| keysymbol.to_string())
+            SoundSymbolOptions::Leaves(sound_symbols) => sound_symbols.iter()
+                .map(|sound_symbol| sound_symbol.to_string())
                 .collect::<Vec<_>>()
                 .join(" "),
 
-            KeysymbolOptions::Options(options) => options.iter()
+            SoundSymbolOptions::Options(options) => options.iter()
                 .map(|option| option.to_string())
                 .collect::<Vec<_>>()
                 .join(" | "),
@@ -197,14 +322,16 @@ impl KeysymbolOptions {
 
     pub fn needs_grouping(&self) -> bool {
         match self {
-            KeysymbolOptions::Leaf(_) => false,
+            SoundSymbolOptions::Leaf(_) => false,
 
-            KeysymbolOptions::Leaves(keysymbols) => keysymbols.len() > 1,
+            SoundSymbolOptions::Leaves(sound_symbols) => sound_symbols.len() > 1,
 
-            KeysymbolOptions::Options(options) => options.len() > 1,
+            SoundSymbolOptions::Options(options) => options.len() > 1,
         }
     }
 }
+
+pub type Keysymbol = SoundSymbol;
 
 
 
@@ -213,26 +340,38 @@ mod test {
     use super::*;
 
     #[test]
-    fn to_string_reports_symbol() {
-        let keysymbol = Keysymbol::new("a".to_string(), 0, false);
-        assert_eq!(keysymbol.to_string(), "a");
+    fn abstract_sound_symbols_render_like_legacy_keysymbols() {
+        let sound_symbol = SoundSymbol::abstract_symbol("a".to_string(), 0, false);
+        assert_eq!(sound_symbol.to_string(), "a");
     }
 
     #[test]
     fn to_string_reports_stress_number() {
-        let keysymbol = Keysymbol::new("ee".to_string(), 1, false);
-        assert_eq!(keysymbol.to_string(), "ee!1");
+        let sound_symbol = SoundSymbol::abstract_symbol("ee".to_string(), 1, false);
+        assert_eq!(sound_symbol.to_string(), "ee!1");
     }
 
     #[test]
     fn to_string_reports_optional() {
-        let keysymbol = Keysymbol::new("@@r".to_string(), 0, true);
-        assert_eq!(keysymbol.to_string(), "@@r?");
+        let sound_symbol = SoundSymbol::abstract_symbol("@@r".to_string(), 0, true);
+        assert_eq!(sound_symbol.to_string(), "@@r?");
     }
 
     #[test]
     fn to_string_reports_all() {
-        let keysymbol = Keysymbol::new("i".to_string(), 3, true);
-        assert_eq!(keysymbol.to_string(), "i!3?");
+        let sound_symbol = SoundSymbol::abstract_symbol("i".to_string(), 3, true);
+        assert_eq!(sound_symbol.to_string(), "i!3?");
+    }
+
+    #[test]
+    fn to_string_marks_broad_ipa() {
+        let sound_symbol = SoundSymbol::broad_ipa("ŋ".to_string(), 0, false);
+        assert_eq!(sound_symbol.to_string(), "/ŋ/");
+    }
+
+    #[test]
+    fn to_string_marks_narrow_ipa() {
+        let sound_symbol = SoundSymbol::narrow_ipa("h".to_string(), 0, false);
+        assert_eq!(sound_symbol.to_string(), "[h]");
     }
 }

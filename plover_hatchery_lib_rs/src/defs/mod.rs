@@ -5,6 +5,8 @@ pub use def_items::{
     Sopheme,
     SophemeSeq,
     Keysymbol,
+    SoundSymbol,
+    SoundSymbolKind,
     Transclusion,
 };
 

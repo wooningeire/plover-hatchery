@@ -1,6 +1,6 @@
 use std::fmt::{self, Display, Formatter};
 use super::lex::{Token, TokenClass, lex_sopheme_sequence};
-use crate::defs::{Entity, Sopheme, Keysymbol, Transclusion};
+use crate::defs::{Entity, Sopheme, Keysymbol, SoundSymbol, SoundSymbolKind, Transclusion};
 
 #[derive(Debug, Clone)]
 pub struct ParseErr {
@@ -57,8 +57,12 @@ impl<'a> TokenCursor<'a> {
     }
 
     fn token_is_dot(&self) -> bool {
+        self.token_is_symbol(".")
+    }
+
+    fn token_is_symbol(&self, symbol: &str) -> bool {
         let token = self.token();
-        token.class == TokenClass::Symbol && token.value == "."
+        token.class == TokenClass::Symbol && token.value == symbol
     }
 
     fn done(&self) -> bool {
@@ -138,22 +142,82 @@ fn consume_stress(cursor: TokenCursor) -> Result<ParseOk<u8>, ParseErr> {
     Ok(ParseOk::new(stress, cursor))
 }
 
-fn consume_keysymbol(cursor: TokenCursor) -> Result<ParseOk<Keysymbol>, ParseErr> {
-    if cursor.token().class != TokenClass::Chars {
+fn consume_delimited_sound_symbol_kind<'a>(
+    cursor: TokenCursor<'a>,
+    end_symbol: &str,
+    kind_from_value: impl FnOnce(String) -> SoundSymbolKind,
+) -> Result<ParseOk<'a, SoundSymbolKind>, ParseErr> {
+    let mut cursor = cursor.next();
+    let mut value = String::new();
+
+    while !cursor.done() && !cursor.token_is_symbol(end_symbol) {
+        if cursor.token().class == TokenClass::Whitespace {
+            return Err(ParseErr {
+                message: format!("Expected a closing {end_symbol} before whitespace"),
+                cursor_info: cursor.debug_string(),
+            });
+        }
+
+        value.push_str(&cursor.token().value);
+        cursor = cursor.next();
+    }
+
+    if value.is_empty() {
         return Err(ParseErr {
-            message: "Expected a keysymbol identifier here".to_string(),
+            message: "Expected a sound symbol value here".to_string(),
             cursor_info: cursor.debug_string(),
         });
     }
 
-    let chars = cursor.token().value.clone();
+    if !cursor.token_is_symbol(end_symbol) {
+        return Err(ParseErr {
+            message: format!("Expected a closing {end_symbol} here"),
+            cursor_info: cursor.debug_string(),
+        });
+    }
+
     let cursor = cursor.next();
 
+    Ok(ParseOk::new(kind_from_value(value), cursor))
+}
+
+fn consume_sound_symbol_kind(cursor: TokenCursor) -> Result<ParseOk<SoundSymbolKind>, ParseErr> {
+    if cursor.token().class == TokenClass::Chars {
+        return Ok(ParseOk::new(
+            SoundSymbolKind::Abstract(cursor.token().value.clone()),
+            cursor.next(),
+        ));
+    }
+
+    if cursor.token_is_symbol("/") {
+        return consume_delimited_sound_symbol_kind(
+            cursor,
+            "/",
+            SoundSymbolKind::BroadIpa,
+        );
+    }
+
+    if cursor.token_is_symbol("[") {
+        return consume_delimited_sound_symbol_kind(
+            cursor,
+            "]",
+            SoundSymbolKind::NarrowIpa,
+        );
+    }
+
+    Err(ParseErr {
+        message: "Expected a sound symbol identifier here".to_string(),
+        cursor_info: cursor.debug_string(),
+    })
+}
+
+fn consume_sound_symbol(cursor: TokenCursor) -> Result<ParseOk<SoundSymbol>, ParseErr> {
+    let ParseOk { value: kind, end_cursor: cursor } = consume_sound_symbol_kind(cursor)?;
     let ParseOk { value: stress, end_cursor: cursor } = consume_stress(cursor)?;
 
-    if cursor.token().class != TokenClass::Symbol || cursor.token().value != "?" {
+    if !cursor.token_is_symbol("?") {
         return Ok(ParseOk::new(
-            Keysymbol::new(chars, stress, false),
+            SoundSymbol::of(kind, stress, false),
             cursor
         ));
     }
@@ -161,9 +225,13 @@ fn consume_keysymbol(cursor: TokenCursor) -> Result<ParseOk<Keysymbol>, ParseErr
     let cursor = cursor.next();
 
     Ok(ParseOk::new(
-        Keysymbol::new(chars, stress, true),
+        SoundSymbol::of(kind, stress, true),
         cursor
     ))
+}
+
+fn consume_keysymbol(cursor: TokenCursor) -> Result<ParseOk<Keysymbol>, ParseErr> {
+    consume_sound_symbol(cursor)
 }
 
 fn consume_keysymbol_seq(mut cursor: TokenCursor) -> Result<ParseOk<Vec<Keysymbol>>, ParseErr> {
@@ -209,7 +277,10 @@ fn consume_sopheme_dot(cursor: TokenCursor) -> Result<ParseOk<()>, ParseErr> {
 }
 
 fn consume_sopheme_phono(mut cursor: TokenCursor) -> Result<ParseOk<Vec<Keysymbol>>, ParseErr> {
-    if cursor.token().class == TokenClass::Chars {
+    if cursor.token().class == TokenClass::Chars
+        || cursor.token_is_symbol("/")
+        || cursor.token_is_symbol("[")
+    {
         let ParseOk { value: keysymbol, end_cursor: new_cursor } = consume_keysymbol(cursor)?;
         return Ok(ParseOk::new(vec![keysymbol], new_cursor));
     }
@@ -364,18 +435,18 @@ pub fn parse_sopheme_seq(seq: &str) -> Result<Vec<Sopheme>, ParseErr> {
     parse_sopheme_seq_line(&lex_sopheme_sequence(seq))
 }
 
-pub fn parse_keysymbol_seq(seq: &str) -> Result<Vec<Keysymbol>, ParseErr> {
+pub fn parse_sound_symbol_seq(seq: &str) -> Result<Vec<SoundSymbol>, ParseErr> {
     let tokens = lex_sopheme_sequence(seq);
     let mut cursor = TokenCursor::new(&tokens);
-    let mut keysymbols = Vec::new();
+    let mut sound_symbols = Vec::new();
 
     if cursor.done() {
-        return Ok(keysymbols);
+        return Ok(sound_symbols);
     }
 
     loop {
-        let ParseOk { value: keysymbol, end_cursor: new_cursor } = consume_keysymbol(cursor)?;
-        keysymbols.push(keysymbol);
+        let ParseOk { value: sound_symbol, end_cursor: new_cursor } = consume_sound_symbol(cursor)?;
+        sound_symbols.push(sound_symbol);
         cursor = new_cursor;
 
         if cursor.done() {
@@ -392,7 +463,11 @@ pub fn parse_keysymbol_seq(seq: &str) -> Result<Vec<Keysymbol>, ParseErr> {
         }
     }
 
-    Ok(keysymbols)
+    Ok(sound_symbols)
+}
+
+pub fn parse_keysymbol_seq(seq: &str) -> Result<Vec<Keysymbol>, ParseErr> {
+    parse_sound_symbol_seq(seq)
 }
 
 #[cfg(test)]
@@ -427,6 +502,26 @@ mod test {
     #[test]
     fn keysymbol_groups() {
         is_parsing_reversible("a.a n.ng x.(g z) i.ae!1 e.@ t.t y.iy").unwrap();
+    }
+
+    #[test]
+    fn bare_sound_symbols_are_abstract() {
+        let sound_symbols = parse_sound_symbol_seq("ae ng").unwrap();
+
+        assert_eq!(
+            sound_symbols.iter()
+                .map(|sound_symbol| sound_symbol.kind())
+                .collect::<Vec<_>>(),
+            vec![
+                SoundSymbolKind::Abstract("ae".to_string()),
+                SoundSymbolKind::Abstract("ng".to_string()),
+            ],
+        );
+    }
+
+    #[test]
+    fn broad_and_narrow_ipa_sound_symbols_are_reversible() {
+        is_parsing_reversible("h.[h] a.ae ng./ŋ/").unwrap();
     }
 
     #[test]
