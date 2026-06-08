@@ -37,7 +37,7 @@ def theory():
 
 
 
-    def map_phoneme_to_soph_values_base(cursor: DefViewCursor) -> Generator[str, None, None]:
+    def map_phoneme_to_theory_symbol_values_base(cursor: DefViewCursor) -> Generator[str, None, None]:
         match cursor.tip():
             case DefViewItem.Sopheme(sopheme):
                 if len(sopheme.keysymbols) > 0: return
@@ -191,25 +191,25 @@ def theory():
             case _:
                 return
     
-    vowel_sophs = set(value for value in "A AA E EE I II O OO U UU AU OI OU".split())
+    vowel_theory_symbols = set(value for value in "A AA E EE I II O OO U UU AU OI OU".split())
 
-    def map_phoneme_to_soph_values(cursor: DefViewCursor) -> Generator[str, None, None]:
-        sophs = tuple(map_phoneme_to_soph_values_base(cursor))
-        yield from sophs
+    def map_phoneme_to_theory_symbol_values(cursor: DefViewCursor) -> Generator[str, None, None]:
+        theory_symbols = tuple(map_phoneme_to_theory_symbol_values_base(cursor))
+        yield from theory_symbols
 
-        if any(soph in vowel_sophs for soph in sophs):
+        if any(theory_symbol in vowel_theory_symbols for theory_symbol in theory_symbols):
             yield "@"
 
 
-    def map_keysymbol_to_sophs(cursor: DefViewCursor):
-        return (Soph(value) for value in map_phoneme_to_soph_values_base(cursor))
+    def map_keysymbol_to_theory_symbols(cursor: DefViewCursor):
+        return (TheorySymbol(value) for value in map_phoneme_to_theory_symbol_values_base(cursor))
 
 
-    # def map_sopheme_to_sophs(sopheme: Sopheme):
-    #     return (map_phoneme_to_sophs(phoneme) for phoneme in sopheme)
+    # def map_sopheme_to_theory_symbols(sopheme: Sopheme):
+    #     return (map_phoneme_to_theory_symbols(phoneme) for phoneme in sopheme)
 
 
-    sophs_to_main_chords = {
+    theory_symbols_to_main_chords = {
         "B": "PW -B",
         "CH": "KH -FP",
         "D": "TK -D",
@@ -302,7 +302,7 @@ def theory():
         "SC": "SKPW -S",
     }
 
-    sophs_to_alternate_chords = {
+    theory_symbols_to_alternate_chords = {
         "F": "W",
         "J": "-FR -G",
         "K": "*G",
@@ -316,9 +316,9 @@ def theory():
         "SC": "S -F",
     }
 
-    yield soph_trie(
-        map_to_sophs=lambda cursor: set(map_phoneme_to_soph_values(cursor)),
-        sophs_to_chords_dicts=(sophs_to_main_chords, sophs_to_alternate_chords),
+    yield theory_symbol_trie(
+        map_to_theory_symbols=lambda cursor: set(map_phoneme_to_theory_symbol_values(cursor)),
+        theory_symbols_to_chords_dicts=(theory_symbols_to_main_chords, theory_symbols_to_alternate_chords),
     )
 
 
@@ -328,23 +328,23 @@ def theory():
 
 
     yield alt_chords(
-        sophs_to_alternate_chords_dicts=(sophs_to_alternate_chords,),
-        sophs_to_main_chords_dicts=(sophs_to_main_chords,),
+        theory_symbols_to_alternate_chords_dicts=(theory_symbols_to_alternate_chords,),
+        theory_symbols_to_main_chords_dicts=(theory_symbols_to_main_chords,),
     )
 
 
-    def map_keysymbols_to_keysymbols_by_sophs(mappings: dict[str, str]):
+    def map_keysymbols_to_keysymbols_by_theory_symbols(mappings: dict[str, str]):
         chords = {
-            Soph(key): parse_sound_symbol_seq(keysymbols_str)
+            TheorySymbol(key): parse_sound_symbol_seq(keysymbols_str)
             for key, keysymbols_str in mappings.items()
         }
 
         def generate(cursor: DefViewCursor):
             new_keysymbols = set[SoundSymbol]()
 
-            for soph in map_keysymbol_to_sophs(cursor):
-                if soph not in chords: continue
-                new_keysymbols.update(chords[soph])
+            for theory_symbol in map_keysymbol_to_theory_symbols(cursor):
+                if theory_symbol not in chords: continue
+                new_keysymbols.update(chords[theory_symbol])
 
             return new_keysymbols.__iter__()
 
@@ -352,7 +352,7 @@ def theory():
 
 
     yield diphthong_transition_consonants(
-        keysymbols_by_first_vowel=map_keysymbols_to_keysymbols_by_sophs({
+        keysymbols_by_first_vowel=map_keysymbols_to_keysymbols_by_theory_symbols({
             "E": "y?",
             "OO": "w?",
             "OU": "w?",
@@ -369,10 +369,10 @@ def theory():
     yield optional_middle_vowels()
 
 
-    def if_phoneme_maps_to(soph_values: str):
-        sophs = set(Soph(value) for value in soph_values.split())
+    def if_phoneme_maps_to(theory_symbol_values: str):
+        theory_symbols = set(TheorySymbol(value) for value in theory_symbol_values.split())
         def check(cursor: DefViewCursor):
-            return any(soph in sophs for soph in map_keysymbol_to_sophs(cursor))
+            return any(theory_symbol in theory_symbols for theory_symbol in map_keysymbol_to_theory_symbols(cursor))
 
         return check
 
@@ -388,6 +388,6 @@ def theory():
 
 
     yield consonant_inversions(
-        consonant_sophs_str="B CH D F G H J K L M N NG P R S SH T TH W V Y Z ZH  C SC",
+        consonant_theory_symbols_str="B CH D F G H J K L M N NG P R S SH T TH W V Y Z ZH  C SC",
         inversion_domains_steno="STKPWHR FRPBLGTSDZ"
     )

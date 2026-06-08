@@ -208,7 +208,7 @@ await test("loadLookupBreakdown checks Hatchery identity before reading lookup d
                         {
                             chord: "A",
                             nodes: [0, 1],
-                            sophs: ["A"],
+                            theory_symbols: ["A"],
                         },
                     ],
                 },

@@ -264,7 +264,7 @@ def test__breakdown_lookup_route__checks_all_compiled_hatchery_dictionaries():
                 {
                     "path": [
                         {
-                            "sophs": ["A"],
+                            "theory_symbols": ["A"],
                             "chord": "A",
                             "nodes": [0, 1],
                         },
@@ -289,7 +289,7 @@ def test__breakdown_lookup_route__checks_all_compiled_hatchery_dictionaries():
         {
             "path": [
                 {
-                    "sophs": ["A"],
+                    "theory_symbols": ["A"],
                     "chord": "A",
                     "nodes": [0, 1],
                 },

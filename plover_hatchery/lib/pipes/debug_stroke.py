@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from plover.steno import Stroke
 
 from plover_hatchery.lib.pipes.Plugin import GetPluginApi, Plugin, define_plugin
-from plover_hatchery.lib.pipes.soph_trie import LookupResultWithAssociations, SophChordAssociation, soph_trie
+from plover_hatchery.lib.pipes.theory_symbol_trie import LookupResultWithAssociations, TheorySymbolChordAssociation, theory_symbol_trie
 from plover_hatchery.lib.trie import NondeterministicTrie, TransitionKey
 
 
@@ -17,7 +17,7 @@ def debug_stroke(steno: str) -> Plugin[None]:
 
     @define_plugin(debug_stroke)
     def plugin(get_plugin_api: GetPluginApi, **_):
-        soph_trie_api = get_plugin_api(soph_trie)
+        theory_symbol_trie_api = get_plugin_api(theory_symbol_trie)
 
 
         @dataclass
@@ -25,12 +25,12 @@ def debug_stroke(steno: str) -> Plugin[None]:
             should_debug = False
 
 
-        @soph_trie_api.begin_lookup.listen(debug_stroke)
+        @theory_symbol_trie_api.begin_lookup.listen(debug_stroke)
         def _(**_):
             return DebugStrokeState()
 
 
-        @soph_trie_api.process_outline.listen(debug_stroke)
+        @theory_symbol_trie_api.process_outline.listen(debug_stroke)
         def _(state: DebugStrokeState, outline: tuple[Stroke, ...], **_):
             if outline[-1] == stroke:
                 state.should_debug = True
@@ -69,24 +69,24 @@ def debug_stroke(steno: str) -> Plugin[None]:
         def summarize_transition(trie: NondeterministicTrie, transition: TransitionKey, entry_id: int, is_last: bool):
             cost = trie.get_transition_cost(transition, entry_id)
 
-            return f"{get_combiner(is_last)}\t{soph_trie_api.key_id_manager.get_key_str(transition.key_id)} ({cost})"
+            return f"{get_combiner(is_last)}\t{theory_symbol_trie_api.key_id_manager.get_key_str(transition.key_id)} ({cost})"
 
         def summarize_associations(result: LookupResultWithAssociations):
             return "\n".join(
-                summarize_association(association, i == 0, i == len(result.sophs_and_chords_used) - 1)
-                for i, association in enumerate(result.sophs_and_chords_used)
+                summarize_association(association, i == 0, i == len(result.theory_symbols_and_chords_used) - 1)
+                for i, association in enumerate(result.theory_symbols_and_chords_used)
             )
 
-        def summarize_association(association: SophChordAssociation, is_first: bool, is_last: bool):
+        def summarize_association(association: TheorySymbolChordAssociation, is_first: bool, is_last: bool):
             out = ""
             if association.chord_starts_new_stroke and not is_first:
                 out += "│\t/\n"
 
-            out += f"{get_combiner(is_last)}\t{association.chord.rtfcre}\t→ {', '.join(str(soph) for soph in association.sophs)}"
+            out += f"{get_combiner(is_last)}\t{association.chord.rtfcre}\t→ {', '.join(str(theory_symbol) for theory_symbol in association.theory_symbols)}"
             return out
 
         
-        @soph_trie_api.select_translation.listen(debug_stroke)
+        @theory_symbol_trie_api.select_translation.listen(debug_stroke)
         def _(
             state: DebugStrokeState,
             trie: NondeterministicTrie,

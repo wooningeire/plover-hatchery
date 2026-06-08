@@ -1,4 +1,4 @@
-use pyo3::prelude::*;
+﻿use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyTuple};
 use pyo3::exceptions::PyRuntimeError;
 
@@ -18,34 +18,34 @@ struct SourceNodePositionStackItem {
     source_nodes: Vec<TransitionSourceNode>,
 }
 
-/// Add an entry to the soph trie.
+/// Add an entry to the theory symbol trie.
 ///
-/// This is a structural port of the Python `add_entry` logic from `soph_trie.py`.
+/// This is a structural port of the Python `add_entry` logic from `theory_symbol_trie.py`.
 /// It iterates over a DefView, building trie transitions for each keysymbol.
 ///
 /// # Arguments
 /// * `trie` - The nondeterministic trie to add entries to
 /// * `entry_id` - The unique ID for this entry (translation_id)
 /// * `view` - The DefView containing the sophemes and keysymbols
-/// * `map_to_sophs` - Callback to get sophs from a cursor position
-/// * `get_key_ids_else_create` - Callback to get or create key IDs for a set of sophs
+/// * `map_to_theory_symbols` - Callback to get theory symbols from a cursor position
+/// * `get_key_ids_else_create` - Callback to get or create key IDs for a set of theory symbols
 /// * `register_transition` - Callback to register a transition with phoneme data
 /// * `transition_flags` - The transition flag manager
 /// * `skip_transition_flag_id` - The flag ID for skip transitions
 /// * `emit_begin_add_entry` - Hook callback for begin_add_entry event
-/// * `emit_add_soph_transition` - Hook callback for add_soph_transition event
+/// * `emit_add_theory_symbol_transition` - Hook callback for add_theory_symbol_transition event
 #[pyfunction]
-pub fn add_soph_trie_entry(
+pub fn add_theory_symbol_trie_entry(
     trie: Py<PyNondeterministicTrie>,
     entry_id: usize,
     view: Py<PyDefView>,
-    map_to_sophs: Py<PyAny>,
+    map_to_theory_symbols: Py<PyAny>,
     get_key_ids_else_create: Py<PyAny>,
     register_transition: Py<PyAny>,
     transition_flags: Py<TransitionFlagManager>,
     skip_transition_flag_id: usize,
     emit_begin_add_entry: Py<PyAny>,
-    emit_add_soph_transition: Py<PyAny>,
+    emit_add_theory_symbol_transition: Py<PyAny>,
     py: Python,
 ) -> PyResult<()> {
     let states = {
@@ -87,12 +87,12 @@ pub fn add_soph_trie_entry(
         source_node_position_stack: &mut Vec<SourceNodePositionStackItem>,
         trie: &Py<PyNondeterministicTrie>,
         entry_id: usize,
-        map_to_sophs: &Py<PyAny>,
+        map_to_theory_symbols: &Py<PyAny>,
         get_key_ids_else_create: &Py<PyAny>,
         register_transition: &Py<PyAny>,
         transition_flags: &Py<TransitionFlagManager>,
         skip_transition_flag_id: usize,
-        emit_add_soph_transition: &Py<PyAny>,
+        emit_add_theory_symbol_transition: &Py<PyAny>,
         states: &Py<PyAny>,
     | -> PyResult<()> {
         let mut new_source_nodes: Vec<TransitionSourceNode> = vec![];
@@ -140,9 +140,9 @@ pub fn add_soph_trie_entry(
 
 
             let py_cursor = old_cursor.clone();
-            let py_sophs = map_to_sophs.call1(py, (py_cursor,))?;
+            let py_theory_symbols = map_to_theory_symbols.call1(py, (py_cursor,))?;
 
-            let key_ids_result = get_key_ids_else_create.call1(py, (&py_sophs,))?;
+            let key_ids_result = get_key_ids_else_create.call1(py, (&py_theory_symbols,))?;
             let key_ids: Vec<Option<usize>> = key_ids_result.extract(py)?;
 
             let paths: JoinedTriePaths = {
@@ -183,14 +183,14 @@ pub fn add_soph_trie_entry(
 
             let kwargs = PyDict::new(py);
             kwargs.set_item("cursor", old_cursor.clone())?;
-            kwargs.set_item("sophs", &py_sophs)?;
+            kwargs.set_item("theory_symbols", &py_theory_symbols)?;
             kwargs.set_item("paths", paths.clone())?;
             kwargs.set_item("node_srcs", PyTuple::new(py, old_source_nodes.clone())?)?;
             kwargs.set_item("new_node_srcs", source_nodes.clone())?;
             kwargs.set_item("trie", trie.clone_ref(py))?;
             kwargs.set_item("entry_id", entry_id)?;
 
-            emit_add_soph_transition.call(py, (states.clone_ref(py),), Some(&kwargs))?;
+            emit_add_theory_symbol_transition.call(py, (states.clone_ref(py),), Some(&kwargs))?;
         }
                 
 
@@ -222,12 +222,12 @@ pub fn add_soph_trie_entry(
                     &mut source_node_position_stack,
                     &trie,
                     entry_id,
-                    &map_to_sophs,
+                    &map_to_theory_symbols,
                     &get_key_ids_else_create,
                     &register_transition,
                     &transition_flags,
                     skip_transition_flag_id,
-                    &emit_add_soph_transition,
+                    &emit_add_theory_symbol_transition,
                     &states,
                 ) {
                     foreach_result = Err(err);
@@ -253,12 +253,12 @@ pub fn add_soph_trie_entry(
             &mut source_node_position_stack,
             &trie,
             entry_id,
-            &map_to_sophs,
+            &map_to_theory_symbols,
             &get_key_ids_else_create,
             &register_transition,
             &transition_flags,
             skip_transition_flag_id,
-            &emit_add_soph_transition,
+            &emit_add_theory_symbol_transition,
             &states,
         )?;
     }

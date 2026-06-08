@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from plover.steno import Stroke
-from plover_hatchery.lib.pipes import soph_trie
+from plover_hatchery.lib.pipes import theory_symbol_trie
 from plover_hatchery.lib.pipes.Plugin import GetPluginApi, Plugin, define_plugin
 
 
@@ -12,7 +12,7 @@ def amphitheory_outlines() -> Plugin[None]:
 
     @define_plugin(amphitheory_outlines)
     def plugin(get_plugin_api: GetPluginApi, **_):
-        soph_trie_api = get_plugin_api(soph_trie)
+        theory_symbol_trie_api = get_plugin_api(theory_symbol_trie)
 
 
         @dataclass
@@ -21,12 +21,12 @@ def amphitheory_outlines() -> Plugin[None]:
             capital: bool = False
 
 
-        @soph_trie_api.begin_lookup.listen(amphitheory_outlines)
+        @theory_symbol_trie_api.begin_lookup.listen(amphitheory_outlines)
         def _(**_):
             return AmphitheoryOutlinesState()
 
 
-        @soph_trie_api.process_outline.listen(amphitheory_outlines)
+        @theory_symbol_trie_api.process_outline.listen(amphitheory_outlines)
         def _(state: AmphitheoryOutlinesState, outline: tuple[Stroke, ...], **_):
             # The empty outline is not allowed
             if len(outline) == 0:
@@ -55,7 +55,7 @@ def amphitheory_outlines() -> Plugin[None]:
             return tuple(stroke - linker_chord - capital_chord for stroke in outline)
 
 
-        @soph_trie_api.modify_translation.listen(amphitheory_outlines)
+        @theory_symbol_trie_api.modify_translation.listen(amphitheory_outlines)
         def _(state: AmphitheoryOutlinesState, translation: str, **_):
             if state.link and state.capital:
                 return "{^-|^}" + translation

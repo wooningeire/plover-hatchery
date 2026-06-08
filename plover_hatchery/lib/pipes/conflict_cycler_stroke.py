@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from plover.steno import Stroke
 
 from plover_hatchery.lib.pipes.Plugin import GetPluginApi, Plugin, define_plugin
-from plover_hatchery.lib.pipes.soph_trie import LookupResultWithAssociations, soph_trie
+from plover_hatchery.lib.pipes.theory_symbol_trie import LookupResultWithAssociations, theory_symbol_trie
 
 
 def conflict_cycler_stroke(steno: str) -> Plugin[None]:
@@ -13,7 +13,7 @@ def conflict_cycler_stroke(steno: str) -> Plugin[None]:
 
     @define_plugin(conflict_cycler_stroke)
     def plugin(get_plugin_api: GetPluginApi, **_):
-        soph_trie_api = get_plugin_api(soph_trie)
+        theory_symbol_trie_api = get_plugin_api(theory_symbol_trie)
 
 
         @dataclass
@@ -21,12 +21,12 @@ def conflict_cycler_stroke(steno: str) -> Plugin[None]:
             conflict_index: int = -1
 
 
-        @soph_trie_api.begin_lookup.listen(conflict_cycler_stroke)
+        @theory_symbol_trie_api.begin_lookup.listen(conflict_cycler_stroke)
         def _(**_):
             return ConflictCyclerStrokeState()
 
 
-        @soph_trie_api.process_outline.listen(conflict_cycler_stroke)
+        @theory_symbol_trie_api.process_outline.listen(conflict_cycler_stroke)
         def _(state: ConflictCyclerStrokeState, outline: tuple[Stroke, ...], **_):
             index_of_first_cycler_stroke = 0
 
@@ -43,7 +43,7 @@ def conflict_cycler_stroke(steno: str) -> Plugin[None]:
             return outline[:index_of_first_cycler_stroke]
 
         
-        @soph_trie_api.select_translation.listen(conflict_cycler_stroke)
+        @theory_symbol_trie_api.select_translation.listen(conflict_cycler_stroke)
         def _(
             state: ConflictCyclerStrokeState,
             choices: list[LookupResultWithAssociations],

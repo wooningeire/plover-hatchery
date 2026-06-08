@@ -1,19 +1,19 @@
-use std::{
+﻿use std::{
     collections::HashMap,
     hash::{DefaultHasher, Hash, Hasher},
 };
 
 use pyo3::{prelude::*, types::PyTuple};
 
-use crate::{pipes::Soph, py_stroke::stroke_from_integer, trie::TriePath};
+use crate::{pipes::TheorySymbol, py_stroke::stroke_from_integer, trie::TriePath};
 
 const ROOT_NODE_ID: usize = 0;
 
-/// Active position in a chord-to-soph trie lookup.
+/// Active position in a chord-to-theory-symbol trie lookup.
 #[derive(Clone, Debug)]
 #[pyclass]
-#[pyo3(name = "ChordToSophSearchNode")]
-pub struct PyChordToSophSearchNode {
+#[pyo3(name = "ChordToTheorySymbolSearchNode")]
+pub struct PyChordToTheorySymbolSearchNode {
     #[pyo3(get)]
     pub trie_node_id: usize,
     #[pyo3(get)]
@@ -21,7 +21,7 @@ pub struct PyChordToSophSearchNode {
 }
 
 #[pymethods]
-impl PyChordToSophSearchNode {
+impl PyChordToTheorySymbolSearchNode {
     #[new]
     pub fn new(trie_node_id: usize, chord_starting_key_index: usize) -> Self {
         Self {
@@ -31,28 +31,28 @@ impl PyChordToSophSearchNode {
     }
 }
 
-/// Candidate soph sequence found after matching a chord.
+/// Candidate theory-symbol sequence found after matching a chord.
 #[derive(Clone, Debug)]
 #[pyclass]
-#[pyo3(name = "ChordToSophSearchResult")]
-pub struct PyChordToSophSearchResult {
-    sophs: Vec<Soph>,
+#[pyo3(name = "ChordToTheorySymbolSearchResult")]
+pub struct PyChordToTheorySymbolSearchResult {
+    theory_symbols: Vec<TheorySymbol>,
     chord: usize,
 }
 
 #[pymethods]
-impl PyChordToSophSearchResult {
+impl PyChordToTheorySymbolSearchResult {
     #[new]
-    pub fn new(sophs: Vec<Soph>, chord: Py<PyAny>, py: Python<'_>) -> PyResult<Self> {
+    pub fn new(theory_symbols: Vec<TheorySymbol>, chord: Py<PyAny>, py: Python<'_>) -> PyResult<Self> {
         Ok(Self {
-            sophs,
+            theory_symbols,
             chord: chord.extract(py)?,
         })
     }
 
     #[getter]
-    pub fn sophs<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyTuple>> {
-        PyTuple::new(py, self.sophs.clone())
+    pub fn theory_symbols<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyTuple>> {
+        PyTuple::new(py, self.theory_symbols.clone())
     }
 
     #[getter]
@@ -62,36 +62,36 @@ impl PyChordToSophSearchResult {
 
     pub fn __hash__(&self) -> u64 {
         let mut hasher = DefaultHasher::new();
-        self.sophs.hash(&mut hasher);
+        self.theory_symbols.hash(&mut hasher);
         self.chord.hash(&mut hasher);
         hasher.finish()
     }
 
-    pub fn __eq__(&self, other: &PyChordToSophSearchResult) -> bool {
-        self.sophs == other.sophs && self.chord == other.chord
+    pub fn __eq__(&self, other: &PyChordToTheorySymbolSearchResult) -> bool {
+        self.theory_symbols == other.theory_symbols && self.chord == other.chord
     }
 }
 
-/// A path through the soph trie during lookup, including unresolved chord associations.
+/// A path through the theory-symbol trie during lookup, including unresolved chord associations.
 #[pyclass]
-#[pyo3(name = "SophsToTranslationSearchPath")]
-pub struct PySophsToTranslationSearchPath {
+#[pyo3(name = "TheorySymbolsToTranslationSearchPath")]
+pub struct PyTheorySymbolsToTranslationSearchPath {
     trie_path: TriePath,
-    sophs_and_chords_used: Py<PyAny>,
+    theory_symbols_and_chords_used: Py<PyAny>,
 }
 
 #[pymethods]
-impl PySophsToTranslationSearchPath {
+impl PyTheorySymbolsToTranslationSearchPath {
     #[new]
-    #[pyo3(signature = (trie_path=None, sophs_and_chords_used=None))]
+    #[pyo3(signature = (trie_path=None, theory_symbols_and_chords_used=None))]
     pub fn new(
         trie_path: Option<TriePath>,
-        sophs_and_chords_used: Option<Py<PyAny>>,
+        theory_symbols_and_chords_used: Option<Py<PyAny>>,
         py: Python<'_>,
     ) -> Self {
         Self {
             trie_path: trie_path.unwrap_or_else(TriePath::root),
-            sophs_and_chords_used: sophs_and_chords_used
+            theory_symbols_and_chords_used: theory_symbols_and_chords_used
                 .unwrap_or_else(|| PyTuple::empty(py).unbind().into_any()),
         }
     }
@@ -102,53 +102,53 @@ impl PySophsToTranslationSearchPath {
     }
 
     #[getter]
-    pub fn sophs_and_chords_used(&self, py: Python<'_>) -> Py<PyAny> {
-        self.sophs_and_chords_used.clone_ref(py)
+    pub fn theory_symbols_and_chords_used(&self, py: Python<'_>) -> Py<PyAny> {
+        self.theory_symbols_and_chords_used.clone_ref(py)
     }
 }
 
-/// Soph result emitted by a chord lookup, paired with the key index where that chord began.
+/// TheorySymbol result emitted by a chord lookup, paired with the key index where that chord began.
 #[pyclass]
-#[pyo3(name = "ChordToSophSearchMatch")]
-pub struct PyChordToSophSearchMatch {
-    soph_result: Py<PyChordToSophSearchResult>,
+#[pyo3(name = "ChordToTheorySymbolSearchMatch")]
+pub struct PyChordToTheorySymbolSearchMatch {
+    theory_symbol_result: Py<PyChordToTheorySymbolSearchResult>,
     #[pyo3(get)]
     pub chord_starting_key_index: usize,
 }
 
 #[pymethods]
-impl PyChordToSophSearchMatch {
+impl PyChordToTheorySymbolSearchMatch {
     #[new]
     pub fn new(
-        soph_result: Py<PyChordToSophSearchResult>,
+        theory_symbol_result: Py<PyChordToTheorySymbolSearchResult>,
         chord_starting_key_index: usize,
     ) -> Self {
         Self {
-            soph_result,
+            theory_symbol_result,
             chord_starting_key_index,
         }
     }
 
     #[getter]
-    pub fn soph_result(&self, py: Python<'_>) -> Py<PyChordToSophSearchResult> {
-        self.soph_result.clone_ref(py)
+    pub fn theory_symbol_result(&self, py: Python<'_>) -> Py<PyChordToTheorySymbolSearchResult> {
+        self.theory_symbol_result.clone_ref(py)
     }
 }
 
-/// Rust-owned trie for matching physical chord keys to Python soph search results.
+/// Rust-owned trie for matching physical chord keys to Python theory-symbol search results.
 ///
-/// The searcher keeps `ChordToSophSearchResult` values and returns matches paired with the key index where each chord began.
+/// The searcher keeps `ChordToTheorySymbolSearchResult` values and returns matches paired with the key index where each chord began.
 #[pyclass]
-#[pyo3(name = "ChordToSophSearcher")]
-pub struct PyChordToSophSearcher {
+#[pyo3(name = "ChordToTheorySymbolSearcher")]
+pub struct PyChordToTheorySymbolSearcher {
     transitions: Vec<HashMap<String, usize>>,
-    node_results: HashMap<usize, Vec<Py<PyChordToSophSearchResult>>>,
+    node_results: HashMap<usize, Vec<Py<PyChordToTheorySymbolSearchResult>>>,
 }
 
 #[pymethods]
-impl PyChordToSophSearcher {
+impl PyChordToTheorySymbolSearcher {
     #[new]
-    pub fn new(entries: Vec<(Vec<String>, Py<PyChordToSophSearchResult>)>) -> Self {
+    pub fn new(entries: Vec<(Vec<String>, Py<PyChordToTheorySymbolSearchResult>)>) -> Self {
         let mut searcher = Self {
             transitions: vec![HashMap::new()],
             node_results: HashMap::new(),
@@ -171,17 +171,17 @@ impl PyChordToSophSearcher {
     /// The caller passes active trie nodes paired with the key index where each chord
     /// began. This also starts a fresh traversal at the root for the current key, so
     /// chords can begin at any key position within a stroke.
-    pub fn possible_sophs_after_consuming(
+    pub fn possible_theory_symbols_after_consuming(
         &self,
-        node_data: Vec<PyRef<PyChordToSophSearchNode>>,
+        node_data: Vec<PyRef<PyChordToTheorySymbolSearchNode>>,
         current_key_index: usize,
         key: String,
         py: Python<'_>,
-    ) -> (Vec<PyChordToSophSearchNode>, Vec<PyChordToSophSearchMatch>) {
+    ) -> (Vec<PyChordToTheorySymbolSearchNode>, Vec<PyChordToTheorySymbolSearchMatch>) {
         // Add a root node to trigger a new traversal starting from the root.
-        let mut src_nodes: Vec<PyChordToSophSearchNode> =
+        let mut src_nodes: Vec<PyChordToTheorySymbolSearchNode> =
             node_data.iter().map(|node| (*node).clone()).collect();
-        src_nodes.push(PyChordToSophSearchNode::new(
+        src_nodes.push(PyChordToTheorySymbolSearchNode::new(
             ROOT_NODE_ID,
             current_key_index,
         ));
@@ -200,14 +200,14 @@ impl PyChordToSophSearcher {
                 continue;
             };
 
-            new_node_data.push(PyChordToSophSearchNode::new(
+            new_node_data.push(PyChordToTheorySymbolSearchNode::new(
                 dst_node_id,
                 src_node.chord_starting_key_index,
             ));
 
             if let Some(node_results) = self.node_results.get(&dst_node_id) {
                 for result in node_results {
-                    results.push(PyChordToSophSearchMatch::new(
+                    results.push(PyChordToTheorySymbolSearchMatch::new(
                         result.clone_ref(py),
                         src_node.chord_starting_key_index,
                     ));
@@ -219,7 +219,7 @@ impl PyChordToSophSearcher {
     }
 }
 
-impl PyChordToSophSearcher {
+impl PyChordToTheorySymbolSearcher {
     fn create_node(&mut self) -> usize {
         let node_id = self.transitions.len();
         self.transitions.push(HashMap::new());

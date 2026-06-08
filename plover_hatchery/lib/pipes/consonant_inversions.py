@@ -7,14 +7,14 @@ from dataclasses import dataclass, field
 from plover.steno import Stroke
 from plover_hatchery_lib_rs import DefViewCursor, DefViewItem
 from plover_hatchery.lib.pipes.Plugin import define_plugin, GetPluginApi
-from plover_hatchery.lib.pipes.soph_trie import ChordToSophSearchResult, ChordToSophSearchResultWithSrcIndex, LookupResultWithAssociations, SophChordAssociation, SophsToTranslationSearchPath, soph_trie
-from plover_hatchery_lib_rs import Soph, TransitionFlagManager
+from plover_hatchery.lib.pipes.theory_symbol_trie import ChordToTheorySymbolSearchResult, ChordToTheorySymbolSearchResultWithSrcIndex, LookupResultWithAssociations, TheorySymbolChordAssociation, TheorySymbolsToTranslationSearchPath, theory_symbol_trie
+from plover_hatchery_lib_rs import TheorySymbol, TransitionFlagManager
 from plover_hatchery.lib.trie import NondeterministicTrie, TransitionSourceNode, JoinedTriePaths, TransitionFlag, TransitionCostKey
 
 
 
-def consonant_inversions(*, consonant_sophs_str: str, inversion_domains_steno: str):
-    consonant_sophs = set(Soph(value) for value in consonant_sophs_str.split())
+def consonant_inversions(*, consonant_theory_symbols_str: str, inversion_domains_steno: str):
+    consonant_theory_symbols = set(TheorySymbol(value) for value in consonant_theory_symbols_str.split())
     inversion_domains: tuple[Stroke, ...] = tuple(
         sorted(
             Stroke.from_steno(domain_steno) for domain_steno in inversion_domains_steno.split()
@@ -23,15 +23,15 @@ def consonant_inversions(*, consonant_sophs_str: str, inversion_domains_steno: s
 
     @define_plugin(consonant_inversions)
     def plugin(get_plugin_api: GetPluginApi, **_):
-        soph_trie_api = get_plugin_api(soph_trie)
+        theory_symbol_trie_api = get_plugin_api(theory_symbol_trie)
 
-        inversion_flag = soph_trie_api.transition_flags.new_flag("inversion")
+        inversion_flag = theory_symbol_trie_api.transition_flags.new_flag("inversion")
 
 
         @dataclass(frozen=True)
         class PastConsonant:
             node_srcs: tuple[TransitionSourceNode, ...]
-            sophs: tuple[Soph, ...]
+            theory_symbols: tuple[TheorySymbol, ...]
             cursor: DefViewCursor
 
 
@@ -40,40 +40,40 @@ def consonant_inversions(*, consonant_sophs_str: str, inversion_domains_steno: s
                 self.past_consonants: list[PastConsonant] = []
 
 
-        @soph_trie_api.begin_add_entry.listen(consonant_inversions)
+        @theory_symbol_trie_api.begin_add_entry.listen(consonant_inversions)
         def _(**_):
             return ConsonantInversionsAddEntryState()
 
 
-        def create_inversion_soph(sophs: "tuple[Soph, ...]"):
-            sorted_sophs = sorted(sophs, key=lambda soph: soph.value)
-            return Soph(f"inversion:{' '.join(soph.value for soph in sorted_sophs)}")
+        def create_inversion_theory_symbol(theory_symbols: "tuple[TheorySymbol, ...]"):
+            sorted_theory_symbols = sorted(theory_symbols, key=lambda theory_symbol: theory_symbol.value)
+            return TheorySymbol(f"inversion:{' '.join(theory_symbol.value for theory_symbol in sorted_theory_symbols)}")
 
-        def get_inversion_sophs(past_consonants: list[PastConsonant]):
+        def get_inversion_theory_symbols(past_consonants: list[PastConsonant]):
             def get_product_choices():
                 for consonant in past_consonants:
                     keysymbol = consonant.cursor.tip().keysymbol()
 
                     if keysymbol.optional:
-                        yield (*consonant.sophs, None)
+                        yield (*consonant.theory_symbols, None)
                     else:
-                        yield consonant.sophs
+                        yield consonant.theory_symbols
 
             for combo in itertools.product(*get_product_choices()):
-                non_null_sophs = tuple(
-                    soph
-                    for soph in combo
-                    if soph is not None
+                non_null_theory_symbols = tuple(
+                    theory_symbol
+                    for theory_symbol in combo
+                    if theory_symbol is not None
                 )
-                if len(non_null_sophs) <= 1: continue
+                if len(non_null_theory_symbols) <= 1: continue
 
-                yield create_inversion_soph(non_null_sophs)
+                yield create_inversion_theory_symbol(non_null_theory_symbols)
 
 
-        @soph_trie_api.add_soph_transition.listen(consonant_inversions)
+        @theory_symbol_trie_api.add_theory_symbol_transition.listen(consonant_inversions)
         def _(
             state: ConsonantInversionsAddEntryState,
-            sophs: set[Soph],
+            theory_symbols: set[TheorySymbol],
             cursor: DefViewCursor,
             paths: JoinedTriePaths,
             node_srcs: tuple[TransitionSourceNode, ...],
@@ -88,7 +88,7 @@ def consonant_inversions(*, consonant_sophs_str: str, inversion_domains_steno: s
                 case _:
                     return
 
-            if any(soph not in consonant_sophs for soph in sophs):
+            if any(theory_symbol not in consonant_theory_symbols for theory_symbol in theory_symbols):
                 keysymbol = cursor.tip().keysymbol()
 
                 # TODO verify this
@@ -97,24 +97,24 @@ def consonant_inversions(*, consonant_sophs_str: str, inversion_domains_steno: s
                     
                 return
 
-            current_consonant_sophs = tuple(sophs & consonant_sophs)
-            if len(current_consonant_sophs) == 0: return
+            current_consonant_theory_symbols = tuple(theory_symbols & consonant_theory_symbols)
+            if len(current_consonant_theory_symbols) == 0: return
 
-            state.past_consonants.append(PastConsonant(node_srcs, current_consonant_sophs, cursor))
+            state.past_consonants.append(PastConsonant(node_srcs, current_consonant_theory_symbols, cursor))
 
             if paths.dst_node_id is not None:
                 for i, consonant in enumerate(state.past_consonants[:-1]):
-                    inversion_sophs = get_inversion_sophs(state.past_consonants[i:])
+                    inversion_theory_symbols = get_inversion_theory_symbols(state.past_consonants[i:])
                     new_paths = trie.link_join(
                         tuple(TransitionSourceNode.increment_costs(consonant.node_srcs, 50)),
                         paths.dst_node_id,
-                        soph_trie_api.key_id_manager.get_key_ids_else_create(inversion_sophs),
+                        theory_symbol_trie_api.key_id_manager.get_key_ids_else_create(inversion_theory_symbols),
                         entry_id
                     )
 
                     for transition_seq in new_paths.transition_seqs:
                         for transition in transition_seq.transitions:
-                            soph_trie_api.transition_flags.flag_transition(TransitionCostKey(transition, entry_id), inversion_flag)
+                            theory_symbol_trie_api.transition_flags.flag_transition(TransitionCostKey(transition, entry_id), inversion_flag)
 
 
 
@@ -131,60 +131,60 @@ def consonant_inversions(*, consonant_sophs_str: str, inversion_domains_steno: s
         @dataclass
         class ConsonantInversionsLookupState:
             current_domain: Stroke | None = None
-            sophs_in_current_domain: list[tuple[ChordToSophSearchResultWithSrcIndex, ...]] = field(default_factory=list)
+            theory_symbols_in_current_domain: list[tuple[ChordToTheorySymbolSearchResultWithSrcIndex, ...]] = field(default_factory=list)
             first_key_index_in_current_domain: int = -1
 
-            def paths_ending_with(self, result: ChordToSophSearchResultWithSrcIndex, current_chain: tuple[ChordToSophSearchResultWithSrcIndex, ...]=()) -> Generator[tuple[ChordToSophSearchResultWithSrcIndex, ...], None, None]:
+            def paths_ending_with(self, result: ChordToTheorySymbolSearchResultWithSrcIndex, current_chain: tuple[ChordToTheorySymbolSearchResultWithSrcIndex, ...]=()) -> Generator[tuple[ChordToTheorySymbolSearchResultWithSrcIndex, ...], None, None]:
                 if result.chord_start_key_index < self.first_key_index_in_current_domain:
                     return
 
                 if result.chord_start_key_index == self.first_key_index_in_current_domain:
                     yield (result, *current_chain)
 
-                for old_result in self.sophs_in_current_domain[result.chord_start_key_index - self.first_key_index_in_current_domain]:
+                for old_result in self.theory_symbols_in_current_domain[result.chord_start_key_index - self.first_key_index_in_current_domain]:
                     if old_result in current_chain or old_result == result: continue
 
                     yield from self.paths_ending_with(old_result, (result, *current_chain))
 
 
-        @soph_trie_api.begin_lookup.listen(consonant_inversions)
+        @theory_symbol_trie_api.begin_lookup.listen(consonant_inversions)
         def _(**_):
             return ConsonantInversionsLookupState()
 
 
-        @soph_trie_api.consume_key.listen(consonant_inversions)
-        def _(state: ConsonantInversionsLookupState, key: str, key_index: int, is_new_stroke: bool, results: tuple[ChordToSophSearchResultWithSrcIndex, ...], **_):
+        @theory_symbol_trie_api.consume_key.listen(consonant_inversions)
+        def _(state: ConsonantInversionsLookupState, key: str, key_index: int, is_new_stroke: bool, results: tuple[ChordToTheorySymbolSearchResultWithSrcIndex, ...], **_):
             inversion_domain = get_inversion_domain_of_stroke(Stroke.from_keys((key,)))
             if inversion_domain is None:
                 # Nullify the state's inversion domain
                 state.current_domain = None
-                state.sophs_in_current_domain = []
+                state.theory_symbols_in_current_domain = []
                 state.first_key_index_in_current_domain = -1
                 return
 
             if state.current_domain is None or is_new_stroke or inversion_domain != state.current_domain:
                 # Set the current inversion domain to the new one
                 state.current_domain = inversion_domain
-                state.sophs_in_current_domain = [()]
+                state.theory_symbols_in_current_domain = [()]
                 state.first_key_index_in_current_domain = key_index
             
-            state.sophs_in_current_domain.append(results)
+            state.theory_symbols_in_current_domain.append(results)
 
             for result in results:
                 for results_chain in state.paths_ending_with(result):
                     if len(results_chain) == 1: continue
 
                     
-                    if any(len(chain_result.soph_result.sophs) != 1 for chain_result in results_chain):
+                    if any(len(chain_result.theory_symbol_result.theory_symbols) != 1 for chain_result in results_chain):
                         continue # TODO handle clusters
 
-                    sophs = tuple(chain_result.soph_result.sophs[0] for chain_result in results_chain)
+                    theory_symbols = tuple(chain_result.theory_symbol_result.theory_symbols[0] for chain_result in results_chain)
 
-                    chord = sum((chain_result.soph_result.chord for chain_result in results_chain), Stroke.from_integer(0))
+                    chord = sum((chain_result.theory_symbol_result.chord for chain_result in results_chain), Stroke.from_integer(0))
 
-                    yield ChordToSophSearchResultWithSrcIndex(
-                        ChordToSophSearchResult(
-                            (create_inversion_soph(sophs),),
+                    yield ChordToTheorySymbolSearchResultWithSrcIndex(
+                        ChordToTheorySymbolSearchResult(
+                            (create_inversion_theory_symbol(theory_symbols),),
                             chord,
                         ),
                         results_chain[0].chord_start_key_index,

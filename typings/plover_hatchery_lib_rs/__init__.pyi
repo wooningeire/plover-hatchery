@@ -229,21 +229,21 @@ def parse_keysymbol_seq(seq: str, /) -> list[Keysymbol]:
     ...
 
 
-def add_soph_trie_entry(
+def add_theory_symbol_trie_entry(
     trie: NondeterministicTrie,
     entry_id: int,
     view: DefView,
-    map_to_sophs: Callable[[DefViewCursor], set[Soph]],
+    map_to_theory_symbols: Callable[[DefViewCursor], set[TheorySymbol]],
     get_key_ids_else_create: Callable[[DefViewCursor], Sequence[int]],
     register_transition: Callable[[TransitionKey, int, DefViewCursor], None],
     transition_flags: TransitionFlagManager,
     skip_transition_flag_id: int,
     emit_begin_add_entry: Callable[[int], None],
-    emit_add_soph_transition: Callable[[int, int, int], None],
+    emit_add_theory_symbol_transition: Callable[[int, int, int], None],
 ) -> None: ...
 
 
-class ChordToSophSearchNode:
+class ChordToTheorySymbolSearchNode:
     @property
     def trie_node_id(self) -> int: ...
     @property
@@ -252,48 +252,48 @@ class ChordToSophSearchNode:
     def __init__(self, trie_node_id: int, chord_starting_key_index: int, /) -> None: ...
 
 
-class ChordToSophSearchResult:
+class ChordToTheorySymbolSearchResult:
     @property
-    def sophs(self) -> tuple[Soph, ...]: ...
+    def theory_symbols(self) -> tuple[TheorySymbol, ...]: ...
     @property
     def chord(self) -> Any: ...
 
-    def __init__(self, sophs: Sequence[Soph], chord: Any, /) -> None: ...
+    def __init__(self, theory_symbols: Sequence[TheorySymbol], chord: Any, /) -> None: ...
 
 
-class ChordToSophSearchMatch:
+class ChordToTheorySymbolSearchMatch:
     @property
-    def soph_result(self) -> ChordToSophSearchResult: ...
+    def theory_symbol_result(self) -> ChordToTheorySymbolSearchResult: ...
     @property
     def chord_starting_key_index(self) -> int: ...
 
-    def __init__(self, soph_result: ChordToSophSearchResult, chord_starting_key_index: int, /) -> None: ...
+    def __init__(self, theory_symbol_result: ChordToTheorySymbolSearchResult, chord_starting_key_index: int, /) -> None: ...
 
 
-class SophsToTranslationSearchPath:
+class TheorySymbolsToTranslationSearchPath:
     @property
     def trie_path(self) -> TriePath: ...
     @property
-    def sophs_and_chords_used(self) -> tuple[Any, ...]: ...
+    def theory_symbols_and_chords_used(self) -> tuple[Any, ...]: ...
 
     def __init__(
         self,
         trie_path: TriePath | None = None,
-        sophs_and_chords_used: Sequence[Any] | None = None,
+        theory_symbols_and_chords_used: Sequence[Any] | None = None,
         /,
     ) -> None: ...
 
 
-class ChordToSophSearcher:
-    def __init__(self, entries: Sequence[tuple[Sequence[str], ChordToSophSearchResult]], /) -> None: ...
+class ChordToTheorySymbolSearcher:
+    def __init__(self, entries: Sequence[tuple[Sequence[str], ChordToTheorySymbolSearchResult]], /) -> None: ...
 
-    def possible_sophs_after_consuming(
+    def possible_theory_symbols_after_consuming(
         self,
-        node_data: Sequence[ChordToSophSearchNode],
+        node_data: Sequence[ChordToTheorySymbolSearchNode],
         current_key_index: int,
         key: str,
         /,
-    ) -> tuple[list[ChordToSophSearchNode], list[ChordToSophSearchMatch]]: ...
+    ) -> tuple[list[ChordToTheorySymbolSearchNode], list[ChordToTheorySymbolSearchMatch]]: ...
 
 
 class Trie:
@@ -539,14 +539,14 @@ class ReverseTrieIndex:
     def get_subtrie_data(self, trie: NondeterministicTrie, translation_id: int, /) -> dict[str, Any] | None: ...
 
 
-class Soph:
+class TheorySymbol:
     @property
     def value(self) -> str: ...
     
     def __init__(self, value: str, /) -> None: ...
     
     @staticmethod
-    def parse_seq(seq: str, /) -> tuple[Soph, ...]: ...
+    def parse_seq(seq: str, /) -> tuple[TheorySymbol, ...]: ...
 
 
 class TransitionSourceNode:

@@ -8,10 +8,14 @@ from plover_hatchery_lib_rs import TransitionFlagManager
 from plover_hatchery.lib.pipes.Plugin import define_plugin
 from plover_hatchery.lib.pipes.compile_theory import compile_theory
 from plover_hatchery.lib.pipes.floating_keys import floating_keys
-from plover_hatchery.lib.pipes.soph_trie import soph_trie
+from plover_hatchery.lib.pipes.theory_symbol_trie import theory_symbol_trie
 
 
-def _map_to_sophs(cursor):
+THEORY_SYMBOL_TRIE_CACHE_KEY = "theory_symbol_trie"
+LEGACY_THEORY_SYMBOL_TRIE_CACHE_KEY = "soph_trie"
+
+
+def _map_to_theory_symbols(cursor):
     try:
         return {cursor.tip().keysymbol().value}
     except TypeError:
@@ -21,9 +25,9 @@ def _map_to_sophs(cursor):
 def _choose_first_translation():
     @define_plugin(_choose_first_translation)
     def plugin(get_plugin_api, **_):
-        soph_trie_api = get_plugin_api(soph_trie)
+        theory_symbol_trie_api = get_plugin_api(theory_symbol_trie)
 
-        @soph_trie_api.select_translation.listen(_choose_first_translation)
+        @theory_symbol_trie_api.select_translation.listen(_choose_first_translation)
         def _(choices, translations, **__):
             return translations[choices[0].lookup_result.translation_id]
 
@@ -33,9 +37,9 @@ def _choose_first_translation():
 def _test_theory():
     def plugins():
         yield floating_keys("*")
-        yield soph_trie(
-            map_to_sophs=_map_to_sophs,
-            sophs_to_chords_dicts=[{"k": "K", "a": "A", "kt": "K-T", "t": "-T"}],
+        yield theory_symbol_trie(
+            map_to_theory_symbols=_map_to_theory_symbols,
+            theory_symbols_to_chords_dicts=[{"k": "K", "a": "A", "kt": "K-T", "t": "-T"}],
         )
         yield _choose_first_translation()
 
@@ -71,18 +75,26 @@ def _write_cache_payload(dictionary_path: Path, payload):
         pickle.dump(payload, file, protocol=pickle.HIGHEST_PROTOCOL)
 
 
-def _rewrite_soph_trie_cache_to_legacy_payload_format(dictionary_path: Path):
+def _rewrite_theory_symbol_trie_cache_to_legacy_payload_format(dictionary_path: Path):
     payload = _read_cache_payload(dictionary_path)
-    soph_trie_cache = payload["plugins"]["soph_trie"]
+    theory_symbol_trie_cache = payload["plugins"][THEORY_SYMBOL_TRIE_CACHE_KEY]
 
-    soph_trie_cache["trie"] = RsNondeterministicTrie.from_state_bytes(
-        soph_trie_cache.pop("trie_bytes")
+    theory_symbol_trie_cache["trie"] = RsNondeterministicTrie.from_state_bytes(
+        theory_symbol_trie_cache.pop("trie_bytes")
     ).export_state()
-    soph_trie_cache["transition_flags"] = TransitionFlagManager.from_state_bytes(
-        soph_trie_cache.pop("transition_flags_bytes")
+    theory_symbol_trie_cache["transition_flags"] = TransitionFlagManager.from_state_bytes(
+        theory_symbol_trie_cache.pop("transition_flags_bytes")
     ).export_state()
     payload.pop("payload_format", None)
 
+    _write_cache_payload(dictionary_path, payload)
+
+
+def _rewrite_theory_symbol_trie_cache_to_legacy_plugin_key(dictionary_path: Path):
+    payload = _read_cache_payload(dictionary_path)
+    payload["plugins"][LEGACY_THEORY_SYMBOL_TRIE_CACHE_KEY] = payload["plugins"].pop(
+        THEORY_SYMBOL_TRIE_CACHE_KEY
+    )
     _write_cache_payload(dictionary_path, payload)
 
 
@@ -155,13 +167,13 @@ def test__compile_theory__saves_compiled_trie_cache_as_rust_bytes(tmp_path: Path
     assert first_lookup.lookup(("KAT",)) == "cat"
 
     payload = _read_cache_payload(dictionary_path)
-    soph_trie_cache = payload["plugins"]["soph_trie"]
+    theory_symbol_trie_cache = payload["plugins"][THEORY_SYMBOL_TRIE_CACHE_KEY]
 
     assert payload["payload_format"] == 2
-    assert isinstance(soph_trie_cache["trie_bytes"], bytes)
-    assert isinstance(soph_trie_cache["transition_flags_bytes"], bytes)
-    assert "trie" not in soph_trie_cache
-    assert "transition_flags" not in soph_trie_cache
+    assert isinstance(theory_symbol_trie_cache["trie_bytes"], bytes)
+    assert isinstance(theory_symbol_trie_cache["transition_flags_bytes"], bytes)
+    assert "trie" not in theory_symbol_trie_cache
+    assert "transition_flags" not in theory_symbol_trie_cache
 
 
 def test__compile_theory__loads_file_fingerprint_cache_before_loading_entries(tmp_path: Path, capsys):
@@ -219,13 +231,30 @@ def test__compile_theory__loads_legacy_cache_before_loading_entries_when_cache_i
     assert second_lookup.lookup(("KAT",)) == "cat"
 
 
+def test__compile_theory__loads_legacy_theory_symbol_trie_cache_key(tmp_path: Path, capsys):
+    dictionary_path = tmp_path / "sample.hatchery"
+    dictionary_path.write_text("source version 1", encoding="utf-8")
+
+    first_lookup = _build_lookup(dictionary_path)
+    assert first_lookup.lookup(("KAT",)) == "cat"
+    _rewrite_theory_symbol_trie_cache_to_legacy_plugin_key(dictionary_path)
+
+    _ = capsys.readouterr()
+    second_lookup = _build_lookup(dictionary_path, _entry_lines_should_not_be_loaded)
+    output = capsys.readouterr().out
+
+    assert "Loaded compiled trie cache" in output
+    assert "Parsed" not in output
+    assert second_lookup.lookup(("KAT",)) == "cat"
+
+
 def test__compile_theory__does_not_refresh_legacy_payload_cache_during_default_load(tmp_path: Path, capsys):
     dictionary_path = tmp_path / "sample.hatchery"
     dictionary_path.write_text("source version 1", encoding="utf-8")
 
     first_lookup = _build_lookup(dictionary_path)
     assert first_lookup.lookup(("KAT",)) == "cat"
-    _rewrite_soph_trie_cache_to_legacy_payload_format(dictionary_path)
+    _rewrite_theory_symbol_trie_cache_to_legacy_payload_format(dictionary_path)
 
     _ = capsys.readouterr()
     second_lookup = _build_lookup(dictionary_path, _entry_lines_should_not_be_loaded)
@@ -237,9 +266,9 @@ def test__compile_theory__does_not_refresh_legacy_payload_cache_during_default_l
     assert second_lookup.lookup(("KAT",)) == "cat"
 
     payload = _read_cache_payload(dictionary_path)
-    soph_trie_cache = payload["plugins"]["soph_trie"]
-    assert "trie" in soph_trie_cache
-    assert "transition_flags" in soph_trie_cache
+    theory_symbol_trie_cache = payload["plugins"][THEORY_SYMBOL_TRIE_CACHE_KEY]
+    assert "trie" in theory_symbol_trie_cache
+    assert "transition_flags" in theory_symbol_trie_cache
 
 
 def test__compile_theory__refreshes_legacy_payload_cache_when_requested(tmp_path: Path, capsys):
@@ -248,7 +277,7 @@ def test__compile_theory__refreshes_legacy_payload_cache_when_requested(tmp_path
 
     first_lookup = _build_lookup(dictionary_path)
     assert first_lookup.lookup(("KAT",)) == "cat"
-    _rewrite_soph_trie_cache_to_legacy_payload_format(dictionary_path)
+    _rewrite_theory_symbol_trie_cache_to_legacy_payload_format(dictionary_path)
 
     _ = capsys.readouterr()
     second_lookup = _build_lookup(
@@ -264,7 +293,7 @@ def test__compile_theory__refreshes_legacy_payload_cache_when_requested(tmp_path
     assert second_lookup.lookup(("KAT",)) == "cat"
 
     payload = _read_cache_payload(dictionary_path)
-    soph_trie_cache = payload["plugins"]["soph_trie"]
+    theory_symbol_trie_cache = payload["plugins"][THEORY_SYMBOL_TRIE_CACHE_KEY]
     assert payload["payload_format"] == 2
-    assert isinstance(soph_trie_cache["trie_bytes"], bytes)
-    assert isinstance(soph_trie_cache["transition_flags_bytes"], bytes)
+    assert isinstance(theory_symbol_trie_cache["trie_bytes"], bytes)
+    assert isinstance(theory_symbol_trie_cache["transition_flags_bytes"], bytes)

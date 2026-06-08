@@ -6,12 +6,12 @@ pub use optionalize::optionalize_keysymbols;
 mod diphthongs;
 pub use diphthongs::add_diphthong_keysymbols;
 
-mod soph_trie;
-pub use soph_trie::add_soph_trie_entry;
-pub use soph_trie::{
-    PyChordToSophSearchMatch, PyChordToSophSearchNode, PyChordToSophSearchResult,
-    PyChordToSophSearcher, PySophsToTranslationSearchPath,
+mod theory_symbol_trie;
+pub use theory_symbol_trie::add_theory_symbol_trie_entry;
+pub use theory_symbol_trie::{
+    PyChordToTheorySymbolSearchMatch, PyChordToTheorySymbolSearchNode, PyChordToTheorySymbolSearchResult,
+    PyChordToTheorySymbolSearcher, PyTheorySymbolsToTranslationSearchPath,
 };
 
-mod soph;
-pub use soph::Soph;
+mod theory_symbol;
+pub use theory_symbol::TheorySymbol;

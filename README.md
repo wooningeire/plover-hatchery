@@ -25,9 +25,9 @@ A **sopheme** is a unit of a word that represents an atomic grapheme-phoneme cor
 * Pronounciations can arbitrarily diverge from their spellings but still be associated with clusters of letters: in `comfortable`, `orta` makes the `/tər/` sounds (`orta.tər`).
 * *I called it that because "lexeme" and "morpheme" were already taken :)*
 
-A **soph** is a unit of a word that is treated uniquely by a steno theory. These are defined by the theory.
-* In a lot of cases, these map one-to-one with specific phonemes, so e.g. any `/p/` sound is treated the same by a theory and thus can be represented with a single soph, which might be called `P`. (The soph names don't really matter; we just want a way to refer to them consistently.)
-* Suppose you want your theory to treat the `/s/` sound differently depending on how it is spelled, like with a `c`. Then the sopheme `c.s` could be given one soph probably named `C`, whereas any other occurrence of `/s/` would be given a soph named `S`.
+A **theory symbol** is a unit of a word that is treated uniquely by a steno theory. These are defined by the theory.
+* In a lot of cases, these map one-to-one with specific phonemes, so e.g. any `/p/` sound is treated the same by a theory and thus can be represented with a single theory symbol, which might be called `P`. (The theory symbol names don't really matter; we just want a way to refer to them consistently.)
+* Suppose you want your theory to treat the `/s/` sound differently depending on how it is spelled, like with a `c`. Then the sopheme `c.s` could be given one theory symbol probably named `C`, whereas any other occurrence of `/s/` would be given a theory symbol named `S`.
 
 ## Entrypoints
 This plugin exposes the following tools and interfaces:
@@ -51,14 +51,14 @@ translation = "hang"
 steno = "HAPBG"
 ```
 
-Often we won't be doing this for things other than briefs, since the number of valid steno outlines for a word can be prohibitively large. Within a given theory, we can instead define it in terms of the *sophs* which that theory defines, letting the theory do all the heavylifting of figuring out all possible valid outlines when you stroke:
+Often we won't be doing this for things other than briefs, since the number of valid steno outlines for a word can be prohibitively large. Within a given theory, we can instead define it in terms of the *theory symbols* which that theory defines, letting the theory do all the heavylifting of figuring out all possible valid outlines when you stroke:
 ```toml
 [entries."hang:1"]
-format = "sophs" 
+format = "theory_symbols"
 translation = "hang"
-sophs = "H A NG" 
+theory_symbols = "H A NG"
 ```
-Of course, sophs are theory-defined, so they are hard to transfer to another theory.
+Of course, theory symbols are theory-defined, so they are hard to transfer to another theory.
 
 A lot of the entries defined in the default dictionary instead opt to use *sophemes* directly:
 ```toml
@@ -77,7 +77,7 @@ Phonetics have these options due to the huge variety of accents and pronunciatio
 
 These entry and sopheme sound symbol formats represent a spectrum of authoring ease versus portability tradeoffs:
 1. **Steno** :: most convenient, least portable
-1. **Sophs**
+1. **Theory symbols**
 1. **Sophemes with broad IPA**
 1. **Sophemes with narrow IPA**
 1. **Sophemes with abstract sounds** :: least convenient, more portable

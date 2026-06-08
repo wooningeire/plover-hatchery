@@ -16,9 +16,9 @@ use defs::{
 
 mod pipes;
 use pipes::{
-    add_diphthong_keysymbols, add_soph_trie_entry, optionalize_keysymbols,
-    PyChordToSophSearchMatch, PyChordToSophSearchNode, PyChordToSophSearchResult,
-    PyChordToSophSearcher, PySophsToTranslationSearchPath, Soph,
+    add_diphthong_keysymbols, add_theory_symbol_trie_entry, optionalize_keysymbols,
+    PyChordToTheorySymbolSearchMatch, PyChordToTheorySymbolSearchNode, PyChordToTheorySymbolSearchResult,
+    PyChordToTheorySymbolSearcher, PyTheorySymbolsToTranslationSearchPath, TheorySymbol,
 };
 
 mod morphology;
@@ -59,12 +59,12 @@ pub fn plover_hatchery_lib_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_parse_sopheme_seq, m)?)?;
     m.add_function(wrap_pyfunction!(py_parse_sound_symbol_seq, m)?)?;
     m.add_function(wrap_pyfunction!(py_parse_keysymbol_seq, m)?)?;
-    m.add_function(wrap_pyfunction!(add_soph_trie_entry, m)?)?;
-    m.add_class::<PyChordToSophSearchNode>()?;
-    m.add_class::<PyChordToSophSearchResult>()?;
-    m.add_class::<PyChordToSophSearchMatch>()?;
-    m.add_class::<PySophsToTranslationSearchPath>()?;
-    m.add_class::<PyChordToSophSearcher>()?;
+    m.add_function(wrap_pyfunction!(add_theory_symbol_trie_entry, m)?)?;
+    m.add_class::<PyChordToTheorySymbolSearchNode>()?;
+    m.add_class::<PyChordToTheorySymbolSearchResult>()?;
+    m.add_class::<PyChordToTheorySymbolSearchMatch>()?;
+    m.add_class::<PyTheorySymbolsToTranslationSearchPath>()?;
+    m.add_class::<PyChordToTheorySymbolSearcher>()?;
 
     m.add_class::<PyTrie>()?;
     m.add_class::<PyReadonlyTrie>()?;
@@ -78,7 +78,7 @@ pub fn plover_hatchery_lib_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<LookupResult>()?;
     m.add_class::<PyReverseTrieIndex>()?;
 
-    m.add_class::<Soph>()?;
+    m.add_class::<TheorySymbol>()?;
     m.add_class::<TransitionSourceNode>()?;
     m.add_class::<JoinedTriePaths>()?;
     m.add_class::<JoinedTransitionSeq>()?;

@@ -36,7 +36,7 @@
     };
 
     type BreakdownPathStep = {
-        sophs: string[],
+        theory_symbols: string[],
         chord: string,
         nodes: number[],
     };

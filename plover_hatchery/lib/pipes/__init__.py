@@ -4,7 +4,7 @@ Two types of elision:
     - boundary (placing vowel on the transition from right to left consonant chords)
 """
 
-from .soph_trie import soph_trie
+from .theory_symbol_trie import theory_symbol_trie
 from .diphthong_transition_consonants import diphthong_transition_consonants
 from .optional_middle_vowels import optional_middle_vowels
 from .optional_middle_consonants import optional_middle_consonants
@@ -22,4 +22,4 @@ from .Theory import Theory
 from .compile_theory import compile_theory
 
 from .stroke_conditions import *
-from plover_hatchery_lib_rs import Soph
+from plover_hatchery_lib_rs import TheorySymbol
