@@ -136,18 +136,21 @@ While constructing paths in the trie, transitions are also associated with a (co
 Constructing the trie for the entirety of Lapwing takes about 18 seconds.
 
 ### Performance
+> [!important]
+> Haven't checked this too closely
+
 Assuming:
 1. $O(1)$ dictionary/hashmap lookups
 1. $O(1)$ operations on strings read from files
 1. Word length $\propto$ writeout outline length for that word
 
-|Method|Notes|# outlines encoded per entry (for entry of length $n$)|Entry preprocess time (for entry of length $n$)|Outline lookup time (for outline of length $n$)|
+|Method|Notes|# outlines encoded per entry (for entry of length $n$, $p$ options per phoneme)|Entry preprocess time (for entry of length $n$, $p$ options per phoneme)|Outline lookup time (for outline of length $n$)|
 |-|-|-|-|-|
 |JSON|Direct mapping between steno outlines and translations|$1$|$O(1)$|$O(n)$|
 |[Runtime folding](https://github.com/wooningeire/plover-custom-folding)|Direct mapping except arbitrary combinations of chord folding conditions are checked for each mapped outline|$O(2^\text{\# folding rules})$|$O(1)$|$O(n \times 2^\text{\# folding rules})$|
-|[Froj](https://github.com/StenoHarri/Froj)|Theory rules are applied against a [lexicon](https://www.cstr.ed.ac.uk/projects/unisyn/) to compile all possible outlines for each word in the lexicon to a JSON dictionary|?|$O(2^n)$|$O(n)$|
-|Hatchery (no inversions)|Theory rules are applied against a dictionary to pregenerate a lookup trie which is used at runtime|?|$O(n)$|$O(n)$|
-|Hatchery (with inversions)|Hatchery but all possible consonant conversions are added to the trie|?|$O(n^2\log(n))$|$O(n\log(n))$|
+|[Froj](https://github.com/StenoHarri/Froj)|Theory rules are applied against a [lexicon](https://www.cstr.ed.ac.uk/projects/unisyn/) to compile all possible outlines for each word to a JSON dictionary|$O(p^n)$|$O(p^n)$|$O(n)$|
+|Hatchery (no inversions)|Theory rules are applied against a dictionary to pregenerate a lookup trie which is used at runtime|$O(p^n)$|$O(np)$|$O(n^2)$|
+|Hatchery (with inversions)|Hatchery but all possible consonant conversions are added to the trie|$O((np^2)^n)$|$O(n^2p\log(np))$|$O(n^2\log(n))$|
 
 ## Development
 Like all Plover plugins, this is a Python project. We'll use [uv](https://docs.astral.sh/uv/) to manage dependencies.
