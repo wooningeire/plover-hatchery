@@ -144,9 +144,9 @@ Assuming:
 |Method|Notes|# outlines encoded per entry (for entry of length $n$)|Entry preprocess time (for entry of length $n$)|Outline lookup time (for outline of length $n$)|
 |-|-|-|-|-|
 |JSON|Direct mapping between steno outlines and translations|$1$|$O(1)$|$O(n)$|
-|[Runtime folding](https://github.com/wooningeire/plover-custom-folding)|Direct mapping except arbitrary combinations of chord folding conditions are checked for each mapped outline|$O(2^\text{\# folding rules})$|$O(1)$|$O(2^\text{\# folding rules})$|
-|[Froj](https://github.com/StenoHarri/Froj)|Theory rules are applied against a [lexicon](https://www.cstr.ed.ac.uk/projects/unisyn/) to compile all possible outlines for each word in the lexicon to a JSON dictionary|?|$O(2^n)$|$O(1)$|
-|Hatchery (no inversions)|Theory rules are applied against a dictionary to pregenerate a lookup trie which is used at runtime|?|$O(n)$|$O(1)$|
+|[Runtime folding](https://github.com/wooningeire/plover-custom-folding)|Direct mapping except arbitrary combinations of chord folding conditions are checked for each mapped outline|$O(2^\text{\# folding rules})$|$O(1)$|$O(n \times 2^\text{\# folding rules})$|
+|[Froj](https://github.com/StenoHarri/Froj)|Theory rules are applied against a [lexicon](https://www.cstr.ed.ac.uk/projects/unisyn/) to compile all possible outlines for each word in the lexicon to a JSON dictionary|?|$O(2^n)$|$O(n)$|
+|Hatchery (no inversions)|Theory rules are applied against a dictionary to pregenerate a lookup trie which is used at runtime|?|$O(n)$|$O(n)$|
 |Hatchery (with inversions)|Hatchery but all possible consonant conversions are added to the trie|?|$O(n^2\log(n))$|$O(n\log(n))$|
 
 ## Development
