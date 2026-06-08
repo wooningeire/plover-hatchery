@@ -5,6 +5,7 @@
 import {
     PloverApiError,
     deletePloverEntry,
+    loadLookupBreakdown,
     loadPloverDictionaryEntries,
     loadPloverDictionaries,
 } from "./ploverApi.js";
@@ -181,6 +182,100 @@ await test("loadPloverDictionaryEntries reads selected dictionary entries", asyn
             assert(response.stats.entryCount === 1, "Expected one entry");
             assert(response.entries[0]?.key === "cat", "Expected entry key");
             assert(response.pagination.totalCount === 90, "Expected pagination count");
+        },
+    );
+});
+
+await test("loadLookupBreakdown checks Hatchery identity before reading lookup data", async () => {
+    const requestedPaths: string[] = [];
+
+    await withFetch(
+        (input) => {
+            const url = new URL(String(input));
+            requestedPaths.push(url.pathname);
+
+            if (url.pathname === "/api/status") {
+                return Promise.resolve(jsonResponse({
+                    service: "plover-hatchery",
+                    ok: true,
+                }));
+            }
+
+            assert(url.pathname === "/api/breakdown_lookup/APL%20%5ETPEU", "Expected lookup path");
+            return Promise.resolve(jsonResponse([
+                {
+                    path: [
+                        {
+                            chord: "A",
+                            nodes: [0, 1],
+                            sophs: ["A"],
+                        },
+                    ],
+                },
+            ]));
+        },
+        async () => {
+            const response = await loadLookupBreakdown("APL/^TPEU");
+
+            assert(requestedPaths.join(",") === "/api/status,/api/breakdown_lookup/APL%20%5ETPEU", "Expected status check before lookup request");
+            assert(response.length === 1, "Expected one lookup breakdown");
+        },
+    );
+});
+
+await test("loadLookupBreakdown reports Hatchery JSON endpoint errors as HTTP errors", async () => {
+    await withFetch(
+        (input) => {
+            const url = new URL(String(input));
+
+            if (url.pathname === "/api/status") {
+                return Promise.resolve(jsonResponse({
+                    service: "plover-hatchery",
+                    ok: true,
+                }));
+            }
+
+            return Promise.resolve(jsonResponse({
+                error: "Lookup failed",
+            }, {
+                status: 500,
+            }));
+        },
+        async () => {
+            await assertRejectsWithPloverApiError(
+                () => loadLookupBreakdown("APL/^TPEU"),
+                "http",
+                "Lookup failed",
+            );
+        },
+    );
+});
+
+await test("loadLookupBreakdown reports non-JSON Hatchery endpoint failures as HTTP errors", async () => {
+    await withFetch(
+        (input) => {
+            const url = new URL(String(input));
+
+            if (url.pathname === "/api/status") {
+                return Promise.resolve(jsonResponse({
+                    service: "plover-hatchery",
+                    ok: true,
+                }));
+            }
+
+            return Promise.resolve(new Response("<!doctype html>Internal Server Error", {
+                status: 500,
+                headers: {
+                    "Content-Type": "text/html",
+                },
+            }));
+        },
+        async () => {
+            await assertRejectsWithPloverApiError(
+                () => loadLookupBreakdown("APL/^TPEU"),
+                "http",
+                "did not return JSON",
+            );
         },
     );
 });

@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request
+from flask import Flask, Response, jsonify, request
 from threading import Thread
 from flask.typing import ResponseClass
 from urllib.parse import urlsplit
@@ -165,45 +165,55 @@ class HatcheryWebServerExtension:
         
         @app.route("/api/breakdown_translation/<translation>")
         def breakdown_translation_route(translation: str):
-            compile_result = self.__compile_hatchery_dictionaries()
-            if compile_result is not None:
-                return compile_result
+            try:
+                compile_result = self.__compile_hatchery_dictionaries()
+                if compile_result is not None:
+                    return compile_result
 
-            breakdown = store.breakdown_hatchery_translation(translation)
+                breakdown = store.breakdown_hatchery_translation(translation)
 
-            if breakdown is None and store.breakdown_translation is None:
+                if breakdown is None and store.breakdown_translation is None:
+                    return jsonify({
+                        "error": "No compiled Hatchery lookup is available",
+                    }), 503
+
+                if breakdown is None:
+                    breakdown = store.breakdown_translation(translation)
+
+                if breakdown is None:
+                    return jsonify({})
+
+                return Response(breakdown, mimetype="application/json")
+            except Exception as e:
                 return jsonify({
-                    "error": "No compiled Hatchery lookup is available",
-                }), 503
-
-            if breakdown is None:
-                breakdown = store.breakdown_translation(translation)
-
-            if breakdown is None:
-                return jsonify({})
-
-            return breakdown
+                    "error": str(e),
+                }), 500
         
         @app.route("/api/breakdown_lookup/<outline>")
         def breakdown_lookup_route(outline: str):
-            compile_result = self.__compile_hatchery_dictionaries()
-            if compile_result is not None:
-                return compile_result
+            try:
+                compile_result = self.__compile_hatchery_dictionaries()
+                if compile_result is not None:
+                    return compile_result
 
-            breakdown = store.breakdown_hatchery_lookup(tuple(outline.split(" ")))
+                breakdown = store.breakdown_hatchery_lookup(tuple(outline.split(" ")))
 
-            if breakdown is None and (store.breakdown_lookup is None or store.translations is None):
+                if breakdown is None and (store.breakdown_lookup is None or store.translations is None):
+                    return jsonify({
+                        "error": "No compiled Hatchery lookup is available",
+                    }), 503
+
+                if breakdown is None:
+                    breakdown = store.breakdown_lookup(tuple(outline.split(" ")), store.translations)
+
+                if breakdown is None:
+                    return jsonify([])
+
+                return Response(breakdown, mimetype="application/json")
+            except Exception as e:
                 return jsonify({
-                    "error": "No compiled Hatchery lookup is available",
-                }), 503
-
-            if breakdown is None:
-                breakdown = store.breakdown_lookup(tuple(outline.split(" ")), store.translations)
-
-            if breakdown is None:
-                return jsonify([])
-
-            return breakdown
+                    "error": str(e),
+                }), 500
 
     def __compile_hatchery_dictionaries(self):
         try:

@@ -26,6 +26,8 @@
 
     let testOutline = $state("");
     let lookupBreakdownData = $state<any[] | null>(null);
+    let lookupBreakdownError = $state<string | null>(null);
+    let lookupRequestId = 0;
     let lookupTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
     const breakdown = $derived(translationBreakdownData[breakdownIndex] ?? null);
@@ -42,8 +44,12 @@
     });
 
     $effect(() => {
-        if (testOutline.trim() === "" || breakdown === null) {
+        const nextTestOutline = testOutline.trim();
+
+        if (nextTestOutline === "" || breakdown === null) {
+            lookupRequestId += 1;
             lookupBreakdownData = null;
+            lookupBreakdownError = null;
             return;
         }
 
@@ -51,12 +57,27 @@
             clearTimeout(lookupTimeoutId);
         }
 
+        const requestId = lookupRequestId + 1;
+        lookupRequestId = requestId;
+        lookupBreakdownData = null;
+        lookupBreakdownError = null;
+
         lookupTimeoutId = setTimeout(async () => {
             try {
-                lookupBreakdownData = await loadLookupBreakdown(testOutline);
+                const nextLookupBreakdownData = await loadLookupBreakdown(nextTestOutline);
+                if (requestId !== lookupRequestId) {
+                    return;
+                }
+
+                lookupBreakdownData = nextLookupBreakdownData;
+                lookupBreakdownError = null;
             } catch (error) {
+                if (requestId !== lookupRequestId) {
+                    return;
+                }
+
                 lookupBreakdownData = null;
-                translationBreakdownError = error instanceof Error ? error.message : String(error);
+                lookupBreakdownError = error instanceof Error ? error.message : String(error);
             }
         }, 80);
 
@@ -76,7 +97,9 @@
         searchedTranslation = nextTranslation;
         translationBreakdownIsLoading = true;
         translationBreakdownError = null;
+        lookupRequestId += 1;
         lookupBreakdownData = null;
+        lookupBreakdownError = null;
 
         try {
             translationBreakdownData = await loadTranslationBreakdown(nextTranslation);
@@ -186,14 +209,22 @@
             <div class="message">Ready</div>
         {/if}
 
-        <label class="test-outline">
-            <span>Test outline</span>
-            <input
-                type="text"
-                bind:value={testOutline}
-                autocomplete="off"
-            />
-        </label>
+        <div class="outline-panel">
+            <label class="test-outline">
+                <span>Test outline</span>
+                <input
+                    type="text"
+                    bind:value={testOutline}
+                    autocomplete="off"
+                />
+            </label>
+
+            {#if lookupBreakdownError !== null}
+                <div class="message is-error compact" aria-live="polite">
+                    Outline highlight failed: {lookupBreakdownError}
+                </div>
+            {/if}
+        </div>
     </div>
 </section>
 
@@ -320,6 +351,13 @@
         min-height: 0;
     }
 
+    .outline-panel {
+        display: grid;
+        gap: 0.5rem;
+
+        min-width: 0;
+    }
+
     .message {
         min-height: 2.5rem;
         align-self: start;
@@ -335,6 +373,12 @@
         border-color: oklch(0.82 0.08 28);
         background: oklch(0.97 0.035 28);
         color: oklch(0.42 0.13 28);
+    }
+
+    .message.compact {
+        min-height: 2rem;
+        padding: 0.45rem 0.65rem;
+        font-size: 0.84rem;
     }
 
     .test-outline {

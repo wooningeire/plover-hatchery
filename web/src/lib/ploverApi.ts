@@ -255,6 +255,8 @@ export const loadTranslationBreakdown = async (translationText: string) => {
 };
 
 export const loadLookupBreakdown = async (outline: string) => {
+    await checkPloverApi();
+
     const responseBody = await fetchPloverJson<unknown>(
         `/api/breakdown_lookup/${encodeURIComponent(outline.replaceAll("/", " "))}`,
     );
@@ -303,6 +305,14 @@ const parseJsonResponse = async (response: Response, baseUrl: string) => {
     try {
         return JSON.parse(responseText) as unknown;
     } catch {
+        if (!response.ok) {
+            throw new PloverApiError({
+                kind: "http",
+                message: `Hatchery request failed with HTTP ${response.status} and did not return JSON.`,
+                status: response.status,
+            });
+        }
+
         throw createWrongServerError(baseUrl);
     }
 };

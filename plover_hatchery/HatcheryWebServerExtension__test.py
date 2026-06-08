@@ -215,6 +215,7 @@ def test__breakdown_translation_route__compiles_before_serving_breakdown():
     response = _client().get("/api/breakdown_translation/cat")
 
     assert response.status_code == 200
+    assert response.mimetype == "application/json"
     assert dictionary.compile_calls == 1
     assert dictionary.refresh_cache_calls == [False]
     assert json.loads(response.get_data(as_text=True)) == [{"entry": "cat"}]
@@ -283,6 +284,7 @@ def test__breakdown_lookup_route__checks_all_compiled_hatchery_dictionaries():
     response = _client().get("/api/breakdown_lookup/AFPL%20%5ETHER")
 
     assert response.status_code == 200
+    assert response.mimetype == "application/json"
     assert json.loads(response.get_data(as_text=True)) == [
         {
             "path": [
@@ -294,6 +296,22 @@ def test__breakdown_lookup_route__checks_all_compiled_hatchery_dictionaries():
             ],
         },
     ]
+
+
+def test__breakdown_lookup_route__returns_json_error_when_lookup_raises():
+    def raise_lookup(outline, translations):
+        raise RuntimeError("Lookup failed")
+
+    store.translations = ["cat"]
+    store.breakdown_lookup = raise_lookup
+
+    response = _client().get("/api/breakdown_lookup/APL")
+
+    assert response.status_code == 500
+    assert response.mimetype == "application/json"
+    assert response.get_json() == {
+        "error": "Lookup failed",
+    }
 
 
 def test__dictionaries_route__lists_registered_hatchery_dictionaries(tmp_path: Path):
