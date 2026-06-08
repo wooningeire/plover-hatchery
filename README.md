@@ -111,6 +111,8 @@ json_to_hatchery.py [-h] -j IN_JSON_PATH -u IN_UNILEX_PATH -o OUT_PATH
 ## Methodology
 *See the algorithms being ideated and developed in the [algorithm drafting whiteboard](https://www.figma.com/board/22f2V9ufYxLdvBtGWj6nXv/Hatchery?node-id=0-1&t=rvw11Srj6YIEvjmo-1)*
 
+Hatchery attempts to store a huge number of outlines implicitly using custom data structures, instead of a direct outline-to-translation mapping like typical JSON dictionaries (so more like a Python dictionary).
+
 ### Intermediate entry representation
 Hatchery dictionaries are (or will be) intended to be added to directly. However, for testing or as a base, a JSON dictionary along with the Unilex lexicon can be used to generate a large starter dictionary (using `./local-utils/json_to_hatchery.py`).
 
@@ -132,6 +134,20 @@ While constructing paths in the trie, transitions are also associated with a (co
 * The cost is used to determine which translation to use in the case of conflicts, which occur when the set of nodes an outline ends at is associated with multiple valid translations. The cost is determined by e.g. whether the path is part of a cluster, inversion, elision, etc.
 
 Constructing the trie for the entirety of Lapwing takes about 18 seconds.
+
+### Performance
+Assuming:
+1. $O(1)$ dictionary/hashmap lookups
+1. $O(1)$ operations on strings read from files
+1. Word length $\propto$ writeout outline length for that word
+
+|Method|Notes|# outlines encoded per entry (for entry of length $n$)|Entry preprocess time (for entry of length $n$)|Outline lookup time (for outline of length $n$)|
+|-|-|-|-|-|
+|JSON|Direct mapping between steno outlines and translations|$1$|$O(1)$|$O(n)$|
+|[Runtime folding](https://github.com/wooningeire/plover-custom-folding)|Direct mapping except arbitrary combinations of chord folding conditions are checked for each mapped outline|$O(2^\text{\# folding rules})$|$O(1)$|$O(2^\text{\# folding rules})$|
+|[Froj](https://github.com/StenoHarri/Froj)|Theory rules are applied against a [lexicon](https://www.cstr.ed.ac.uk/projects/unisyn/) to compile all possible outlines for each word in the lexicon to a JSON dictionary|?|$O(2^n)$|$O(1)$|
+|Hatchery (no inversions)|Theory rules are applied against a dictionary to pregenerate a lookup trie which is used at runtime|?|$O(n)$|$O(1)$|
+|Hatchery (with inversions)|Hatchery but all possible consonant conversions are added to the trie|?|$O(n^2\log(n))$|$O(n\log(n))$|
 
 ## Development
 Like all Plover plugins, this is a Python project. We'll use [uv](https://docs.astral.sh/uv/) to manage dependencies.
