@@ -3,7 +3,12 @@
     import * as d3 from "d3";
     import FlagControls, { type FlagSettings } from "$lib/components/FlagControls.svelte";
     import type { LookupBreakdown } from "$lib/ploverApi";
-    import { linkPathSegment, linkPathYMax } from "./graph";
+    import {
+        graphNodeX,
+        graphViewBoxWidth,
+        linkPathSegment,
+        linkPathYMax,
+    } from "./graph";
 
     type NodeData = {
         id: number,
@@ -39,9 +44,11 @@
     let {
         data,
         highlightData = null,
+        spacingScale = 1,
     }: {
         data: GraphData,
         highlightData?: LookupBreakdown[] | null,
+        spacingScale?: number,
     } = $props();
 
     const NODE_RADIUS = 25;
@@ -65,10 +72,13 @@
 
     const translationNodesSet = $derived(new Set(data.translation_nodes ?? []));
     const viewBoxWidth = $derived(
-        Math.max(
-            800,
-            Math.max(1, data.nodes.length - 1) * NODE_SPACING + VIEWBOX_PADDING_X * 2,
-        ),
+        graphViewBoxWidth({
+            nodeCount: data.nodes.length,
+            paddingX: VIEWBOX_PADDING_X,
+            nodeSpacing: NODE_SPACING,
+            spacingScale,
+            minWidth: 800,
+        }),
     );
     const viewBox = $derived(`0 0 ${viewBoxWidth} ${VIEWBOX_HEIGHT}`);
     const colorScale = d3.scaleOrdinal(d3.schemeTableau10);
@@ -134,7 +144,12 @@
 
         const nodes: NodeData[] = data.nodes.map((id, index) => ({
             id,
-            x: VIEWBOX_PADDING_X + index * NODE_SPACING,
+            x: graphNodeX({
+                index,
+                paddingX: VIEWBOX_PADDING_X,
+                nodeSpacing: NODE_SPACING,
+                spacingScale,
+            }),
             y: VIEWBOX_PADDING_Y,
             color: colorScale(id.toString()),
         }));
