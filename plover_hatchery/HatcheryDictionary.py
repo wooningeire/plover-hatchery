@@ -53,12 +53,13 @@ class HatcheryDictionary(StenoDictionary):
                     "status": "already_compiled",
                 }
 
-            from .lib.dictionary.read import all_entries, read_hatchery_dictionary
+            from .lib.dictionary.read import entry_items, read_hatchery_dictionary
             from .lib.theory_presets.amphitheory import theory
 
             def entry_lines():
                 dictionary = read_hatchery_dictionary(self.__filepath)
-                return all_entries(dictionary)
+                yield from dictionary["morphemes"].items()
+                yield from entry_items(dictionary)
 
             lookup = theory.build_lookup(
                 entry_lines=entry_lines,

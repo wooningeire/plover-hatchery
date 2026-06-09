@@ -201,6 +201,8 @@ def theory():
             yield "@"
 
 
+    # The chord-path preprocessing plugins below call this helper, so those paths
+    # still depend on sopheme spelling while deriving theory symbols.
     def map_keysymbol_to_theory_symbols(cursor: DefViewCursor):
         return (TheorySymbol(value) for value in map_phoneme_to_theory_symbol_values_base(cursor))
 

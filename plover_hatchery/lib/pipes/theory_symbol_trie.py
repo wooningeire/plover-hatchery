@@ -5,7 +5,21 @@ from typing import Any, Callable, Iterable, NamedTuple, Protocol, Sequence, fina
 
 from plover.steno import Stroke
 
-from plover_hatchery_lib_rs import DefView, DefViewCursor, add_theory_symbol_trie_entry, ChordToTheorySymbolSearchNode as RsChordToTheorySymbolSearchNode, ChordToTheorySymbolSearchResult, ChordToTheorySymbolSearcher as RsChordToTheorySymbolSearcher, TheorySymbolsToTranslationSearchPath, TriePath, TransitionCostKey, TransitionKey, TheorySymbol, TransitionFlagManager
+from plover_hatchery_lib_rs import (
+    ChordToTheorySymbolSearchNode as RsChordToTheorySymbolSearchNode,
+    ChordToTheorySymbolSearchResult,
+    ChordToTheorySymbolSearcher as RsChordToTheorySymbolSearcher,
+    DefView,
+    DefViewCursor,
+    TheorySymbol,
+    TheorySymbolsToTranslationSearchPath,
+    TransitionCostInfo,
+    TransitionCostKey,
+    TransitionFlagManager,
+    TransitionKey,
+    TriePath,
+    add_theory_symbol_trie_entry,
+)
 from plover_hatchery.lib.pipes.Hook import Hook
 from plover_hatchery.lib.pipes.Plugin import GetPluginApi, Plugin, define_plugin
 from plover_hatchery.lib.pipes.floating_keys import floating_keys
@@ -278,6 +292,18 @@ def theory_symbol_trie(
                 api.begin_add_entry.emit_and_store_outputs,
                 api.add_theory_symbol_transition.emit_with_states
             )
+            subtrie_builders.clear()
+
+
+        @base_hooks.add_theory_symbols_entry.listen(theory_symbol_trie)
+        def _(theory_symbols: tuple[TheorySymbol, ...], entry_id: int, **_):
+            key_ids = key_id_manager.get_key_ids_else_create(theory_symbols)
+            path = trie.follow_chain(
+                NondeterministicTrie.ROOT,
+                key_ids,
+                TransitionCostInfo(0, entry_id),
+            )
+            trie.set_translation(path.dst_node_id, entry_id)
             subtrie_builders.clear()
 
 

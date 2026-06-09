@@ -65,6 +65,34 @@ sequence = "h.[h] a.ae ng./ng/"
     ]
 
 
+def test__read_hatchery_dictionary__accepts_theory_symbol_entry_objects(tmp_path: Path) -> None:
+    dictionary_path = tmp_path / "sample.hatchery"
+    dictionary_path.write_text(
+        """
+[meta]
+hatchery-format-version = "0.1.0"
+
+[morphemes]
+
+[entries."hang:1"]
+format = "theory-symbols"
+theory-symbols = "H A NG"
+translation = "hang"
+""".strip(),
+        encoding="utf-8",
+    )
+
+    dictionary = read_hatchery_dictionary(str(dictionary_path))
+
+    entry = HatcheryEntry(
+        key="hang:1",
+        format="theory-symbols",
+        definition="H A NG",
+        translation="hang",
+    )
+    assert list(entry_items(dictionary)) == [entry]
+
+
 def test__read_hatchery_dictionary__rejects_unsupported_entry_object_format(tmp_path: Path) -> None:
     dictionary_path = tmp_path / "sample.hatchery"
     dictionary_path.write_text(

@@ -8,6 +8,11 @@ from .HatcheryDictionaryContents import HatcheryDictionaryContents
 
 SUPPORTED_HATCHERY_FORMAT_VERSIONS = {"0.0.0", "0.1.0"}
 ENTRY_FORMAT_SOPHEMES = "sophemes"
+ENTRY_FORMAT_THEORY_SYMBOLS = "theory-symbols"
+ENTRY_FORMATS_WITH_SEQUENCE = {
+    ENTRY_FORMAT_SOPHEMES,
+    ENTRY_FORMAT_THEORY_SYMBOLS,
+}
 
 
 class HatcheryDictionaryFormatError(ValueError):
@@ -76,15 +81,23 @@ def normalize_entry(key: str, raw_entry: Any) -> HatcheryEntry:
         )
 
     raw_format = raw_entry.get("format")
-    if raw_format != ENTRY_FORMAT_SOPHEMES:
+    if (
+        not isinstance(raw_format, str)
+        or raw_format not in ENTRY_FORMATS_WITH_SEQUENCE
+    ):
         raise HatcheryDictionaryFormatError(
             f'Entry "{key}" has unsupported format "{raw_format}"'
         )
 
-    raw_sequence = raw_entry.get("sequence")
+    definition_field = (
+        "theory-symbols"
+        if raw_format == ENTRY_FORMAT_THEORY_SYMBOLS
+        else "sequence"
+    )
+    raw_sequence = raw_entry.get(definition_field)
     if not isinstance(raw_sequence, str):
         raise HatcheryDictionaryFormatError(
-            f'Entry "{key}" with format "sophemes" must have a string sequence'
+            f'Entry "{key}" with format "{raw_format}" must have a string {definition_field}'
         )
 
     raw_translation = raw_entry.get("translation")
@@ -95,7 +108,7 @@ def normalize_entry(key: str, raw_entry: Any) -> HatcheryEntry:
 
     return HatcheryEntry(
         key=key,
-        format=ENTRY_FORMAT_SOPHEMES,
+        format=raw_format,
         definition=raw_sequence.strip(),
         translation=raw_translation,
     )
@@ -105,4 +118,3 @@ def all_entries(dictionary: HatcheryDictionaryContents) -> Generator[tuple[str, 
     yield from dictionary["morphemes"].items()
     for entry in entry_items(dictionary):
         yield entry.key, entry.definition
-

@@ -202,14 +202,29 @@ class CompiledLookupCache:
     def can_load_before_entries(self):
         return self.__source_hash is not None
 
-    def update_source(self, varname: str, definition_str: str):
+    def update_source(
+        self,
+        varname: str,
+        definition_str: str,
+        *,
+        entry_format: str="sophemes",
+        translation: str | None=None,
+    ):
         if self.__source_hasher is None:
             return
 
         self.__source_hasher.update(len(varname).to_bytes(8, "little"))
         self.__source_hasher.update(varname.encode("utf-8", "surrogatepass"))
+        self.__source_hasher.update(len(entry_format).to_bytes(8, "little"))
+        self.__source_hasher.update(entry_format.encode("utf-8", "surrogatepass"))
         self.__source_hasher.update(len(definition_str).to_bytes(8, "little"))
         self.__source_hasher.update(definition_str.encode("utf-8", "surrogatepass"))
+        if translation is None:
+            self.__source_hasher.update((0).to_bytes(8, "little"))
+            return
+
+        self.__source_hasher.update(len(translation).to_bytes(8, "little"))
+        self.__source_hasher.update(translation.encode("utf-8", "surrogatepass"))
 
     @property
     def source_hash(self):

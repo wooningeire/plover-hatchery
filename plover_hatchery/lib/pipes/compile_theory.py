@@ -2,11 +2,12 @@ import timeit
 
 from collections import defaultdict
 from collections.abc import Iterable, Generator
+from dataclasses import dataclass
 from typing import cast, TypeVar, Any, Protocol, Callable, final
 
 from plover_hatchery.lib.sopheme import parse_entry_definition
 
-from plover_hatchery_lib_rs import Def, DefView, DefDict, Entity
+from plover_hatchery_lib_rs import Def, DefView, DefDict, Entity, TheorySymbol
 
 from .Hook import Hook
 from .Plugin import Plugin
@@ -15,6 +16,67 @@ from .compile_theory_io import CacheLoadResult, CompiledLookupCache
 
 
 T = TypeVar("T")
+
+ENTRY_FORMAT_SOPHEMES = "sophemes"
+ENTRY_FORMAT_THEORY_SYMBOLS = "theory-symbols"
+
+
+@dataclass(frozen=True)
+class TheoryInputEntry:
+    varname: str
+    definition: str
+    format: str = ENTRY_FORMAT_SOPHEMES
+    translation: str | None = None
+
+
+def _default_entry_translation(varname: str):
+    return varname.split(":", 1)[0]
+
+
+def _normalize_theory_input_entry(entry_line: Any):
+    if isinstance(entry_line, TheoryInputEntry):
+        return entry_line
+
+    if all(hasattr(entry_line, attr) for attr in ("key", "definition", "format")):
+        key = getattr(entry_line, "key")
+        definition = getattr(entry_line, "definition")
+        entry_format = getattr(entry_line, "format")
+        translation = getattr(entry_line, "translation", None)
+
+        if not isinstance(key, str):
+            raise ValueError("entry key must be a string")
+        if not isinstance(definition, str):
+            raise ValueError("entry definition must be a string")
+        if not isinstance(entry_format, str):
+            raise ValueError("entry format must be a string")
+        if translation is not None and not isinstance(translation, str):
+            raise ValueError("entry translation must be a string")
+
+        return TheoryInputEntry(
+            varname=key,
+            definition=definition,
+            format=entry_format,
+            translation=translation,
+        )
+
+    if isinstance(entry_line, (tuple, list)) and len(entry_line) in {2, 3}:
+        varname, definition = entry_line[:2]
+        entry_format = entry_line[2] if len(entry_line) == 3 else ENTRY_FORMAT_SOPHEMES
+
+        if not isinstance(varname, str):
+            raise ValueError("entry key must be a string")
+        if not isinstance(definition, str):
+            raise ValueError("entry definition must be a string")
+        if not isinstance(entry_format, str):
+            raise ValueError("entry format must be a string")
+
+        return TheoryInputEntry(
+            varname=varname,
+            definition=definition,
+            format=entry_format,
+        )
+
+    raise ValueError("entry line must be an entry object or a 2/3-item sequence")
 
 
 @final
@@ -27,6 +89,8 @@ class TheoryHooks:
         def __call__(self, *, view: DefView) -> Def: ...
     class AddEntry(Protocol):
         def __call__(self, *, view: DefView, entry_id: int) -> None: ...
+    class AddTheorySymbolsEntry(Protocol):
+        def __call__(self, *, theory_symbols: tuple[TheorySymbol, ...], entry_id: int) -> None: ...
     class Lookup(Protocol):
         def __call__(self, *, stroke_stenos: tuple[str, ...], translations: list[str]) -> str | None: ...
     class ReverseLookup(Protocol):
@@ -44,6 +108,7 @@ class TheoryHooks:
     complete_build_lookup = Hook(CompleteBuildLookup)
     process_def = Hook(ProcessDef)
     add_entry = Hook(AddEntry)
+    add_theory_symbols_entry = Hook(AddTheorySymbolsEntry)
     lookup = Hook(Lookup)
     reverse_lookup = Hook(ReverseLookup)
     breakdown_translation = Hook(BreakdownTranslation)
@@ -56,7 +121,7 @@ def compile_theory(
     plugin_generator: Callable[[], Generator[Plugin[Any], Any, None]],
 ):
     def build_lookup(
-        entry_lines: Iterable[tuple[str, str]] | Callable[[], Iterable[tuple[str, str]]],
+        entry_lines: Iterable[Any] | Callable[[], Iterable[Any]],
         filename: str="",
         refresh_cache: bool=False,
     ):
@@ -114,7 +179,7 @@ def _compile_theory_lookup_builder(
     store.translations = translations
 
     def build_lookup(
-        entry_lines: Iterable[tuple[str, str]] | Callable[[], Iterable[tuple[str, str]]],
+        entry_lines: Iterable[Any] | Callable[[], Iterable[Any]],
         filename: str="",
         refresh_cache: bool=False,
     ):
@@ -176,22 +241,47 @@ def _compile_theory_lookup_builder(
                 print(f"\x1b[32mLoaded compiled trie cache {cache.path}\x1b[0m")
 
         defs = DefDict()
+        addable_entries: list[TheoryInputEntry] = []
+        direct_theory_symbols: dict[str, tuple[TheorySymbol, ...]] = {}
 
         def populate_dict():
             nonlocal n_entries, n_passed_parses
 
-            for i, (varname, definition_str) in enumerate(resolve_entry_lines()):
+            for i, raw_entry_line in enumerate(resolve_entry_lines()):
                 if i % 10000 == 0:
                     print(f"\x1b[FParsed {i} entries")
 
-                cache.update_source(varname, definition_str)
+                try:
+                    entry = _normalize_theory_input_entry(raw_entry_line)
+                except ValueError:
+                    n_entries += 1
+                    continue
+
+                cache.update_source(
+                    entry.varname,
+                    entry.definition,
+                    entry_format=entry.format,
+                    translation=entry.translation,
+                )
 
                 try:
-                    defs.add(varname, list(parse_entry_definition(definition_str.strip())))
+                    if entry.format == ENTRY_FORMAT_SOPHEMES:
+                        defs.add(
+                            entry.varname,
+                            list(parse_entry_definition(entry.definition.strip())),
+                        )
+                    elif entry.format == ENTRY_FORMAT_THEORY_SYMBOLS:
+                        direct_theory_symbols[entry.varname] = TheorySymbol.parse_seq(
+                            entry.definition.strip()
+                        )
+                    else:
+                        raise ValueError(f"unsupported entry format {entry.format}")
+
+                    addable_entries.append(entry)
                     n_passed_parses += 1
                 except ValueError as e:
                     # import traceback
-                    # print(f"failed to parse {definition_str.strip()}: {e} ({''.join(traceback.format_tb(e.__traceback__))})")
+                    # print(f"failed to parse {entry.definition.strip()}: {e} ({''.join(traceback.format_tb(e.__traceback__))})")
                     pass
 
                 n_entries += 1
@@ -216,19 +306,13 @@ def _compile_theory_lookup_builder(
         def add_entries():
             nonlocal n_addable_entries, n_passed_additions
 
-            i = 0
-            @defs.foreach_key
-            def _(varname: str):
-                nonlocal i, n_addable_entries, n_passed_additions
-
+            for i, entry in enumerate(addable_entries):
+                varname = entry.varname
                 if any(varname.startswith(modifier) for modifier in "@#") or "^" in varname:
-                    return
-
+                    continue
 
                 if i % 1000 == 0:
                     print(f"\x1b[FAdded {i} entries")
-
-                i += 1
 
                 translations.append("")
                 defs_list.append("")
@@ -238,14 +322,24 @@ def _compile_theory_lookup_builder(
                 try:
                     entry_id = len(translations) - 1
 
-                    def_item = defs.get_def(varname)
-                    view = DefView(defs, def_item)
+                    if entry.format == ENTRY_FORMAT_THEORY_SYMBOLS:
+                        add_theory_symbols_entry(
+                            states,
+                            direct_theory_symbols[varname],
+                            entry_id,
+                        )
+                        translation = entry.translation or _default_entry_translation(varname)
+                        defs_list[-1] = f"{varname} = {entry.definition}"
+                    else:
+                        def_item = defs.get_def(varname)
+                        view = DefView(defs, def_item)
 
-                    add_entry(states, view, entry_id)
+                        add_entry(states, view, entry_id)
 
-                    translation = view.translation()
+                        translation = view.translation()
+                        defs_list[-1] = str(def_item)
+
                     translations[-1] = translation
-                    defs_list[-1] = str(def_item)
                     reverse_translations[translation].append(entry_id)
 
                     n_passed_additions += 1
@@ -305,6 +399,15 @@ def _compile_theory_lookup_builder(
 
         for plugin_id, handler in hooks.add_entry.ids_handlers():
             handler(view=new_view, entry_id=entry_id)
+
+
+    def add_theory_symbols_entry(
+        states: dict[int, Any],
+        theory_symbols: tuple[TheorySymbol, ...],
+        entry_id: int,
+    ):
+        for plugin_id, handler in hooks.add_theory_symbols_entry.ids_handlers():
+            handler(theory_symbols=theory_symbols, entry_id=entry_id)
 
 
     def lookup(states: dict[int, Any], stroke_stenos: tuple[str, ...], translations: list[str]) -> str | None:

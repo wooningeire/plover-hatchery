@@ -54,9 +54,9 @@ steno = "HAPBG"
 Often we won't be doing this for things other than briefs, since the number of valid steno outlines for a word can be prohibitively large. Within a given theory, we can instead define it in terms of the *theory symbols* which that theory defines, letting the theory do all the heavylifting of figuring out all possible valid outlines when you stroke:
 ```toml
 [entries."hang:1"]
-format = "theory_symbols"
+format = "theory-symbols"
 translation = "hang"
-theory_symbols = "H A NG"
+theory-symbols = "H A NG"
 ```
 Of course, theory symbols are theory-defined, so they are hard to transfer to another theory.
 

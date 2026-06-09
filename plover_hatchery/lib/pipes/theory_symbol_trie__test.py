@@ -3,7 +3,11 @@ import json
 from plover.steno import Stroke
 from plover_hatchery_lib_rs import TheorySymbol, TriePath
 from plover_hatchery.lib.pipes.Plugin import define_plugin
-from plover_hatchery.lib.pipes.compile_theory import compile_theory
+from plover_hatchery.lib.pipes.compile_theory import (
+    ENTRY_FORMAT_THEORY_SYMBOLS,
+    TheoryInputEntry,
+    compile_theory,
+)
 from plover_hatchery.lib.pipes.floating_keys import floating_keys
 from plover_hatchery.lib.pipes.theory_symbol_trie import ChordToTheorySymbolSearchResult, TheorySymbolsToTranslationSearchPath, theory_symbol_trie
 
@@ -56,6 +60,30 @@ def test__theory_symbol_trie__chord_search_does_not_bleed_across_strokes():
 
     assert lookup.lookup(("K-T",)) == "act"
     assert lookup.lookup(("K", "T")) is None
+
+
+def test__theory_symbol_trie__adds_theory_symbol_entries_without_sopheme_mapping():
+    def fail_if_called(_cursor):
+        raise AssertionError("theory-symbol entries should not use sopheme mapping")
+
+    def plugins():
+        yield floating_keys("*")
+        yield theory_symbol_trie(
+            map_to_theory_symbols=fail_if_called,
+            theory_symbols_to_chords_dicts=[{"K A T": "KAT"}],
+        )
+        yield _choose_first_translation()
+
+    lookup = compile_theory(plugins).build_lookup([
+        TheoryInputEntry(
+            varname="cat:1",
+            definition="K A T",
+            format=ENTRY_FORMAT_THEORY_SYMBOLS,
+            translation="cat",
+        ),
+    ])
+
+    assert lookup.lookup(("KAT",)) == "cat"
 
 
 def test__theory_symbol_trie__breakdown_lookup_returns_debug_choice_data():
