@@ -1,0 +1,14 @@
+@mixin has-loading-animation {
+    transition: opacity 0.1s ease-in-out;
+
+    &.loading {
+        opacity: 0.3333333;
+
+        user-select: none;
+        cursor: not-allowed;
+
+        > * {
+            pointer-events: none;
+        }
+    }
+}

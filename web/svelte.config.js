@@ -17,6 +17,11 @@ const config = {
 			base: "/hatchery",
 			relative: false,
 		},
+
+		alias: {
+			"$": "src/lib",
+			"@": "src/lib/components",
+		},
 	}
 };
 

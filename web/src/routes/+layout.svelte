@@ -2,7 +2,7 @@
     import { base } from "$app/paths";
     import { page } from "$app/state";
     import type { Snippet } from "svelte";
-    import "./index.scss";
+    import "$/styles/index.scss";
 
     type NavItem = {
         href: string,

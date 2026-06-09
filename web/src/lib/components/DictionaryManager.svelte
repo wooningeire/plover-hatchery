@@ -616,11 +616,15 @@
 </section>
 
 <style lang="scss">
+@use "$/styles/loading.scss";
+
     .dictionary-page {
         display: grid;
         gap: 1rem;
 
         min-width: 0;
+
+        @include loading.has-loading-animation;
     }
 
     .panel-header,
