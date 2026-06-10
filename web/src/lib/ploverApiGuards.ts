@@ -107,6 +107,10 @@ export const isSaveEntryResponse = (value: unknown): value is SaveEntryResponse 
     isRecord(value)
     && isRecord(value.entry)
     && typeof value.entry.key === "string"
+    && (
+        value.entry.format === undefined
+        || typeof value.entry.format === "string"
+    )
     && typeof value.entry.translation === "string"
     && typeof value.entry.definition === "string"
     && isCompileDictionaryResult(value.compile)

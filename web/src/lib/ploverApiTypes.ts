@@ -20,6 +20,8 @@ export type DictionaryStats = {
     definitionCount: number,
 };
 
+export type EntryFormat = "sophemes" | "theory-symbols";
+
 export type DictionaryEntrySummary = {
     key: string,
     format: string,
@@ -45,6 +47,7 @@ export type DictionariesResponse = {
 export type SaveEntryResponse = {
     entry: {
         key: string,
+        format?: string,
         translation: string,
         definition: string,
     },

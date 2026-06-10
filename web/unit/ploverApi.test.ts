@@ -1,25 +1,20 @@
-/**
- * n.b. this is not an automated test script; test with Plover's Hatchery web extension on and off
- */
-
+import {
+    expect,
+    test,
+} from "vitest";
 import {
     PloverApiError,
     deletePloverEntry,
     loadLookupBreakdown,
     loadPloverDictionaryEntries,
     loadPloverDictionaries,
-} from "./ploverApi.js";
+    savePloverEntry,
+} from "../src/lib/ploverApi.js";
 
 type FetchImplementation = typeof fetch;
 
 
 const originalFetch = globalThis.fetch;
-
-function assert(condition: unknown, message: string): asserts condition {
-    if (!condition) {
-        throw new Error(message);
-    }
-}
 
 const withFetch = async (
     fetchImplementation: FetchImplementation,
@@ -45,7 +40,7 @@ const jsonResponse = (value: unknown, init?: ResponseInit) => (
     })
 );
 
-const assertRejectsWithPloverApiError = async (
+const expectPloverApiError = async (
     callback: () => Promise<unknown>,
     expectedKind: PloverApiError["kind"],
     expectedMessageText: string,
@@ -53,29 +48,23 @@ const assertRejectsWithPloverApiError = async (
     try {
         await callback();
     } catch (error) {
-        assert(error instanceof PloverApiError, "Expected a PloverApiError");
-        assert(error.kind === expectedKind, `Expected ${expectedKind}, got ${error.kind}`);
-        assert(
-            error.message.includes(expectedMessageText),
-            `Expected message to include "${expectedMessageText}", got "${error.message}"`,
-        );
+        expect(error).toBeInstanceOf(PloverApiError);
+
+        const apiError = error as PloverApiError;
+        expect(apiError.kind).toBe(expectedKind);
+        expect(apiError.message).toContain(expectedMessageText);
         return;
     }
 
     throw new Error("Expected promise to reject");
 };
 
-const test = async (name: string, callback: () => Promise<void>) => {
-    await callback();
-    console.log(`ok - ${name}`);
-};
 
-
-await test("loadPloverDictionaries reports when local Plover is unreachable", async () => {
+test("loadPloverDictionaries reports when local Plover is unreachable", async () => {
     await withFetch(
         () => Promise.reject(new TypeError("fetch failed")),
         async () => {
-            await assertRejectsWithPloverApiError(
+            await expectPloverApiError(
                 () => loadPloverDictionaries(),
                 "connection",
                 "Could not reach the Hatchery API",
@@ -84,13 +73,13 @@ await test("loadPloverDictionaries reports when local Plover is unreachable", as
     );
 });
 
-await test("loadPloverDictionaries reports when another service uses the Plover port", async () => {
+test("loadPloverDictionaries reports when another service uses the Plover port", async () => {
     await withFetch(
         () => Promise.resolve(jsonResponse({
             ok: true,
         })),
         async () => {
-            await assertRejectsWithPloverApiError(
+            await expectPloverApiError(
                 () => loadPloverDictionaries(),
                 "wrong-server",
                 "it is not the Hatchery API",
@@ -99,7 +88,7 @@ await test("loadPloverDictionaries reports when another service uses the Plover 
     );
 });
 
-await test("loadPloverDictionaries accepts Hatchery status before reading dictionaries", async () => {
+test("loadPloverDictionaries accepts Hatchery status before reading dictionaries", async () => {
     const requestedPaths: string[] = [];
 
     await withFetch(
@@ -126,24 +115,27 @@ await test("loadPloverDictionaries accepts Hatchery status before reading dictio
         async () => {
             const response = await loadPloverDictionaries();
 
-            assert(requestedPaths.join(",") === "/api/status,/api/dictionaries", "Expected status check before dictionaries request");
-            assert(response.dictionaries.length === 1, "Expected one dictionary");
-            assert(response.dictionaries[0]?.path === "user.hatchery", "Expected dictionary path");
+            expect(requestedPaths).toEqual([
+                "/api/status",
+                "/api/dictionaries",
+            ]);
+            expect(response.dictionaries).toHaveLength(1);
+            expect(response.dictionaries[0]?.path).toBe("user.hatchery");
         },
     );
 });
 
-await test("loadPloverDictionaryEntries reads selected dictionary entries", async () => {
+test("loadPloverDictionaryEntries reads selected dictionary entries", async () => {
     await withFetch(
         (input) => {
             const url = new URL(String(input));
 
-            assert(url.pathname === "/api/entries", "Expected entries path");
-            assert(url.searchParams.get("dictionaryPath") === "user.hatchery", "Expected dictionary path query");
-            assert(url.searchParams.get("offset") === "25", "Expected offset query");
-            assert(url.searchParams.get("limit") === "50", "Expected limit query");
-            assert(url.searchParams.get("query") === "cat", "Expected filter query");
-            assert(url.searchParams.get("resolveTranslations") === "true", "Expected translation resolution query");
+            expect(url.pathname).toBe("/api/entries");
+            expect(url.searchParams.get("dictionaryPath")).toBe("user.hatchery");
+            expect(url.searchParams.get("offset")).toBe("25");
+            expect(url.searchParams.get("limit")).toBe("50");
+            expect(url.searchParams.get("query")).toBe("cat");
+            expect(url.searchParams.get("resolveTranslations")).toBe("true");
 
             return Promise.resolve(jsonResponse({
                 dictionary: {
@@ -182,15 +174,15 @@ await test("loadPloverDictionaryEntries reads selected dictionary entries", asyn
                 resolveTranslations: true,
             });
 
-            assert(response.stats.entryCount === 1, "Expected one entry");
-            assert(response.entries[0]?.key === "cat", "Expected entry key");
-            assert(response.entries[0]?.format === "sophemes", "Expected entry format");
-            assert(response.pagination.totalCount === 90, "Expected pagination count");
+            expect(response.stats.entryCount).toBe(1);
+            expect(response.entries[0]?.key).toBe("cat");
+            expect(response.entries[0]?.format).toBe("sophemes");
+            expect(response.pagination.totalCount).toBe(90);
         },
     );
 });
 
-await test("loadLookupBreakdown checks Hatchery identity before reading lookup data", async () => {
+test("loadLookupBreakdown checks Hatchery identity before reading lookup data", async () => {
     const requestedPaths: string[] = [];
 
     await withFetch(
@@ -205,7 +197,7 @@ await test("loadLookupBreakdown checks Hatchery identity before reading lookup d
                 }));
             }
 
-            assert(url.pathname === "/api/breakdown_lookup/APL%20%5ETPEU", "Expected lookup path");
+            expect(url.pathname).toBe("/api/breakdown_lookup/APL%20%5ETPEU");
             return Promise.resolve(jsonResponse([
                 {
                     path: [
@@ -221,13 +213,16 @@ await test("loadLookupBreakdown checks Hatchery identity before reading lookup d
         async () => {
             const response = await loadLookupBreakdown("APL/^TPEU");
 
-            assert(requestedPaths.join(",") === "/api/status,/api/breakdown_lookup/APL%20%5ETPEU", "Expected status check before lookup request");
-            assert(response.length === 1, "Expected one lookup breakdown");
+            expect(requestedPaths).toEqual([
+                "/api/status",
+                "/api/breakdown_lookup/APL%20%5ETPEU",
+            ]);
+            expect(response).toHaveLength(1);
         },
     );
 });
 
-await test("loadLookupBreakdown reports Hatchery JSON endpoint errors as HTTP errors", async () => {
+test("loadLookupBreakdown reports Hatchery JSON endpoint errors as HTTP errors", async () => {
     await withFetch(
         (input) => {
             const url = new URL(String(input));
@@ -246,7 +241,7 @@ await test("loadLookupBreakdown reports Hatchery JSON endpoint errors as HTTP er
             }));
         },
         async () => {
-            await assertRejectsWithPloverApiError(
+            await expectPloverApiError(
                 () => loadLookupBreakdown("APL/^TPEU"),
                 "http",
                 "Lookup failed",
@@ -255,7 +250,7 @@ await test("loadLookupBreakdown reports Hatchery JSON endpoint errors as HTTP er
     );
 });
 
-await test("loadLookupBreakdown reports non-JSON Hatchery endpoint failures as HTTP errors", async () => {
+test("loadLookupBreakdown reports non-JSON Hatchery endpoint failures as HTTP errors", async () => {
     await withFetch(
         (input) => {
             const url = new URL(String(input));
@@ -275,7 +270,7 @@ await test("loadLookupBreakdown reports non-JSON Hatchery endpoint failures as H
             }));
         },
         async () => {
-            await assertRejectsWithPloverApiError(
+            await expectPloverApiError(
                 () => loadLookupBreakdown("APL/^TPEU"),
                 "http",
                 "did not return JSON",
@@ -284,15 +279,56 @@ await test("loadLookupBreakdown reports non-JSON Hatchery endpoint failures as H
     );
 });
 
-await test("deletePloverEntry deletes selected dictionary entry", async () => {
+test("savePloverEntry sends selected entry format", async () => {
     await withFetch(
         (_input, init) => {
-            assert(init?.method === "DELETE", "Expected DELETE request");
-            assert(typeof init.body === "string", "Expected JSON body");
+            expect(init).toBeDefined();
+            expect(init?.method).toBe("POST");
+            expect(typeof init?.body).toBe("string");
 
-            const requestBody = JSON.parse(init.body);
-            assert(requestBody.dictionaryPath === "user.hatchery", "Expected dictionary path body");
-            assert(requestBody.entryKey === "cat", "Expected entry key body");
+            const requestBody = JSON.parse(init?.body as string);
+            expect(requestBody.dictionaryPath).toBe("user.hatchery");
+            expect(requestBody.translation).toBe("hang");
+            expect(requestBody.definition).toBe("H A NG");
+            expect(requestBody.format).toBe("theory-symbols");
+
+            return Promise.resolve(jsonResponse({
+                entry: {
+                    key: "hang",
+                    format: "theory-symbols",
+                    translation: "hang",
+                    definition: "H A NG",
+                },
+                compile: {
+                    path: "user.hatchery",
+                    status: "compiled",
+                },
+            }));
+        },
+        async () => {
+            const response = await savePloverEntry(
+                "user.hatchery",
+                "hang",
+                "H A NG",
+                "theory-symbols",
+            );
+
+            expect(response.entry.format).toBe("theory-symbols");
+            expect(response.compile.status).toBe("compiled");
+        },
+    );
+});
+
+test("deletePloverEntry deletes selected dictionary entry", async () => {
+    await withFetch(
+        (_input, init) => {
+            expect(init).toBeDefined();
+            expect(init?.method).toBe("DELETE");
+            expect(typeof init?.body).toBe("string");
+
+            const requestBody = JSON.parse(init?.body as string);
+            expect(requestBody.dictionaryPath).toBe("user.hatchery");
+            expect(requestBody.entryKey).toBe("cat");
 
             return Promise.resolve(jsonResponse({
                 entry: {
@@ -309,8 +345,8 @@ await test("deletePloverEntry deletes selected dictionary entry", async () => {
         async () => {
             const response = await deletePloverEntry("user.hatchery", "cat");
 
-            assert(response.entry.key === "cat", "Expected deleted entry key");
-            assert(response.compile.status === "compiled", "Expected compile result");
+            expect(response.entry.key).toBe("cat");
+            expect(response.compile.status).toBe("compiled");
         },
     );
 });

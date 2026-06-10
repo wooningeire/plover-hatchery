@@ -26,6 +26,7 @@
         type DictionaryEntrySummary,
         type DictionaryStats,
         type DictionarySummary,
+        type EntryFormat,
         type SaveEntryResponse,
     } from "$lib/ploverApi";
 
@@ -54,6 +55,7 @@
 
     let entryTranslation = $state("");
     let entryDefinition = $state("");
+    let entryFormat = $state<EntryFormat>("sophemes");
     let saveState = $state<SaveState>("idle");
     let saveError = $state<string | null>(null);
     let saveResult = $state<SaveEntryResponse | null>(null);
@@ -214,6 +216,7 @@
                 selectedDictionaryPath,
                 entryTranslation,
                 entryDefinition,
+                entryFormat,
             );
             saveResult = responseBody;
             saveState = "saved";
@@ -339,6 +342,7 @@
                 hasNextPage={entryHasNextPage}
                 {entryTranslation}
                 {entryDefinition}
+                {entryFormat}
                 {saveState}
                 {saveIsWorking}
                 {canSaveEntry}
@@ -352,6 +356,7 @@
                 onNextPage={nextEntryPage}
                 onTranslationChange={(value) => entryTranslation = value}
                 onDefinitionChange={(value) => entryDefinition = value}
+                onFormatChange={(value) => entryFormat = value}
                 onSave={saveEntry}
                 onDeleteEntry={deleteEntry}
             />

@@ -1,6 +1,7 @@
 <script lang="ts">
     import type {
         DictionaryEntrySummary,
+        EntryFormat,
         SaveEntryResponse,
     } from "$lib/ploverApi";
     import DictionaryMessage from "./DictionaryMessage.svelte";
@@ -27,6 +28,7 @@
         hasNextPage,
         entryTranslation,
         entryDefinition,
+        entryFormat,
         saveState,
         saveIsWorking,
         canSaveEntry,
@@ -40,6 +42,7 @@
         onNextPage,
         onTranslationChange,
         onDefinitionChange,
+        onFormatChange,
         onSave,
         onDeleteEntry,
     }: {
@@ -56,6 +59,7 @@
         hasNextPage: boolean,
         entryTranslation: string,
         entryDefinition: string,
+        entryFormat: EntryFormat,
         saveState: SaveState,
         saveIsWorking: boolean,
         canSaveEntry: boolean,
@@ -69,6 +73,7 @@
         onNextPage: () => void,
         onTranslationChange: (translation: string) => void,
         onDefinitionChange: (definition: string) => void,
+        onFormatChange: (format: EntryFormat) => void,
         onSave: () => void | Promise<void>,
         onDeleteEntry: (entry: DictionaryEntrySummary) => void | Promise<void>,
     } = $props();
@@ -171,8 +176,17 @@
 
             <div class="entry-row add-entry-row" role="row">
                 <span class="new-entry-label" role="cell">New</span>
-                <span role="cell">
-                    <span class="format-badge">Sophemes</span>
+                <span class="entry-input-cell" role="cell">
+                    <select
+                        class="format-select"
+                        value={entryFormat}
+                        disabled={saveIsWorking}
+                        aria-label="New entry format"
+                        onchange={(event) => onFormatChange(event.currentTarget.value as EntryFormat)}
+                    >
+                        <option value="sophemes">Sophemes</option>
+                        <option value="theory-symbols">Theory symbols</option>
+                    </select>
                 </span>
 
                 <span class="entry-input-cell" role="cell">
@@ -194,8 +208,12 @@
                         value={entryDefinition}
                         disabled={saveIsWorking}
                         autocomplete="off"
-                        aria-label="New entry definition"
-                        placeholder="Definition"
+                        aria-label={entryFormat === "theory-symbols"
+                            ? "New entry theory symbols"
+                            : "New entry sopheme sequence"}
+                        placeholder={entryFormat === "theory-symbols"
+                            ? "Theory symbols"
+                            : "Sopheme sequence"}
                         oninput={(event) => onDefinitionChange(event.currentTarget.value)}
                         onkeydown={handleEntryKeydown}
                     />
@@ -313,7 +331,8 @@
         flex: 1 1 14rem;
     }
 
-    input {
+    input,
+    select {
         @include ui.form-control;
 
         height: 2.4rem;
@@ -391,7 +410,8 @@
         font-weight: 760;
     }
 
-    .add-entry-row input {
+    .add-entry-row input,
+    .add-entry-row select {
         height: 2rem;
         padding: 0 0.55rem;
     }

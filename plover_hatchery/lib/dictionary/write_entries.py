@@ -8,6 +8,8 @@ import toml
 from plover_hatchery.Store import store
 from plover_hatchery.lib.dictionary.HatcheryDictionaryContents import HatcheryDictionaryContents
 from plover_hatchery.lib.dictionary.read import (
+    ENTRY_FORMAT_SOPHEMES,
+    ENTRY_FORMAT_THEORY_SYMBOLS,
     HatcheryEntry,
     SUPPORTED_HATCHERY_FORMAT_VERSIONS,
     all_entries,
@@ -21,6 +23,10 @@ from plover_hatchery_lib_rs import DefDict, DefView
 
 DEFAULT_ENTRY_PAGE_LIMIT = 100
 MAX_ENTRY_PAGE_LIMIT = 200
+ADDABLE_ENTRY_FORMATS = {
+    ENTRY_FORMAT_SOPHEMES,
+    ENTRY_FORMAT_THEORY_SYMBOLS,
+}
 
 
 class AddEntryValidationError(ValueError):
@@ -100,10 +106,12 @@ def add_entry_to_hatchery_dictionary(
     dictionary_path: Any,
     translation: Any,
     definition: Any,
+    entry_format: Any=None,
 ):
     dictionary_path, dictionary = _loaded_dictionary(dictionary_path)
     translation = _required_string(translation, "translation").strip()
     definition = _required_string(definition, "definition").strip()
+    entry_format = _optional_entry_format(entry_format)
     if translation == "":
         raise AddEntryValidationError("Translation is required")
     if definition == "":
@@ -114,18 +122,31 @@ def add_entry_to_hatchery_dictionary(
     entries = _optional_dict_section(contents, "entries")
 
     entry_key = unique_entry_key(translation, set(morphemes.keys()) | set(entries.keys()))
-    entities = _parse_definition(definition)
-    resolved_translation = _resolve_definition_translation(contents, entry_key, entities)
-    if resolved_translation != translation:
-        raise AddEntryValidationError(
-            f'Definition resolves to "{resolved_translation}", not "{translation}"'
-        )
+    if entry_format == ENTRY_FORMAT_SOPHEMES:
+        entities = _parse_definition(definition)
+        resolved_translation = _resolve_definition_translation(contents, entry_key, entities)
+        if resolved_translation != translation:
+            raise AddEntryValidationError(
+                f'Definition resolves to "{resolved_translation}", not "{translation}"'
+            )
 
-    _append_entry_line(Path(dictionary_path), entry_key, definition)
+        _append_entry_line(Path(dictionary_path), entry_key, definition)
+    elif entry_format == ENTRY_FORMAT_THEORY_SYMBOLS:
+        _append_entry_object(
+            Path(dictionary_path),
+            entry_key=entry_key,
+            entry_format=entry_format,
+            definition_field="theory-symbols",
+            definition=definition,
+            translation=translation,
+        )
+    else:
+        raise AddEntryValidationError(f'Unsupported entry format "{entry_format}"')
 
     return {
         "entry": {
             "key": entry_key,
+            "format": entry_format,
             "translation": translation,
             "definition": definition,
         },
@@ -280,6 +301,18 @@ def _optional_bool(value: Any, *, default: bool):
             return False
 
     raise AddEntryValidationError("resolveTranslations must be a boolean")
+
+
+def _optional_entry_format(value: Any):
+    if value is None:
+        return ENTRY_FORMAT_SOPHEMES
+
+    entry_format = _required_string(value, "format").strip()
+    if entry_format in ADDABLE_ENTRY_FORMATS:
+        return entry_format
+
+    addable_formats = ", ".join(sorted(ADDABLE_ENTRY_FORMATS))
+    raise AddEntryValidationError(f"format must be one of {addable_formats}")
 
 
 def _read_dictionary_contents(dictionary_path: str):
@@ -441,6 +474,29 @@ def _append_entry_line(path: Path, entry_key: str, definition: str):
         raise RuntimeError(f"Could not write Hatchery dictionary: {error}")
 
 
+def _append_entry_object(
+    path: Path,
+    *,
+    entry_key: str,
+    entry_format: str,
+    definition_field: str,
+    definition: str,
+    translation: str,
+):
+    entry_object = "\n".join([
+        f"[entries.{_toml_basic_string(entry_key)}]",
+        f"format = {_toml_basic_string(entry_format)}",
+        f"translation = {_toml_basic_string(translation)}",
+        f"{definition_field} = {_toml_basic_string(definition)}",
+    ])
+
+    try:
+        text = path.read_text(encoding="utf-8")
+        path.write_text(_insert_entry_object(text, entry_object), encoding="utf-8")
+    except OSError as error:
+        raise RuntimeError(f"Could not write Hatchery dictionary: {error}")
+
+
 def _delete_entry_line(path: Path, entry_key: str):
     try:
         text = path.read_text(encoding="utf-8")
@@ -491,6 +547,54 @@ def _insert_entry_line(text: str, entry_line: str):
         lines[insert_index - 1] += newline
 
     lines.insert(insert_index, inserted_line)
+
+    return "".join(lines)
+
+
+def _insert_entry_object(text: str, entry_object: str):
+    newline = "\r\n" if "\r\n" in text else "\n"
+    normalized_entry_object = entry_object.replace("\n", newline)
+    inserted_text = f"{normalized_entry_object}{newline}"
+    lines = text.splitlines(keepends=True)
+
+    entries_region_start = None
+    entries_region_end = len(lines)
+    for index, line in enumerate(lines):
+        header_match = _TABLE_HEADER_RE.match(line.rstrip("\r\n"))
+        if header_match is None:
+            continue
+
+        header_name = header_match.group(1).strip()
+        is_entries_header = (
+            header_name == "entries"
+            or header_name.startswith("entries.")
+        )
+
+        if entries_region_start is None:
+            if is_entries_header:
+                entries_region_start = index
+            continue
+
+        if not is_entries_header:
+            entries_region_end = index
+            break
+
+    if entries_region_start is None:
+        prefix = text
+        if prefix != "" and not prefix.endswith(("\n", "\r")):
+            prefix += newline
+        if prefix != "" and not prefix.endswith(f"{newline}{newline}"):
+            prefix += newline
+
+        return f"{prefix}{inserted_text}"
+
+    if entries_region_end > 0 and not lines[entries_region_end - 1].endswith(("\n", "\r")):
+        lines[entries_region_end - 1] += newline
+
+    if entries_region_end > 0 and lines[entries_region_end - 1].strip() != "":
+        inserted_text = f"{newline}{inserted_text}"
+
+    lines.insert(entries_region_end, inserted_text)
 
     return "".join(lines)
 

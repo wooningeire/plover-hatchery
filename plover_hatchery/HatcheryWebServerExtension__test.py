@@ -525,6 +525,7 @@ def test__add_entry_route__appends_entry_and_compiles_changed_dictionary(tmp_pat
     assert response.get_json() == {
         "entry": {
             "key": "cat:2",
+            "format": "sophemes",
             "translation": "cat",
             "definition": "{@k} a.a t.t",
         },
@@ -557,6 +558,71 @@ def test__add_entry_route__appends_entries_section_when_missing(tmp_path: Path):
 
     assert response.status_code == 200
     assert "\n[entries]\n\"cat\" = \"{@k} a.a t.t\"\n" in dictionary_path.read_text(encoding="utf-8")
+
+
+def test__add_entry_route__appends_theory_symbols_entry_object(tmp_path: Path):
+    dictionary_path = tmp_path / "sample.hatchery"
+    dictionary_path.write_text(
+        """
+[meta]
+hatchery-format-version = "0.1.0"
+
+[morphemes]
+
+[other]
+value = "untouched"
+""".strip(),
+        encoding="utf-8",
+    )
+    dictionary = FakeHatcheryDictionary()
+    store.register_hatchery_dictionary(str(dictionary_path), dictionary)
+
+    response = _client().post("/api/entries", json={
+        "dictionaryPath": str(dictionary_path),
+        "translation": "hang",
+        "definition": "H A NG",
+        "format": "theory-symbols",
+    })
+
+    assert response.status_code == 200
+    assert response.get_json() == {
+        "entry": {
+            "key": "hang",
+            "format": "theory-symbols",
+            "translation": "hang",
+            "definition": "H A NG",
+        },
+        "compile": {
+            "path": str(dictionary_path),
+            "status": "compiled",
+        },
+    }
+    assert dictionary.invalidate_calls == 1
+    assert dictionary.compile_calls == 1
+
+    new_dictionary_text = dictionary_path.read_text(encoding="utf-8")
+    assert """
+[entries."hang"]
+format = "theory-symbols"
+translation = "hang"
+theory-symbols = "H A NG"
+""".strip() in new_dictionary_text
+    assert '[other]\nvalue = "untouched"' in new_dictionary_text
+
+    entries_response = _client().get("/api/entries", query_string={
+        "dictionaryPath": str(dictionary_path),
+        "resolveTranslations": "true",
+    })
+
+    assert entries_response.status_code == 200
+    assert entries_response.get_json()["entries"] == [
+        {
+            "key": "hang",
+            "format": "theory-symbols",
+            "translation": "hang",
+            "definition": "H A NG",
+        },
+    ]
 
 
 def test__add_entry_route__rejects_unknown_dictionary(tmp_path: Path):

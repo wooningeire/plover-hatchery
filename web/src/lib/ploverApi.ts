@@ -13,6 +13,7 @@ import {
     PloverApiError,
     type CompileResponse,
     type DeleteEntryResponse,
+    type EntryFormat,
     type SaveEntryResponse,
 } from "./ploverApiTypes.js";
 
@@ -30,6 +31,7 @@ export type {
     DictionaryEntrySummary,
     DictionaryStats,
     DictionarySummary,
+    EntryFormat,
     LookupBreakdown,
     LookupBreakdownStep,
     LookupBreakdownTransition,
@@ -137,6 +139,7 @@ export const savePloverEntry = async (
     dictionaryPath: string,
     translation: string,
     definition: string,
+    format: EntryFormat = "sophemes",
 ): Promise<SaveEntryResponse> => {
     const responseBody = await fetchPloverJson<unknown>("/api/entries", {
         method: "POST",
@@ -147,6 +150,7 @@ export const savePloverEntry = async (
             dictionaryPath,
             translation,
             definition,
+            format,
         }),
     });
 

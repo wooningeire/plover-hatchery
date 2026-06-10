@@ -125,6 +125,7 @@ class HatcheryWebServerExtension:
                     dictionary_path=request_body.get("dictionaryPath"),
                     translation=request_body.get("translation"),
                     definition=request_body.get("definition"),
+                    entry_format=request_body.get("format"),
                 ))
             except UnknownHatcheryDictionaryError as e:
                 return jsonify({
