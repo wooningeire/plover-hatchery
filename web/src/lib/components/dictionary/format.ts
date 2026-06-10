@@ -30,3 +30,15 @@ export const dictionaryStatus = (dictionary: CompileDictionaryResult) => {
 export const breakdownHref = (translation: string) => (
     `${base}/translation/${encodeURIComponent(translation)}`
 );
+
+export const entryFormatLabel = (format: string) => {
+    if (format === "sophemes") {
+        return "Sophemes";
+    }
+
+    if (format === "theory-symbols") {
+        return "Theory symbols";
+    }
+
+    return format;
+};

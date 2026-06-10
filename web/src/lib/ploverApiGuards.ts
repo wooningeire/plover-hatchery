@@ -71,6 +71,7 @@ const isDictionaryStats = (value: unknown): value is DictionaryStats => (
 const isDictionaryEntrySummary = (value: unknown): value is DictionaryEntrySummary => (
     isRecord(value)
     && typeof value.key === "string"
+    && typeof value.format === "string"
     && (
         typeof value.translation === "string"
         || value.translation === null

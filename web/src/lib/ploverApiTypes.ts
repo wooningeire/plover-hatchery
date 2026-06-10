@@ -22,6 +22,7 @@ export type DictionaryStats = {
 
 export type DictionaryEntrySummary = {
     key: string,
+    format: string,
     translation: string | null,
     definition: string,
 };

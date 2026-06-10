@@ -5,7 +5,6 @@
     import DictionaryCachePanel from "$lib/components/dictionary/DictionaryCachePanel.svelte";
     import DictionarySidebar from "$lib/components/dictionary/DictionarySidebar.svelte";
     import DictionaryStatsPanel from "$lib/components/dictionary/DictionaryStatsPanel.svelte";
-    import EntryEditor from "$lib/components/dictionary/EntryEditor.svelte";
     import EntryListPanel from "$lib/components/dictionary/EntryListPanel.svelte";
     import {
         ENTRY_PAGE_LIMIT,
@@ -64,9 +63,6 @@
     const compiledDictionaryCount = $derived(compileResult?.dictionaries.length ?? 0);
     const compileIsWorking = $derived(compileState === "compiling");
     const saveIsWorking = $derived(saveState === "saving");
-    const selectedDictionary = $derived(
-        dictionaries.find((dictionary) => dictionary.path === selectedDictionaryPath) ?? null,
-    );
     const canSaveEntry = $derived(
         !saveIsWorking
         && dictionaryLoadState === "loaded"
@@ -155,6 +151,7 @@
                 offset,
                 limit: ENTRY_PAGE_LIMIT,
                 query,
+                resolveTranslations: true,
             });
             if (latestEntryRequestKey !== `${dictionaryPath}\n${offset}\n${query}`) {
                 return;
@@ -328,24 +325,6 @@
                 stats={dictionaryStats}
             />
 
-            <EntryEditor
-                {dictionaries}
-                {selectedDictionary}
-                {selectedDictionaryPath}
-                {dictionaryLoadState}
-                {entryTranslation}
-                {entryDefinition}
-                {saveState}
-                {saveIsWorking}
-                {canSaveEntry}
-                {saveError}
-                {saveResult}
-                onDictionaryChange={selectDictionary}
-                onTranslationChange={(value) => entryTranslation = value}
-                onDefinitionChange={(value) => entryDefinition = value}
-                onSave={saveEntry}
-            />
-
             <EntryListPanel
                 {entryLoadState}
                 {entryLoadError}
@@ -358,12 +337,22 @@
                 {entryTotalCount}
                 hasPreviousPage={entryHasPreviousPage}
                 hasNextPage={entryHasNextPage}
+                {entryTranslation}
+                {entryDefinition}
+                {saveState}
+                {saveIsWorking}
+                {canSaveEntry}
+                {saveError}
+                {saveResult}
                 {deletingEntryKey}
                 {deleteError}
                 onFilterChange={(value) => entryFilter = value}
                 onApplyFilter={applyEntryFilter}
                 onPreviousPage={previousEntryPage}
                 onNextPage={nextEntryPage}
+                onTranslationChange={(value) => entryTranslation = value}
+                onDefinitionChange={(value) => entryDefinition = value}
+                onSave={saveEntry}
                 onDeleteEntry={deleteEntry}
             />
 

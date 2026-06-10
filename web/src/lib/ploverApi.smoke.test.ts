@@ -143,6 +143,7 @@ await test("loadPloverDictionaryEntries reads selected dictionary entries", asyn
             assert(url.searchParams.get("offset") === "25", "Expected offset query");
             assert(url.searchParams.get("limit") === "50", "Expected limit query");
             assert(url.searchParams.get("query") === "cat", "Expected filter query");
+            assert(url.searchParams.get("resolveTranslations") === "true", "Expected translation resolution query");
 
             return Promise.resolve(jsonResponse({
                 dictionary: {
@@ -157,6 +158,7 @@ await test("loadPloverDictionaryEntries reads selected dictionary entries", asyn
                 entries: [
                     {
                         key: "cat",
+                        format: "sophemes",
                         translation: "cat",
                         definition: "{@k} a.a t.t",
                     },
@@ -177,10 +179,12 @@ await test("loadPloverDictionaryEntries reads selected dictionary entries", asyn
                 offset: 25,
                 limit: 50,
                 query: "cat",
+                resolveTranslations: true,
             });
 
             assert(response.stats.entryCount === 1, "Expected one entry");
             assert(response.entries[0]?.key === "cat", "Expected entry key");
+            assert(response.entries[0]?.format === "sophemes", "Expected entry format");
             assert(response.pagination.totalCount === 90, "Expected pagination count");
         },
     );

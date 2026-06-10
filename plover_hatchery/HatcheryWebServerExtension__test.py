@@ -116,8 +116,15 @@ value = "untouched"
 """.strip()
 
 
-def _sample_object_dictionary_text():
-    return """
+def _sample_object_dictionary_text(*, translation: str | None=None):
+    translation_line = (
+        f'\ntranslation = "{translation}"'
+        if translation is not None
+        else ""
+    )
+
+    return (
+        """
 [meta]
 hatchery-format-version = "0.1.0"
 
@@ -127,10 +134,14 @@ hatchery-format-version = "0.1.0"
 [entries."hang:1"]
 format = "sophemes"
 sequence = "{@h} a.ae ng./ng/"
+""".rstrip()
+        + translation_line
+        + """
 
 [other]
 value = "untouched"
-""".strip()
+"""
+    ).strip()
 
 
 def test__status_route__identifies_hatchery_api():
@@ -372,6 +383,7 @@ def test__entries_route__lists_selected_dictionary_entries_and_stats(tmp_path: P
         "entries": [
             {
                 "key": "cat",
+                "format": "sophemes",
                 "translation": "cat",
                 "definition": "{@k} a.a t.t",
             },
@@ -412,6 +424,7 @@ def test__entries_route__lists_sopheme_entry_objects(tmp_path: Path):
         "entries": [
             {
                 "key": "hang:1",
+                "format": "sophemes",
                 "translation": "hang",
                 "definition": "{@h} a.ae ng./ng/",
             },
@@ -456,6 +469,7 @@ def test__entries_route__paginates_entries_without_resolving_translations_by_def
         "entries": [
             {
                 "key": "catfish",
+                "format": "sophemes",
                 "translation": None,
                 "definition": "{@k} a.a t.t f.f i.i sh.sh",
             },
@@ -470,6 +484,29 @@ def test__entries_route__paginates_entries_without_resolving_translations_by_def
             "query": "cat",
         },
     }
+
+
+def test__entries_route__lists_stored_entry_translation_without_resolution(tmp_path: Path):
+    dictionary_path = tmp_path / "sample.hatchery"
+    dictionary_path.write_text(
+        _sample_object_dictionary_text(translation="hang"),
+        encoding="utf-8",
+    )
+    store.register_hatchery_dictionary(str(dictionary_path), FakeHatcheryDictionary())
+
+    response = _client().get("/api/entries", query_string={
+        "dictionaryPath": str(dictionary_path),
+    })
+
+    assert response.status_code == 200
+    assert response.get_json()["entries"] == [
+        {
+            "key": "hang:1",
+            "format": "sophemes",
+            "translation": "hang",
+            "definition": "{@h} a.ae ng./ng/",
+        },
+    ]
 
 
 def test__add_entry_route__appends_entry_and_compiles_changed_dictionary(tmp_path: Path):

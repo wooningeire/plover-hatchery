@@ -368,11 +368,29 @@ def _entry_summary(
 ):
     return {
         "key": entry.key,
-        "translation": _resolve_entry_translation(contents, entry)
-            if resolve_translation
-            else None,
+        "format": entry.format,
+        "translation": _entry_summary_translation(
+            contents,
+            entry,
+            resolve_translation=resolve_translation,
+        ),
         "definition": entry.definition,
     }
+
+
+def _entry_summary_translation(
+    contents: HatcheryDictionaryContents,
+    entry: HatcheryEntry,
+    *,
+    resolve_translation: bool,
+):
+    if entry.translation is not None:
+        return entry.translation
+
+    if not resolve_translation:
+        return None
+
+    return _resolve_entry_translation(contents, entry)
 
 
 def _resolve_entry_translation(
